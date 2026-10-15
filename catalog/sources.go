@@ -24,9 +24,15 @@ func MergeSources(dir string) ([]SourceRow, error) {
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
-	shards, err := filepath.Glob(filepath.Join(dir, "sources-*.json"))
+	found, err := filepath.Glob(filepath.Join(dir, "sources-*.json"))
 	if err != nil {
 		return nil, err
+	}
+	var shards []string
+	for _, name := range found {
+		if shardFileRe.MatchString(filepath.Base(name)) {
+			shards = append(shards, name)
+		}
 	}
 	sort.Strings(shards)
 	for _, name := range shards {

@@ -117,6 +117,10 @@ func urlKey(raw string) string {
 	return key
 }
 
+// Dedupe drops entries without a title or URL and repeats of a URL, keeping
+// the first and the order
+func Dedupe(entries []Entry) []Entry { return dedupe(entries) }
+
 // dedupe drops entries without a title or URL and repeats of a URL, keeping
 // the first and the order
 func dedupe(entries []Entry) []Entry {

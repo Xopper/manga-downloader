@@ -6,15 +6,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"io"
+	nethttp "net/http"
 	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/elboletaire/manga-downloader/http"
 )
 
 // SuwayomiOptions drive CrawlSuwayomi
@@ -42,6 +42,10 @@ type SuwayomiOptions struct {
 	// Pause is the wait between pages; 200ms when 0, set to a negative value
 	// for none
 	Pause time.Duration
+	// RequestTimeout bounds every request to the server (a page, an
+	// install), so an extension stuck on a site can't hold a slot forever;
+	// 120s when 0
+	RequestTimeout time.Duration
 }
 
 // SourceRow is one crawled source in sources.json
@@ -69,10 +73,17 @@ type SuwayomiReport struct {
 	Failed int
 }
 
-// suwayomi is the slice of the server's REST API the crawl uses
+// suwayomi is the slice of the server's REST API the crawl uses. It has its
+// own client with a deadline: the project's http package has none, and a
+// request to Suwayomi can hang as long as the site behind the extension does.
 type suwayomi struct {
-	base string
+	base   string
+	client *nethttp.Client
 }
+
+// suwayomiUserAgent names the crawl to the server (which talks to the sites
+// with the extensions' own agents)
+const suwayomiUserAgent = "manga-downloader catalog crawl"
 
 type suwayomiExtension struct {
 	PkgName   string `json:"pkgName"`
@@ -101,12 +112,26 @@ func (s suwayomi) get(ctx context.Context, path string, into any) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	text, err := http.GetText(http.RequestParams{URL: s.base + path, DisableRetry: true, Accept: "application/json"})
+	req, err := nethttp.NewRequestWithContext(ctx, nethttp.MethodGet, s.base+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", suwayomiUserAgent)
+	req.Header.Set("Accept", "application/json")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != nethttp.StatusOK {
+		return fmt.Errorf("received %d response code", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 	if err != nil {
 		return err
 	}
 
-	return json.Unmarshal([]byte(text), into)
+	return json.Unmarshal(body, into)
 }
 
 func (s suwayomi) extensions(ctx context.Context) ([]suwayomiExtension, error) {
@@ -203,12 +228,17 @@ func CrawlSuwayomi(ctx context.Context, w io.Writer, o SuwayomiOptions) (*Suwayo
 	case o.Pause < 0:
 		o.Pause = 0
 	}
+	if o.RequestTimeout <= 0 {
+		o.RequestTimeout = 120 * time.Second
+	}
 	langs := o.Langs
 	if len(langs) == 0 {
 		langs = []string{"en"}
 	}
-	api := suwayomi{base: strings.TrimSuffix(o.Server, "/")}
+	api := suwayomi{base: strings.TrimSuffix(o.Server, "/"), client: &nethttp.Client{Timeout: o.RequestTimeout}}
 	started := time.Now()
+	// one writer for the log lines: the sources run in parallel
+	w = &lockedWriter{w: w}
 
 	if o.Install {
 		exts, err := api.extensions(ctx)
@@ -238,13 +268,19 @@ func CrawlSuwayomi(ctx context.Context, w io.Writer, o SuwayomiOptions) (*Suwayo
 		if len(o.Sources) > 0 && !nameOrID(o.Sources, s) {
 			continue
 		}
-		if o.Shards > 0 && i%o.Shards != o.Shard {
+		site := siteOfBase(s.BaseURL)
+		if site == "" {
+			if strings.TrimSpace(s.BaseURL) != "" {
+				fmt.Fprintf(w, "%s  skipped: no usable base URL (%q)\n", s.Name, s.BaseURL)
+			}
 			continue
 		}
-		if siteOfBase(s.BaseURL) == "" {
-			fmt.Fprintf(w, "%s  FAIL: no usable base URL (%q)\n", s.Name, s.BaseURL)
+		// shards split by host, not by position, so two sources on one host
+		// (a mirror, an "en" and an "all" source) merge inside one process
+		if o.Shards > 0 && shardOf(site, o.Shards) != o.Shard {
 			continue
 		}
+		_ = i
 		sources = append(sources, s)
 	}
 
@@ -268,8 +304,11 @@ func CrawlSuwayomi(ctx context.Context, w io.Writer, o SuwayomiOptions) (*Suwayo
 		if _, known := SiteByHost(site); known {
 			row.Downloadable = true
 		}
-		// the first source always runs; the timeout only stops later ones
+		// a slot is taken here, before the goroutine, so the clock is read
+		// when a source could actually start; the first source always runs
+		sem <- struct{}{}
 		if i > 0 && o.Timeout > 0 && time.Since(started) > o.Timeout {
+			<-sem
 			row.Failed = true
 			mu.Lock()
 			rep.Sources = append(rep.Sources, row)
@@ -281,7 +320,6 @@ func CrawlSuwayomi(ctx context.Context, w io.Writer, o SuwayomiOptions) (*Suwayo
 		wg.Add(1)
 		go func(src suwayomiSource, site string, row SourceRow) {
 			defer wg.Done()
-			sem <- struct{}{}
 			defer func() { <-sem }()
 			entries, pages, complete := walkSource(ctx, api, src, o)
 			row.Complete = complete
@@ -332,6 +370,28 @@ func CrawlSuwayomi(ctx context.Context, w io.Writer, o SuwayomiOptions) (*Suwayo
 	}
 
 	return rep, nil
+}
+
+// shardOf picks the shard of a site: a hash of its name modulo the shard
+// count, the same on every runner
+func shardOf(site string, shards int) int {
+	h := fnv.New32a()
+	h.Write([]byte(site))
+
+	return int(h.Sum32() % uint32(shards))
+}
+
+// lockedWriter serialises the log lines of the parallel walks
+type lockedWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (l *lockedWriter) Write(b []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.w.Write(b)
 }
 
 // nameOrID reports whether a source is one of the names or ids asked for
@@ -421,10 +481,14 @@ func joinBase(base, path string) string {
 }
 
 // mergeSite unions the entries into the site's file (the existing ones
-// first) and returns the file's new size
+// first) and returns the file's new size. A file whose set of titles didn't
+// change is left alone, so its published hash stays put and users don't
+// re-download it.
 func mergeSite(store *Store, site string, src suwayomiSource, entries []Entry, pages int, complete bool) (int, error) {
 	c := &SiteCatalog{Site: site, Home: strings.TrimSuffix(strings.TrimSpace(src.BaseURL), "/"), Language: src.Lang}
-	if old, ok := store.Catalog(site); ok {
+	var old *SiteCatalog
+	if existing, ok := store.Catalog(site); ok {
+		old = existing
 		cp := *old
 		c = &cp
 		if c.Home == "" {
@@ -436,6 +500,9 @@ func mergeSite(store *Store, site string, src suwayomiSource, entries []Entry, p
 	}
 	c.Entries = dedupe(append(append([]Entry{}, c.Entries...), entries...))
 	sort.SliceStable(c.Entries, func(i, j int) bool { return Fold(c.Entries[i].Title) < Fold(c.Entries[j].Title) })
+	if old != nil && old.Source != nil && old.Source.ID == src.ID && sameEntries(old.Entries, c.Entries) {
+		return len(c.Entries), nil
+	}
 	c.Crawled = time.Now().UTC()
 	c.Source = &SourceInfo{ID: src.ID, Name: src.Name, Lang: src.Lang, NSFW: src.NSFW, Pages: pages, Complete: complete}
 	if err := store.Write(c); err != nil {
@@ -443,4 +510,19 @@ func mergeSite(store *Store, site string, src suwayomiSource, entries []Entry, p
 	}
 
 	return len(c.Entries), nil
+}
+
+// sameEntries reports whether two entry lists hold the same titles and URLs
+// in the same order
+func sameEntries(a, b []Entry) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Title != b[i].Title || a[i].URL != b[i].URL {
+			return false
+		}
+	}
+
+	return true
 }

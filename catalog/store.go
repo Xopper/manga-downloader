@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -118,10 +119,13 @@ const indexFile = "index.json"
 // sourcesFile lists the Tachiyomi sources the catalogs came through
 const sourcesFile = "sources.json"
 
+// shardFileRe names a sharded crawl's rows file (sources-3.json)
+var shardFileRe = regexp.MustCompile(`^sources-\d+\.json$`)
+
 // isCatalogFile tells a site's file from the index and the sources files
-// that sit next to them
+// that sit next to them (a host named sources.example.com is a site)
 func isCatalogFile(name string) bool {
-	return name != indexFile && !strings.HasPrefix(name, "sources")
+	return name != indexFile && name != sourcesFile && !shardFileRe.MatchString(name)
 }
 
 // DefaultDir is where the app keeps its catalogs: next to gui.json

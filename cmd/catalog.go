@@ -353,6 +353,12 @@ func runCrawl(ctx context.Context, w io.Writer, out, only string, limit int) int
 				return
 			}
 			c := &catalog.SiteCatalog{Site: site.Site, Home: site.Home, Language: site.Lang, Crawled: time.Now().UTC(), Entries: entries}
+			if had && old.Source != nil {
+				// a Tachiyomi source also lists this site: its entries stay,
+				// after the crawl's own, so the nightly jobs don't undo each other
+				c.Entries = catalog.Dedupe(append(append([]catalog.Entry{}, entries...), old.Entries...))
+				c.Source = old.Source
+			}
 			if werr := store.Write(c); werr != nil {
 				report("%s  %s", site.Site, color.RedString("FAIL: %s", werr))
 				mu.Lock()

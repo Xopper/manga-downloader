@@ -270,3 +270,29 @@ func TestParseShard(t *testing.T) {
 		}
 	}
 }
+
+func TestCrawlKeepsSuwayomiEntries(t *testing.T) {
+	// a site a Suwayomi source also covers keeps that source's entries when
+	// the hand-written crawler rewrites the file
+	a := catalog.SiteInfo{Site: "a.test", Home: "https://a.test", Family: "fake", Lang: "en", Crawl: true}
+	out := crawlSetup(t, fakeCrawler{entries: map[string][]catalog.Entry{"a.test": entries(3, "a.test")}}, a)
+	old := catalog.NewStore(out)
+	merged := append(entries(2, "a.test"), catalog.Entry{Title: "From Suwayomi", URL: "https://a.test/manga/suwa/"})
+	if err := old.Write(&catalog.SiteCatalog{Site: "a.test", Crawled: time.Unix(100, 0), Entries: merged,
+		Source: &catalog.SourceInfo{ID: "9", Name: "A Source", Lang: "en", Complete: true}}); err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	if code := runCrawl(context.Background(), &log, out, "", 0); code != 0 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	s := catalog.NewStore(out)
+	s.Load()
+	c, _ := s.Catalog("a.test")
+	if c == nil || len(c.Entries) != 4 || c.Source == nil || c.Source.Name != "A Source" {
+		t.Fatalf("got %+v", c)
+	}
+	if c.Entries[0].Title != "a.test Aa" || c.Entries[3].Title != "From Suwayomi" {
+		t.Errorf("the crawl's entries come first, the source's after: %+v", c.Entries)
+	}
+}

@@ -27,6 +27,8 @@ type fakeSuwayomi struct {
 	pages map[string]suwayomiPage
 	// fails maps a path to how many 500s it answers before serving
 	fails map[string]int
+	// slow maps a path to how long it sleeps before answering
+	slow  map[string]time.Duration
 	calls []string
 	srv   *httptest.Server
 }
@@ -47,7 +49,11 @@ func (f *fakeSuwayomi) handle(w http.ResponseWriter, r *http.Request) {
 	if left > 0 {
 		f.fails[path] = left - 1
 	}
+	wait := f.slow[path]
 	f.mu.Unlock()
+	if wait > 0 {
+		time.Sleep(wait)
+	}
 	if left > 0 {
 		http.Error(w, "boom", 500)
 		return
@@ -215,24 +221,33 @@ func TestSuwayomiMergesSameHost(t *testing.T) {
 	}
 }
 
-func TestSuwayomiShard(t *testing.T) {
+func TestSuwayomiShardWritesItsRowsFile(t *testing.T) {
+	// a shard crawls a subset (by host hash) and names its rows file after
+	// itself, even when nothing fell into it
 	f := newFakeSuwayomi(t)
 	for i := 1; i <= 4; i++ {
 		f.sources = append(f.sources, source(fmt.Sprint(i), fmt.Sprintf("S%d", i), "en", fmt.Sprintf("https://s%d.test", i), false))
 		f.pages[fmt.Sprintf("/api/v1/source/%d/popular/1", i)] = suwayomiPage{Titles: []string{"One"}, HasNext: false}
 	}
-	out := t.TempDir()
-	o := crawlOpts(f, out)
-	o.Shard, o.Shards = 3, 4
-	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o)
-	if err != nil {
-		t.Fatal(err)
+	total := 0
+	for shard := 0; shard < 4; shard++ {
+		out := t.TempDir()
+		o := crawlOpts(f, out)
+		o.Shard, o.Shards = shard, 4
+		rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o)
+		if err != nil {
+			t.Fatal(err)
+		}
+		total += len(rep.Sources)
+		if _, err := os.Stat(filepath.Join(out, fmt.Sprintf("sources-%d.json", shard))); err != nil {
+			t.Errorf("shard %d rows file missing", shard)
+		}
+		if len(rep.Sources) == 4 {
+			t.Errorf("shard %d took every source", shard)
+		}
 	}
-	if len(rep.Sources) != 1 || rep.Sources[0].Site != "s4.test" {
-		t.Fatalf("got %+v", rep.Sources)
-	}
-	if _, err := os.Stat(filepath.Join(out, "sources-3.json")); err != nil {
-		t.Error("shard rows file missing")
+	if total != 4 {
+		t.Errorf("the shards crawled %d sources in all, want 4", total)
 	}
 }
 
@@ -381,5 +396,113 @@ func TestSuwayomiSourcesFile(t *testing.T) {
 	}
 	if r := bysite["x.test"]; r.Downloadable || !r.NSFW || r.SourceID != "2" || r.Lang != "en" {
 		t.Errorf("x.test: %+v", r)
+	}
+}
+
+func TestSuwayomiTimeoutSkipsSourcesWaitingForASlot(t *testing.T) {
+	// the first source takes 300ms; with one slot and a 100ms timeout the
+	// two behind it must be skipped, not started once the slot frees
+	f := newFakeSuwayomi(t)
+	for i := 1; i <= 3; i++ {
+		f.sources = append(f.sources, source(fmt.Sprint(i), fmt.Sprintf("S%d", i), "en", fmt.Sprintf("https://s%d.test", i), false))
+		f.pages[fmt.Sprintf("/api/v1/source/%d/popular/1", i)] = suwayomiPage{Titles: []string{"One"}, HasNext: false}
+	}
+	f.slow = map[string]time.Duration{"/api/v1/source/1/popular/1": 300 * time.Millisecond}
+	out := t.TempDir()
+	o := crawlOpts(f, out)
+	o.Parallel = 1
+	o.Timeout = 100 * time.Millisecond
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Written) != 1 || rep.Failed != 2 {
+		t.Fatalf("written %v failed %d: %+v", rep.Written, rep.Failed, rep.Sources)
+	}
+}
+
+func TestSuwayomiHungRequestEnds(t *testing.T) {
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Hang", "en", "https://hang.test", false)}
+	f.slow = map[string]time.Duration{"/api/v1/source/1/popular/1": 5 * time.Second}
+	out := t.TempDir()
+	o := crawlOpts(f, out)
+	o.RequestTimeout = 150 * time.Millisecond
+	done := make(chan *SuwayomiReport, 1)
+	go func() {
+		rep, _ := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o)
+		done <- rep
+	}()
+	select {
+	case rep := <-done:
+		if rep.Failed != 1 {
+			t.Errorf("a hung source must fail: %+v", rep.Sources)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("a hung request never ended the crawl")
+	}
+}
+
+func TestSuwayomiShardsKeepAHostTogether(t *testing.T) {
+	// two sources on one host must land in the same shard (their files are
+	// merged inside one process), and every source in exactly one shard
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{
+		source("1", "Alpha", "en", "https://alpha.test", false),
+		source("2", "Alpha Mirror", "en", "https://www.alpha.test", false),
+		source("3", "Beta", "en", "https://beta.test", false),
+		source("4", "Gamma", "en", "https://gamma.test", false),
+		source("5", "Delta", "en", "https://delta.test", false),
+	}
+	for i := 1; i <= 5; i++ {
+		f.pages[fmt.Sprintf("/api/v1/source/%d/popular/1", i)] = suwayomiPage{Titles: []string{"One"}, HasNext: false}
+	}
+	seen := map[string]int{}
+	shardOf := map[string]int{}
+	for shard := 0; shard < 3; shard++ {
+		o := crawlOpts(f, t.TempDir())
+		o.Shard, o.Shards = shard, 3
+		rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, r := range rep.Sources {
+			seen[r.SourceID]++
+			shardOf[r.SourceID] = shard
+		}
+	}
+	for i := 1; i <= 5; i++ {
+		if seen[fmt.Sprint(i)] != 1 {
+			t.Errorf("source %d crawled %d times", i, seen[fmt.Sprint(i)])
+		}
+	}
+	if shardOf["1"] != shardOf["2"] {
+		t.Errorf("one host split over shards %d and %d", shardOf["1"], shardOf["2"])
+	}
+}
+
+func TestSuwayomiUnchangedSetLeavesTheFileAlone(t *testing.T) {
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Alpha", "en", "https://alpha.test", false)}
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: []string{"A", "B"}, HasNext: false}
+	out := t.TempDir()
+	if _, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out)); err != nil {
+		t.Fatal(err)
+	}
+	first, _ := os.ReadFile(filepath.Join(out, "alpha.test.json"))
+	time.Sleep(10 * time.Millisecond)
+	if _, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out)); err != nil {
+		t.Fatal(err)
+	}
+	second, _ := os.ReadFile(filepath.Join(out, "alpha.test.json"))
+	if !bytes.Equal(first, second) {
+		t.Fatalf("the same set of titles rewrote the file:\n%s\n%s", first, second)
+	}
+	// a new title does change it
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: []string{"A", "B", "C"}, HasNext: false}
+	CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out))
+	third, _ := os.ReadFile(filepath.Join(out, "alpha.test.json"))
+	if bytes.Equal(second, third) {
+		t.Fatal("a new title must change the file")
 	}
 }

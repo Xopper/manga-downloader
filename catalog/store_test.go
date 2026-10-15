@@ -110,3 +110,28 @@ func TestDefaultDir(t *testing.T) {
 		t.Errorf("got %s", dir)
 	}
 }
+
+func TestSourcesLikeHostNamesAreCatalogs(t *testing.T) {
+	dir := t.TempDir()
+	s := NewStore(dir)
+	if err := s.Write(&SiteCatalog{Site: "sources.example.com", Entries: []Entry{{Title: "A", URL: "https://sources.example.com/a/"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Write(&SiteCatalog{Site: "sources-xyz.com", Entries: []Entry{{Title: "B", URL: "https://sources-xyz.com/b/"}}}); err != nil {
+		t.Fatal(err)
+	}
+	again := NewStore(dir)
+	again.Load()
+	for _, site := range []string{"sources.example.com", "sources-xyz.com"} {
+		if _, ok := again.Catalog(site); !ok {
+			t.Errorf("%s not loaded", site)
+		}
+	}
+	idx, _ := BuildIndex(dir)
+	if len(idx.Sites) != 2 {
+		t.Errorf("index lists %d sites", len(idx.Sites))
+	}
+	if _, err := MergeSources(dir); err != nil {
+		t.Errorf("merge took a host for a shard file: %v", err)
+	}
+}

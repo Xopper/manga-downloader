@@ -172,9 +172,14 @@ nightly, four shards. Design:
 - **The site key is the host of `baseUrl`** without `www.` (`siteOfBase`), so
   a Suwayomi source for a site a hand-written crawler covers lands in the
   same file, as a **union** (`mergeSite`: existing entries first, sorted by
-  folded title so the file only changes when the set does). A merged file
-  is never smaller than the one it replaces; an empty crawl writes nothing.
-  Writes to one site are serialised (two sources on one host).
+  folded title; a set that didn't change is not rewritten, so its published
+  hash and `crawled` time stay put). A merged file is never smaller than the
+  one it replaces; an empty crawl writes nothing. Writes to one site are
+  serialised, and shards are split by a hash of the host (`shardOf`), so two
+  sources on one host (a mirror, an `en` and an `all` source) always merge
+  inside one process. The hand-written `catalog crawl` keeps a file's
+  Suwayomi entries (after its own) when the file has a `source`, so the two
+  nightly jobs don't undo each other.
 - **A partial crawl is a failure** for the hand-written crawlers (nothing
   written) but not here: a source whose walk hit the cap or three errors
   still merges what it got (a union can't shrink a file) and is marked
@@ -182,8 +187,10 @@ nightly, four shards. Design:
 - **Shards**: `--shard i/n` keeps every source whose index in id order is
   `i` modulo `n`; each shard writes `sources-<i>.json`, and `catalog index`
   (the publish job) merges them into `sources.json` and removes them.
-  `--timeout` stops starting sources, so a shard ends inside the job's
-  limit; the sources it skipped are rows with `failed: true`.
+  `--timeout` stops starting sources (checked when a slot frees), so a shard
+  ends inside the job's limit; the sources it skipped are rows with
+  `failed: true`. Every request to the server has a deadline
+  (`RequestTimeout`, 120 s), so a stuck extension can't hold a slot.
 - **Published files are gzipped** (`catalog index --gzip` → `<site>.json.gz`,
   hash of the gzipped bytes in the index; `sources.json` is listed under the
   index's `extra`). `Store.Load` reads both forms (a plain file wins over a
