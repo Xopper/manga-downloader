@@ -172,8 +172,9 @@ export interface Hit {
   downloadable: boolean;
   /** The site's Tachiyomi source says it may carry adult content */
   nsfw: boolean;
-  /** The chapter count the app last saw for the series (one it loaded or follows), 0 when it never opened it */
+  /** The chapter count the app last saw for the series (one it loaded or follows); for one never opened, the latest chapter number the site listed (approximate); 0 when neither is known */
   chapters: number;
+  approximate: boolean;
   /** The series is in the library */
   followed: boolean;
 }

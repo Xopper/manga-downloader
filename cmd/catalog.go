@@ -355,10 +355,14 @@ func runCrawl(ctx context.Context, w io.Writer, out, only string, limit int) int
 				return
 			}
 			c := &catalog.SiteCatalog{Site: site.Site, Home: site.Home, Language: site.Lang, Crawled: time.Now().UTC(), Entries: entries}
+			if had {
+				// a list that stopped showing the latest chapter keeps the number
+				catalog.FillLatest(c.Entries, old.Entries)
+			}
 			if had && old.Source != nil {
 				// a Tachiyomi source also lists this site: its entries stay,
 				// after the crawl's own, so the nightly jobs don't undo each other
-				c.Entries = catalog.Dedupe(append(append([]catalog.Entry{}, entries...), old.Entries...))
+				c.Entries = catalog.Union(entries, old.Entries, false)
 				c.Source = old.Source
 			}
 			if werr := store.Write(c); werr != nil {

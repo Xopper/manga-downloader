@@ -13,6 +13,10 @@ type Entry struct {
 	URL string `json:"url"`
 	// AltNames are the other titles the site lists (romaji, native, …)
 	AltNames []string `json:"alt,omitempty"`
+	// Latest is the highest chapter number the site's list page showed, 0
+	// when the list doesn't say (Themesia, Suwayomi sources). It's a hint of
+	// the series' size, not a count.
+	Latest float64 `json:"latest,omitempty"`
 }
 
 // SiteCatalog is one site's list, the content of catalog/<site>.json

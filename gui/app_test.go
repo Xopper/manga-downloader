@@ -478,30 +478,36 @@ func TestDownloadAllNewRunsEachSeriesInTurn(t *testing.T) {
 func TestSearchHitsCarryKnownCounts(t *testing.T) {
 	a, _ := loadedApp(t, 5)
 	store := catalog.NewStore(catalogDir(t, catalog.SiteCatalog{Site: "mangaread.org", Language: "en", Crawled: time.Unix(1000, 0).UTC(), Entries: []catalog.Entry{
-		{Title: "Test Series", URL: "https://example.com/manga/test/"},
+		{Title: "Test Series", URL: "https://example.com/manga/test/", Latest: 99},
 		{Title: "Test Series 2", URL: "https://example.com/manga/test-2"},
+		{Title: "Test Series 3", URL: "https://example.com/manga/test-3", Latest: 1120.5},
 	}}))
 	store.Load()
 	a.ctrl.SetCatalog(store)
 	hits := a.Search("test series", "")
-	if len(hits) != 2 {
+	if len(hits) != 3 {
 		t.Fatalf("hits = %+v", hits)
 	}
 	byURL := map[string]HitDTO{}
 	for _, h := range hits {
 		byURL[h.URL] = h
 	}
-	// the loaded series was seen: its count shows, under another spelling of its URL
-	if h := byURL["https://example.com/manga/test/"]; h.Chapters != 5 || h.Followed {
+	// the loaded series was seen: its exact count beats the catalog's hint,
+	// under another spelling of its URL
+	if h := byURL["https://example.com/manga/test/"]; h.Chapters != 5 || h.Approximate || h.Followed {
 		t.Errorf("seen hit = %+v", h)
 	}
-	if h := byURL["https://example.com/manga/test-2"]; h.Chapters != 0 || h.Followed {
+	if h := byURL["https://example.com/manga/test-2"]; h.Chapters != 0 || h.Approximate || h.Followed {
 		t.Errorf("unseen hit = %+v", h)
+	}
+	// never opened: the catalog's latest chapter stands in, marked approximate
+	if h := byURL["https://example.com/manga/test-3"]; h.Chapters != 1120 || !h.Approximate || h.Followed {
+		t.Errorf("catalog hit = %+v", h)
 	}
 	if err := a.Follow(FollowedDTO{URL: "https://example.com/manga/test"}); err != nil {
 		t.Fatal(err)
 	}
-	if h := a.Search("test series", "")[0]; !h.Followed || h.Chapters != 5 {
+	if h := a.Search("test series", "")[0]; !h.Followed || h.Chapters != 5 || h.Approximate {
 		t.Errorf("followed hit = %+v", h)
 	}
 }

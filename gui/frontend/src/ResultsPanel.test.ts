@@ -11,9 +11,10 @@ const sites: SiteInfo[] = [
   { site: 'mangadex.org', label: 'MangaDex', language: 'en', hasCatalog: false, crawlable: false, entries: 0, downloadable: true, nsfw: false },
 ];
 const hits: Hit[] = [
-  { site: 'mangaread.org', title: 'One Piece', url: 'https://www.mangaread.org/manga/one-piece/', language: 'en', downloadable: true, nsfw: false, chapters: 1120, followed: true },
-  { site: 'mangaread.org', title: 'One Piece: Ace', url: 'https://www.mangaread.org/manga/one-piece-ace/', language: 'en', downloadable: true, nsfw: false, chapters: 0, followed: false },
-  { site: 'only.test', title: 'One Piece (scan)', url: 'https://only.test/series/one-piece', language: 'en', downloadable: false, nsfw: true, chapters: 0, followed: false },
+  { site: 'mangaread.org', title: 'One Piece', url: 'https://www.mangaread.org/manga/one-piece/', language: 'en', downloadable: true, nsfw: false, chapters: 1120, approximate: false, followed: true },
+  { site: 'mangaread.org', title: 'One Piece: Ace', url: 'https://www.mangaread.org/manga/one-piece-ace/', language: 'en', downloadable: true, nsfw: false, chapters: 0, approximate: false, followed: false },
+  { site: 'only.test', title: 'One Piece (scan)', url: 'https://only.test/series/one-piece', language: 'en', downloadable: false, nsfw: true, chapters: 0, approximate: false, followed: false },
+  { site: 'mangaread.org', title: 'One Piece: Omake', url: 'https://www.mangaread.org/manga/one-piece-omake/', language: 'en', downloadable: true, nsfw: false, chapters: 1120, approximate: true, followed: false },
 ];
 
 function render(over: Partial<ResultsPanelProps>): string {
@@ -44,11 +45,14 @@ function render(over: Partial<ResultsPanelProps>): string {
 describe('ResultsPanel', () => {
   it('lists the hits with their site, chapters and follow mark', () => {
     const markup = render({});
-    expect(markup).toContain('3 results for “one piece”');
-    expect(markup.match(/class="hit-site"/g)?.length).toBe(3);
+    expect(markup).toContain('4 results for “one piece”');
+    expect(markup.match(/class="hit-site"/g)?.length).toBe(4);
     expect(markup).toContain('data-url="https://www.mangaread.org/manga/one-piece/"');
     expect(markup).toContain('>1,120<');
     expect(markup.match(/Open it once to see/g)?.length).toBe(2);
+    // a series never opened shows the catalog's latest chapter as about that many
+    expect(markup.match(/class="hit-chapters num approx" title="latest chapter the site listed"/g)?.length).toBe(1);
+    expect(markup).toContain('≈ </span>');
     expect(markup).toContain('aria-label="Following One Piece, click to unfollow"');
     expect(markup).toContain('aria-label="Follow One Piece: Ace"');
     expect(markup.match(/class="star on"/g)?.length).toBe(1);
@@ -74,7 +78,7 @@ describe('ResultsPanel', () => {
   });
   it('keeps following possible while a download runs, but not picking', () => {
     const markup = render({ busy: true });
-    expect(markup.match(/class="hit-pick"[^>]*disabled/g)?.length).toBe(3);
+    expect(markup.match(/class="hit-pick"[^>]*disabled/g)?.length).toBe(4);
     expect(markup).not.toMatch(/class="star[^"]*"[^>]*disabled/);
   });
   it('says when nothing matched', () => {

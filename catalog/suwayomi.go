@@ -680,9 +680,9 @@ func joinBase(base, path string) string {
 }
 
 // mergeSite unions the entries into the site's file (the existing ones
-// first) and returns the file's new size. A file whose set of titles didn't
-// change is left alone, so its published hash stays put and users don't
-// re-download it.
+// first, a newer latest chapter winning) and returns the file's new size. A
+// file whose set of titles didn't change is left alone, so its published
+// hash stays put and users don't re-download it.
 func mergeSite(store *Store, site string, src suwayomiSource, entries []Entry, pages int, complete bool, links string) (int, error) {
 	c := &SiteCatalog{Site: site, Home: strings.TrimSuffix(strings.TrimSpace(src.BaseURL), "/"), Language: src.Lang}
 	var old *SiteCatalog
@@ -703,7 +703,7 @@ func mergeSite(store *Store, site string, src suwayomiSource, entries []Entry, p
 		// crawlers' entries for the site come back with their next run)
 		c.Entries = nil
 	}
-	c.Entries = dedupe(append(append([]Entry{}, c.Entries...), entries...))
+	c.Entries = union(c.Entries, entries, true)
 	sort.SliceStable(c.Entries, func(i, j int) bool { return Fold(c.Entries[i].Title) < Fold(c.Entries[j].Title) })
 	if old != nil && old.Source != nil && old.Source.ID == src.ID && old.Source.Links == links && sameEntries(old.Entries, c.Entries) {
 		return len(c.Entries), nil
@@ -724,14 +724,14 @@ func linksReplace(old, now string) bool {
 	return (old == "" || old == "joined" || old == "unchecked") && (now == "fetched" || now == "templated")
 }
 
-// sameEntries reports whether two entry lists hold the same titles and URLs
-// in the same order
+// sameEntries reports whether two entry lists hold the same titles, URLs
+// and latest chapters in the same order
 func sameEntries(a, b []Entry) bool {
 	if len(a) != len(b) {
 		return false
 	}
 	for i := range a {
-		if a[i].Title != b[i].Title || a[i].URL != b[i].URL {
+		if a[i].Title != b[i].Title || a[i].URL != b[i].URL || a[i].Latest != b[i].Latest {
 			return false
 		}
 	}

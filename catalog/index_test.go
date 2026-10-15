@@ -304,7 +304,7 @@ func gz(t *testing.T, b []byte) []byte {
 
 func TestGzipDir(t *testing.T) {
 	dir := t.TempDir()
-	writeCatalog(t, dir, SiteCatalog{Site: "a.test", Entries: []Entry{{Title: "A", URL: "https://a.test/a/"}}})
+	writeCatalog(t, dir, SiteCatalog{Site: "a.test", Entries: []Entry{{Title: "A", URL: "https://a.test/a/", Latest: 26.5}}})
 	writeRows(t, dir, "sources.json", []SourceRow{{Site: "a.test"}})
 	WriteIndex(dir, &Index{})
 	if err := Gzip(dir); err != nil {
@@ -326,8 +326,8 @@ func TestGzipDir(t *testing.T) {
 	if warns := s.Load(); len(warns) != 0 {
 		t.Fatal(warns)
 	}
-	if c, ok := s.Catalog("a.test"); !ok || len(c.Entries) != 1 {
-		t.Error("Load doesn't read .json.gz")
+	if c, ok := s.Catalog("a.test"); !ok || len(c.Entries) != 1 || c.Entries[0].Latest != 26.5 {
+		t.Error("Load doesn't read .json.gz, or loses the latest chapter")
 	}
 }
 

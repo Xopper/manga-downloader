@@ -156,7 +156,13 @@ export function ResultsPanel(props: ResultsPanelProps) {
                       {!r.downloadable && <span className="hit-tag search-only">search only</span>}
                     </span>
                   </button>
-                  {hit.chapters > 0 ? (
+                  {hit.chapters > 0 && hit.approximate ? (
+                    <span className="hit-chapters num approx" title="latest chapter the site listed">
+                      <span aria-hidden="true">≈ </span>
+                      <span className="sr-only">about </span>
+                      {hit.chapters.toLocaleString('en-US')}
+                    </span>
+                  ) : hit.chapters > 0 ? (
                     <span className="hit-chapters num">{hit.chapters.toLocaleString('en-US')}</span>
                   ) : (
                     <span className="hit-chapters muted" title="Open it once to see how many chapters it has">

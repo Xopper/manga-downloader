@@ -157,8 +157,11 @@ type HitDTO struct {
 	// NSFW is the site's Tachiyomi source's flag ("may contain adult content")
 	NSFW bool `json:"nsfw"`
 	// Chapters is the count the app last saw for the series (a series it
-	// loaded or follows), 0 when it never opened it
-	Chapters int `json:"chapters"`
+	// loaded or follows); for one it never opened, the latest chapter number
+	// the site's list showed when the catalog was built (Approximate), 0
+	// when neither is known
+	Chapters    int  `json:"chapters"`
+	Approximate bool `json:"approximate"`
 	// Followed is whether the series is in the library
 	Followed bool `json:"followed"`
 }
@@ -224,6 +227,10 @@ func (a *App) Search(query, site string) []HitDTO {
 			if f.Chapters > 0 {
 				dto.Chapters = f.Chapters
 			}
+		}
+		if dto.Chapters == 0 && h.Entry.Latest > 0 {
+			// the catalog's hint stands in for a count the app never took
+			dto.Chapters, dto.Approximate = int(h.Entry.Latest), true
 		}
 		out = append(out, dto)
 	}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"text/tabwriter"
 
 	"github.com/elboletaire/manga-downloader/catalog"
@@ -56,6 +57,9 @@ type searchHit struct {
 	// Downloadable is whether the downloader has a grabber for the site;
 	// a hit from a search-only site is a link to open elsewhere
 	Downloadable bool `json:"downloadable"`
+	// Latest is the highest chapter number the site's list showed when the
+	// catalog was built, 0 when the list doesn't say
+	Latest float64 `json:"latest,omitempty"`
 }
 
 // runSearch prints the hits of query (in one site, or all), as aligned
@@ -68,7 +72,7 @@ func runSearch(w io.Writer, store *catalog.Store, query, site string, limit int,
 	hits := store.Search(query, sites, limit)
 	rows := make([]searchHit, 0, len(hits))
 	for _, h := range hits {
-		rows = append(rows, searchHit{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Downloadable: store.Downloadable(h.Site)})
+		rows = append(rows, searchHit{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Downloadable: store.Downloadable(h.Site), Latest: h.Entry.Latest})
 	}
 	if asJSON {
 		enc := json.NewEncoder(w)
@@ -78,13 +82,16 @@ func runSearch(w io.Writer, store *catalog.Store, query, site string, limit int,
 		fmt.Fprintln(w, color.YellowString("No results"))
 	} else {
 		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(tw, "SITE\tDL\tTITLE\tURL")
+		fmt.Fprintln(tw, "SITE\tDL\tLATEST\tTITLE\tURL")
 		for _, r := range rows {
-			dl := "-"
+			dl, latest := "-", "-"
 			if r.Downloadable {
 				dl = "yes"
 			}
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.Site, dl, truncateString(r.Title, 60), r.URL)
+			if r.Latest > 0 {
+				latest = strconv.FormatFloat(r.Latest, 'f', -1, 64)
+			}
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", r.Site, dl, latest, truncateString(r.Title, 60), r.URL)
 		}
 		tw.Flush()
 	}

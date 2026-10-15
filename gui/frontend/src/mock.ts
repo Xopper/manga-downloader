@@ -1045,7 +1045,8 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
               language: s.language,
               downloadable: s.downloadable,
               nsfw: s.nsfw,
-              chapters: entry?.chapters ?? seen.get(urlKey(hitURL)) ?? 0,
+              chapters: entry?.chapters ?? seen.get(urlKey(hitURL)) ?? mockLatest(s.site, title),
+              approximate: entry === undefined && !seen.has(urlKey(hitURL)) && mockLatest(s.site, title) > 0,
               followed: entry !== undefined,
             });
           }
@@ -1246,6 +1247,23 @@ function slug(title: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+/**
+ * The latest chapter number the nightly catalog lists for a series, the way
+ * the Madara crawler fills it: mangaread.org has one for every title (from
+ * the title's letters, steady between searches), the other sites none
+ */
+function mockLatest(site: string, title: string): number {
+  if (site !== 'mangaread.org') {
+    return 0;
+  }
+  let n = 0;
+  for (const ch of title) {
+    n = (n * 31 + ch.codePointAt(0)!) % 1000;
+  }
+
+  return 120 + n;
 }
 
 /** The sites of the mock's picker: five with a catalog (two of them search only), two without */

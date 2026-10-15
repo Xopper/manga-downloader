@@ -3,8 +3,8 @@ import { catalogSummary, debounce, resultRows, siteGroups } from './search';
 import type { CatalogInfo, Hit, SiteInfo } from './types';
 
 const hits: Hit[] = [
-  { site: 'mangaread.org', title: 'One Piece', url: 'https://www.mangaread.org/manga/one-piece/', language: 'en', downloadable: true, nsfw: false, chapters: 0, followed: false },
-  { site: 'kingofshojo.com', title: 'One Piece', url: 'https://kingofshojo.com/manga/one-piece/', language: 'id', downloadable: true, nsfw: false, chapters: 0, followed: false },
+  { site: 'mangaread.org', title: 'One Piece', url: 'https://www.mangaread.org/manga/one-piece/', language: 'en', downloadable: true, nsfw: false, chapters: 0, approximate: false, followed: false },
+  { site: 'kingofshojo.com', title: 'One Piece', url: 'https://kingofshojo.com/manga/one-piece/', language: 'id', downloadable: true, nsfw: false, chapters: 0, approximate: false, followed: false },
 ];
 
 describe('resultRows', () => {

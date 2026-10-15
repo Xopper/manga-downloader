@@ -124,6 +124,7 @@ export namespace main {
 	    downloadable: boolean;
 	    nsfw: boolean;
 	    chapters: number;
+	    approximate: boolean;
 	    followed: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -139,6 +140,7 @@ export namespace main {
 	        this.downloadable = source["downloadable"];
 	        this.nsfw = source["nsfw"];
 	        this.chapters = source["chapters"];
+	        this.approximate = source["approximate"];
 	        this.followed = source["followed"];
 	    }
 	}

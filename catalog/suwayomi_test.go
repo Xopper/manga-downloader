@@ -254,7 +254,7 @@ func TestSuwayomiMergesSameHost(t *testing.T) {
 	out := t.TempDir()
 	existing := NewStore(out)
 	if err := existing.Write(&SiteCatalog{Site: "alpha.test", Home: "https://alpha.test", Language: "en", Entries: []Entry{
-		{Title: "A", URL: "https://alpha.test/manga/a"}, {Title: "B", URL: "https://alpha.test/manga/b"}, {Title: "Z", URL: "https://alpha.test/manga/z"},
+		{Title: "A", URL: "https://alpha.test/manga/a"}, {Title: "B", URL: "https://alpha.test/manga/b", Latest: 42}, {Title: "Z", URL: "https://alpha.test/manga/z"},
 	}}); err != nil {
 		t.Fatal(err)
 	}
@@ -270,6 +270,9 @@ func TestSuwayomiMergesSameHost(t *testing.T) {
 	}
 	if strings.Join(titles, "") != "ABCDZ" {
 		t.Fatalf("got %v", titles)
+	}
+	if c.Entries[1].Latest != 42 {
+		t.Errorf("a source that lists no chapter number must keep the crawler's: %+v", c.Entries[1])
 	}
 	if c.Home != "https://alpha.test" {
 		t.Errorf("home changed: %s", c.Home)

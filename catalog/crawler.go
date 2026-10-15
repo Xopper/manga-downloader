@@ -118,24 +118,93 @@ func urlKey(raw string) string {
 }
 
 // Dedupe drops entries without a title or URL and repeats of a URL, keeping
-// the first and the order
+// the first and the order; a kept entry without a latest chapter takes a
+// repeat's
 func Dedupe(entries []Entry) []Entry { return dedupe(entries) }
 
 // dedupe drops entries without a title or URL and repeats of a URL, keeping
-// the first and the order
+// the first and the order; a kept entry without a latest chapter takes a
+// repeat's
 func dedupe(entries []Entry) []Entry {
-	seen := make(map[string]bool, len(entries))
+	at := make(map[string]int, len(entries))
 	out := entries[:0:0]
 	for _, e := range entries {
 		key := urlKey(e.URL)
-		if key == "" || strings.TrimSpace(e.Title) == "" || seen[key] {
+		if key == "" || strings.TrimSpace(e.Title) == "" {
 			continue
 		}
-		seen[key] = true
+		if i, ok := at[key]; ok {
+			if out[i].Latest == 0 {
+				out[i].Latest = e.Latest
+			}
+			continue
+		}
+		at[key] = len(out)
 		out = append(out, e)
 	}
 
 	return out
+}
+
+// Union merges two crawls of a site: the entries of first, then those of
+// second not in first (by URL), without repeats. An entry in both keeps
+// first's title and URL and the newer crawl's latest chapter, unless that
+// crawl gave none (0): a list page that stopped showing the number doesn't
+// erase it.
+func Union(first, second []Entry, secondIsNewer bool) []Entry {
+	return union(first, second, secondIsNewer)
+}
+
+func union(first, second []Entry, secondIsNewer bool) []Entry {
+	out := dedupe(append(append([]Entry{}, first...), second...))
+	if secondIsNewer {
+		// dedupe kept first's number: second's replaces it when it has one
+		overlayLatest(out, second)
+	}
+
+	return out
+}
+
+// FillLatest gives the entries without a latest chapter the one an older
+// crawl (from) had for the same URL, so a list page that stopped showing the
+// number doesn't erase it
+func FillLatest(entries, from []Entry) {
+	var missing []Entry
+	for _, e := range entries {
+		if e.Latest == 0 {
+			missing = append(missing, e)
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	known := make(map[string]float64, len(from))
+	for _, e := range from {
+		if e.Latest > 0 {
+			known[urlKey(e.URL)] = e.Latest
+		}
+	}
+	for i := range entries {
+		if entries[i].Latest == 0 {
+			entries[i].Latest = known[urlKey(entries[i].URL)]
+		}
+	}
+}
+
+// overlayLatest puts from's non-zero latest chapters onto the entries with
+// the same URL
+func overlayLatest(entries, from []Entry) {
+	latest := make(map[string]float64, len(from))
+	for _, e := range from {
+		if e.Latest > 0 {
+			latest[urlKey(e.URL)] = e.Latest
+		}
+	}
+	for i := range entries {
+		if n, ok := latest[urlKey(entries[i].URL)]; ok {
+			entries[i].Latest = n
+		}
+	}
 }
 
 // pageURL puts the page number into a list URL template; a list without

@@ -86,6 +86,49 @@ func TestDedupeByPath(t *testing.T) {
 	}
 }
 
+func TestDedupeKeepsARepeatsLatest(t *testing.T) {
+	got := dedupe([]Entry{
+		{Title: "A", URL: "https://a.test/manga/a/"},
+		{Title: "A again", URL: "https://www.a.test/manga/a", Latest: 12},
+		{Title: "B", URL: "https://a.test/manga/b/", Latest: 3},
+		{Title: "B again", URL: "https://a.test/manga/b/", Latest: 9},
+	})
+	if len(got) != 2 || got[0].Latest != 12 || got[1].Latest != 3 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestUnionLatest(t *testing.T) {
+	older := []Entry{{Title: "A", URL: "https://a.test/manga/a/", Latest: 10}, {Title: "B", URL: "https://a.test/manga/b/", Latest: 5}, {Title: "C", URL: "https://a.test/manga/c/"}}
+	newer := []Entry{{Title: "A", URL: "https://a.test/manga/a/", Latest: 11}, {Title: "B", URL: "https://a.test/manga/b/"}, {Title: "D", URL: "https://a.test/manga/d/", Latest: 1}}
+	check := func(name string, got []Entry) {
+		t.Helper()
+		if len(got) != 4 {
+			t.Fatalf("%s: got %+v", name, got)
+		}
+		want := map[string]float64{"A": 11, "B": 5, "C": 0, "D": 1}
+		for _, e := range got {
+			if e.Latest != want[e.Title] {
+				t.Errorf("%s: %s latest = %v, want %v", name, e.Title, e.Latest, want[e.Title])
+			}
+		}
+	}
+	check("newer first", union(newer, older, false))
+	got := union(older, newer, true)
+	check("older first", got)
+	if got[0].Title != "A" || got[3].Title != "D" {
+		t.Errorf("the first list's order goes first: %+v", got)
+	}
+}
+
+func TestFillLatest(t *testing.T) {
+	entries := []Entry{{Title: "A", URL: "https://a.test/manga/a/"}, {Title: "B", URL: "https://a.test/manga/b/", Latest: 2}}
+	FillLatest(entries, []Entry{{Title: "A", URL: "https://www.a.test/manga/a", Latest: 7}, {Title: "B", URL: "https://a.test/manga/b/", Latest: 9}})
+	if entries[0].Latest != 7 || entries[1].Latest != 2 {
+		t.Errorf("got %+v", entries)
+	}
+}
+
 func TestPageURL(t *testing.T) {
 	if got := pageURL("https://a.test/manga/page/{page}/", 3); got != "https://a.test/manga/page/3/" {
 		t.Error(got)

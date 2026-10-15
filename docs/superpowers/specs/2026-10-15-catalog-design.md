@@ -32,6 +32,7 @@ type Entry struct {
     Title    string   `json:"title"`
     URL      string   `json:"url"`                 // the series page, what Load/IdentifySite takes
     AltNames []string `json:"alt,omitempty"`       // other titles the site lists (romaji, native, …)
+    Latest   float64  `json:"latest,omitempty"`    // highest chapter number the list page showed (Madara), 0 when it doesn't say
 }
 
 type SiteCatalog struct {

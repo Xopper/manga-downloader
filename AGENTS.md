@@ -100,8 +100,9 @@ EPUB is another archive next to CBZ, grouped the same way (per chapter, `--volum
 
 ### Catalog and search (`search`, `catalog …`)
 
-A catalog is one JSON per site (title, series URL, other names) in
-`catalog/`; `Store.Search` scans them in memory after folding (`Fold`:
+A catalog is one JSON per site (title, series URL, other names, and for
+the Madara family the latest chapter number its list page showed, `latest`)
+in `catalog/`; `Store.Search` scans them in memory after folding (`Fold`:
 lowercase, NFKD, accents dropped, dakuten kept). Design:
 `docs/superpowers/specs/2026-10-15-catalog-design.md`.
 

@@ -29,7 +29,7 @@ func searchTestStore(t *testing.T) *catalog.Store {
 		{Title: "One Piece: a very long subtitle that goes on and on past sixty characters for sure", URL: "https://a.test/manga/one-piece-long/"},
 	}})
 	write(catalog.SiteCatalog{Site: "b.test", Crawled: time.Now(), Entries: []catalog.Entry{
-		{Title: "One Piece", URL: "https://b.test/manga/one-piece/"},
+		{Title: "One Piece", URL: "https://b.test/manga/one-piece/", Latest: 1120.5},
 	}})
 	s := catalog.NewStore(dir)
 	if warns := s.Load(); len(warns) != 0 {
@@ -52,8 +52,11 @@ func TestRunSearchTable(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "a.test") || !strings.Contains(lines[1], "https://a.test/manga/one-piece/") {
 		t.Errorf("first row: %q", lines[1])
 	}
-	if !strings.HasPrefix(lines[2], "b.test") {
-		t.Errorf("second row: %q", lines[2])
+	if !strings.HasPrefix(lines[2], "b.test") || !strings.Contains(lines[2], "1120.5") {
+		t.Errorf("second row must show the latest chapter: %q", lines[2])
+	}
+	if !strings.Contains(lines[0], "LATEST") || !strings.Contains(lines[1], "  -  ") {
+		t.Errorf("a hit without a number shows -: %q / %q", lines[0], lines[1])
 	}
 	if !strings.Contains(lines[3], "...") || strings.Contains(lines[3], "for sure") {
 		t.Errorf("long title not truncated: %q", lines[3])

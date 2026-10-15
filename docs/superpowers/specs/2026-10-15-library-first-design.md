@@ -130,7 +130,9 @@ bar as today (log toggle, last line, version, update badge).
 
 ## Out of scope, noted
 
-- Chapter counts for series the app has never opened. The nightly catalog
-  carries titles and links only; a follow-up could add the latest chapter
-  number for the Madara family, whose list pages show it.
+- Exact chapter counts for series the app has never opened. Since 2026-10-15
+  the nightly catalog carries the latest chapter number for the Madara
+  family (`Entry.Latest`, whose list pages show it) and the results show it
+  as "≈ N" (`HitDTO.approximate`) until the app opens the series; the other
+  families' lists don't say.
 - Per-series save settings. The options stay global.

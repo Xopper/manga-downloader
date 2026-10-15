@@ -14,7 +14,7 @@ func TestStoreWriteLoadRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir)
 	c := &SiteCatalog{Site: "a.test", Home: "https://a.test", Language: "en", Crawled: time.Now().UTC().Truncate(time.Second),
-		Entries: []Entry{{Title: "One Piece", URL: "https://a.test/manga/one-piece/"}}}
+		Entries: []Entry{{Title: "One Piece", URL: "https://a.test/manga/one-piece/", Latest: 1120}}}
 	if err := s.Write(c); err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestStoreWriteLoadRoundTrip(t *testing.T) {
 		t.Fatal(warns)
 	}
 	got, ok := again.Catalog("a.test")
-	if !ok || len(got.Entries) != 1 || !got.Crawled.Equal(c.Crawled) || got.Home != c.Home {
+	if !ok || len(got.Entries) != 1 || !got.Crawled.Equal(c.Crawled) || got.Home != c.Home || got.Entries[0].Latest != 1120 {
 		t.Fatalf("got %+v", got)
 	}
 	if leftovers, _ := filepath.Glob(filepath.Join(dir, "*.tmp*")); len(leftovers) != 0 {
