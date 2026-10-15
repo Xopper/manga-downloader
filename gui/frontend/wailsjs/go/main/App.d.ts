@@ -4,15 +4,27 @@ import {main} from '../models';
 
 export function Cancel():Promise<void>;
 
+export function CancelBatch():Promise<void>;
+
+export function CancelCheck():Promise<void>;
+
 export function CatalogStatus():Promise<main.CatalogDTO>;
 
 export function Chapters():Promise<Array<main.ChapterDTO>>;
+
+export function CheckLibrary():Promise<void>;
 
 export function ChooseFolder():Promise<string>;
 
 export function Clear():Promise<void>;
 
 export function DismissBrowserAlert():Promise<void>;
+
+export function DownloadAllNew():Promise<void>;
+
+export function DownloadNew(arg1:string):Promise<void>;
+
+export function Follow(arg1:main.FollowedDTO):Promise<void>;
 
 export function Load(arg1:string):Promise<void>;
 
@@ -47,6 +59,8 @@ export function Sites():Promise<Array<main.SiteDTO>>;
 export function Start():Promise<void>;
 
 export function State():Promise<main.State>;
+
+export function Unfollow(arg1:string):Promise<void>;
 
 export function UpdateCatalog():Promise<void>;
 

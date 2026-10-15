@@ -156,6 +156,11 @@ type HitDTO struct {
 	Downloadable bool `json:"downloadable"`
 	// NSFW is the site's Tachiyomi source's flag ("may contain adult content")
 	NSFW bool `json:"nsfw"`
+	// Chapters is the count the app last saw for the series (a series it
+	// loaded or follows), 0 when it never opened it
+	Chapters int `json:"chapters"`
+	// Followed is whether the series is in the library
+	Followed bool `json:"followed"`
 }
 
 // SiteDTO is a site of the picker
@@ -207,9 +212,20 @@ func (a *App) Search(query, site string) []HitDTO {
 	for _, st := range a.ctrl.Sites() {
 		sites[st.Site] = st
 	}
+	lib := a.ctrl.Library()
 	for _, h := range hits {
 		st := sites[h.Site]
-		out = append(out, HitDTO{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Language: st.Language, Downloadable: st.Downloadable, NSFW: st.NSFW})
+		dto := HitDTO{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Language: st.Language, Downloadable: st.Downloadable, NSFW: st.NSFW}
+		if seen, ok := lib.SeenOf(h.Entry.URL); ok {
+			dto.Chapters = seen.Chapters
+		}
+		if f, ok := lib.Get(h.Entry.URL); ok {
+			dto.Followed = true
+			if f.Chapters > 0 {
+				dto.Chapters = f.Chapters
+			}
+		}
+		out = append(out, dto)
 	}
 
 	return out

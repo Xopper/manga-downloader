@@ -9,6 +9,8 @@ import (
 	"context"
 	"embed"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/elboletaire/manga-downloader/browser"
 	"github.com/elboletaire/manga-downloader/notice"
@@ -51,6 +53,7 @@ func main() {
 			app.notify()
 		}
 	})
+	ctrl.SetLibrary(openLibrary())
 	app = newApp(ctrl, rt, prefsPath, Tag, versionString())
 
 	err := wails.Run(&options.App{
@@ -95,6 +98,22 @@ func newSession(notify func()) (*Controller, string) {
 	}
 
 	return ctrl, prefsPath
+}
+
+// openLibrary loads library.json from the config dir, next to gui.json. A
+// file that doesn't parse is moved aside and the library starts empty, with
+// a warning; without a config dir the library lasts for this run only.
+func openLibrary() *Library {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		notice.Warn("no config dir for the library: %v", err)
+		return NewLibrary("")
+	}
+	lib := NewLibrary(filepath.Join(dir, "manga-downloader", "library.json"))
+	if err := lib.Load(); err != nil {
+		notice.Warn("ignoring the saved library: %v", err)
+	}
+	return lib
 }
 
 // versionString is what the window's About text shows: the tag when there is

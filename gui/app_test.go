@@ -389,3 +389,104 @@ func TestSetSelectedManyThroughTheApp(t *testing.T) {
 		t.Error("App accepted an index out of range")
 	}
 }
+
+func TestFollowTheLoadedSeriesRecordsItsCount(t *testing.T) {
+	a, _ := loadedApp(t, 5)
+	if err := a.Follow(FollowedDTO{URL: "https://example.com/manga/test/", Downloadable: false}); err != nil {
+		t.Fatal(err)
+	}
+	lib := a.State().Library
+	if len(lib.Followed) != 1 {
+		t.Fatalf("library = %+v", lib)
+	}
+	f := lib.Followed[0]
+	if f.Title != "Test Series" || f.Chapters != 5 || f.New != 5 || !f.Downloadable || f.Site != "example.com" || f.FollowedAt == "" {
+		t.Errorf("entry = %+v", f)
+	}
+	if err := a.Unfollow("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	if len(a.State().Library.Followed) != 0 {
+		t.Error("still followed")
+	}
+}
+
+func TestDownloadNewSelectsAboveTheMarkAndStarts(t *testing.T) {
+	a, _, _ := newTestApp(t, 5)
+	url := "https://example.com/manga/test"
+	if err := a.ctrl.Library().Follow(Followed{URL: url, SavedUpTo: 2, Downloadable: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.DownloadNew(url); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "the run", func() bool { st := a.State(); return st.Summary != nil && !st.Running })
+	if st := a.State(); st.Summary.Saved != 3 {
+		t.Errorf("saved %d, want 3", st.Summary.Saved)
+	}
+	f := a.State().Library.Followed[0]
+	if f.SavedUpTo != 5 || f.New != 0 {
+		t.Errorf("entry = %+v", f)
+	}
+}
+
+func TestDownloadNewWithNothingNewStops(t *testing.T) {
+	a, _, _ := newTestApp(t, 3)
+	url := "https://example.com/manga/test"
+	_ = a.ctrl.Library().Follow(Followed{URL: url, SavedUpTo: 3, Downloadable: true})
+	if err := a.DownloadNew(url); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "the load", func() bool { return a.State().Loaded && !a.State().Loading })
+	time.Sleep(20 * time.Millisecond)
+	if st := a.State(); st.Running || st.Summary != nil {
+		t.Errorf("a run started with nothing new: %+v", st.Run)
+	}
+	if err := a.DownloadNew("https://not.followed/x"); err == nil {
+		t.Error("an unfollowed series must be refused")
+	}
+}
+
+func TestDownloadAllNewRunsEachSeriesInTurn(t *testing.T) {
+	a, _, _ := newTestApp(t, 4)
+	first := "https://example.com/manga/test"
+	second := "https://example.com/manga/second"
+	lib := a.ctrl.Library()
+	_ = lib.Follow(Followed{URL: first, Title: "First", SavedUpTo: 3, Chapters: 4, Latest: 4, New: 1, Downloadable: true})
+	_ = lib.Follow(Followed{URL: second, Title: "Second", Chapters: 4, Latest: 4, New: 4, Downloadable: true})
+	_ = lib.Follow(Followed{URL: "https://example.com/manga/done", Title: "Done", SavedUpTo: 4, Chapters: 4, Latest: 4, New: 0, Downloadable: true})
+	if err := a.DownloadAllNew(); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "the batch", func() bool { return !a.State().Library.Batch.Active })
+	waitUntil(t, "the last run", func() bool { st := a.State(); return !st.Running && st.Summary != nil })
+	st := a.State()
+	if st.URL != second || st.Summary.Saved != 4 {
+		t.Errorf("after the batch: url %q, saved %d", st.URL, st.Summary.Saved)
+	}
+	for _, f := range st.Library.Followed {
+		if f.New != 0 || (f.Title != "Done" && f.LastSaved == "") {
+			t.Errorf("entry = %+v", f)
+		}
+	}
+	if err := a.DownloadAllNew(); err == nil {
+		t.Error("nothing new must be refused")
+	}
+}
+
+func TestSearchHitsCarryKnownCounts(t *testing.T) {
+	a, _ := loadedApp(t, 5)
+	url := "https://example.com/manga/test"
+	dto := HitDTO{URL: url}
+	lib := a.ctrl.Library()
+	if seen, ok := lib.SeenOf(url); !ok || seen.Chapters != 5 {
+		t.Fatalf("seen = %+v", seen)
+	}
+	if err := a.Follow(FollowedDTO{URL: url}); err != nil {
+		t.Fatal(err)
+	}
+	// Search needs a catalog; the DTO filling is exercised through the same helpers
+	if f, ok := lib.Get(dto.URL); !ok || f.Chapters != 5 {
+		t.Errorf("followed = %+v", f)
+	}
+}

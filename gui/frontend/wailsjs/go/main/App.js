@@ -6,12 +6,24 @@ export function Cancel() {
   return window['go']['main']['App']['Cancel']();
 }
 
+export function CancelBatch() {
+  return window['go']['main']['App']['CancelBatch']();
+}
+
+export function CancelCheck() {
+  return window['go']['main']['App']['CancelCheck']();
+}
+
 export function CatalogStatus() {
   return window['go']['main']['App']['CatalogStatus']();
 }
 
 export function Chapters() {
   return window['go']['main']['App']['Chapters']();
+}
+
+export function CheckLibrary() {
+  return window['go']['main']['App']['CheckLibrary']();
 }
 
 export function ChooseFolder() {
@@ -24,6 +36,18 @@ export function Clear() {
 
 export function DismissBrowserAlert() {
   return window['go']['main']['App']['DismissBrowserAlert']();
+}
+
+export function DownloadAllNew() {
+  return window['go']['main']['App']['DownloadAllNew']();
+}
+
+export function DownloadNew(arg1) {
+  return window['go']['main']['App']['DownloadNew'](arg1);
+}
+
+export function Follow(arg1) {
+  return window['go']['main']['App']['Follow'](arg1);
 }
 
 export function Load(arg1) {
@@ -92,6 +116,10 @@ export function Start() {
 
 export function State() {
   return window['go']['main']['App']['State']();
+}
+
+export function Unfollow(arg1) {
+  return window['go']['main']['App']['Unfollow'](arg1);
 }
 
 export function UpdateCatalog() {

@@ -208,6 +208,8 @@ type State struct {
 	BrowserAlert string `json:"browserAlert"`
 	// Catalog sums the search catalogs up
 	Catalog CatalogDTO `json:"catalog"`
+	// Library is the followed series, with the check or batch in progress
+	Library LibraryDTO `json:"library"`
 }
 
 // VolumesDTO is the Volumes box: the volumes a run packs, in --volumes'
@@ -320,6 +322,7 @@ func (a *App) State() State {
 		BrowserVisibleAuto: c.BrowserVisibleAuto(),
 		BrowserAlert:       c.BrowserAlert(),
 		Catalog:            catalogDTO(c.CatalogInfo()),
+		Library:            libraryDTO(c),
 	}
 	st.LoadedLanguage, st.LoadedScanlator = c.LoadedFilters()
 	st.Volumes.Text, st.Volumes.Site = c.Volumes()
@@ -431,24 +434,11 @@ func (a *App) SetOptionsAndLoad(o OptionsDTO, url string) error {
 // finishLoad does the load BeginLoad or ConfigureLoad started, on its own
 // goroutine, and reports its chapters when it's done
 func (a *App) finishLoad(url string) {
-	go func() {
-		// a panic in a site's parser must not take the window down with it,
-		// and must not leave the controls locked behind a load that never ends
-		defer func() {
-			if r := recover(); r != nil {
-				a.ctrl.abortLoad(fmt.Errorf("the site's parser failed: %v", r))
-			}
-			a.sink.Emit("chapters", a.Chapters())
-		}()
-		// a filter the series doesn't have may have been reset to its fallback,
-		// which the saved options should show too
-		before := optionsOf(a.ctrl.Settings())
-		// the error is kept by the controller and reported through the state
-		_ = a.ctrl.FinishLoad(url)
-		if optionsOf(a.ctrl.Settings()) != before {
-			a.save()
-		}
-	}()
+	// a panic in a site's parser must not take the window down with it, and
+	// must not leave the controls locked behind a load that never ends
+	// (finishLoadNow recovers it); the error is kept by the controller and
+	// reported through the state
+	go func() { _ = a.finishLoadNow(url) }()
 }
 
 // SetSelected selects or deselects the chapter at index. It's refused while a

@@ -118,6 +118,8 @@ type runStats struct {
 	failures []string
 	bundle   string
 	err      error
+	// maxSaved is the highest chapter number saved so far, 0 for none
+	maxSaved float64
 }
 
 // Controller holds the state of the app and runs the core flow. It knows
@@ -195,6 +197,18 @@ type Controller struct {
 	// attention is the browser window waiting for the user (a check to pass
 	// there), nil when none is or the user dismissed it
 	attention *browser.Attention
+	// library is the followed series and what the app saw of every series it
+	// loaded (see library.go); memory-only until SetLibrary
+	library *Library
+	// checking is set while CheckLibrary fetches the followed series, with
+	// checkDone of checkTotal done; checkCancel ends it early
+	checking    bool
+	checkDone   int
+	checkTotal  int
+	checkCancel context.CancelFunc
+	// batch is the download of every followed series' new chapters in turn
+	// (see App.DownloadAllNew), nil when none runs
+	batch *batchState
 	// selGen and logGen count changes to the selection and the log, so a view
 	// that pushes state can skip re-sending either when it hasn't moved
 	selGen uint64
@@ -231,6 +245,7 @@ func NewController(settings *grabber.Settings, notifyFn func()) *Controller {
 		bringToFront: browser.BringToFront,
 		settings:     settings,
 		catalogURL:   catalog.BaseURL(),
+		library:      NewLibrary(""),
 	}
 	notice.SetHandler(func(level notice.Level, msg string) {
 		lvl := LogInfo
@@ -318,7 +333,7 @@ func (c *Controller) appendLogLocked(level LogLevel, text string) {
 // a download runs, so the goroutines reading the settings never see a write.
 func (c *Controller) Configure(fn func(*grabber.Settings)) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -348,7 +363,7 @@ func (c *Controller) Load(url string) error {
 // its controls before the slow part (FinishLoad) runs on another goroutine.
 func (c *Controller) BeginLoad(url string) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -362,7 +377,7 @@ func (c *Controller) BeginLoad(url string) error {
 // picked filter as not applied.
 func (c *Controller) ConfigureLoad(fn func(*grabber.Settings), url string) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -422,14 +437,41 @@ func (c *Controller) FinishLoad(url string) error {
 	c.mu.Lock()
 	c.loading = false
 	c.loadErr = err
+	var title string
+	var numbers []float64
 	if err != nil {
 		c.series = nil
 		c.selected = nil
 		c.selGen++
+	} else {
+		title = c.series.Title
+		numbers = chapterNumbers(c.series.Chapters)
 	}
 	c.mu.Unlock()
+	if err == nil {
+		// the library remembers every series loaded: its count feeds the
+		// search results, and a followed entry learns what's new
+		if lerr := c.library.MarkSeen(url, title, numbers); lerr != nil {
+			c.addLog(LogWarn, "could not save the library: "+lerr.Error())
+		}
+	}
 	c.emit()
 	return err
+}
+
+// chapterNumbers lists the numbers of a chapter list, in its order
+func chapterNumbers(chapters grabber.Filterables) []float64 {
+	out := make([]float64, 0, len(chapters))
+	for _, ch := range chapters {
+		out = append(out, ch.GetNumber())
+	}
+	return out
+}
+
+// busyLocked reports whether a load, a download or a library check is on:
+// what refuses the actions that would race it. The caller holds mu.
+func (c *Controller) busyLocked() bool {
+	return c.loading || c.running || c.checking
 }
 
 func (c *Controller) load(url string, s *grabber.Settings) error {
@@ -801,7 +843,7 @@ func commonLanguage(chapters grabber.Filterables) string {
 // series loads or a download runs.
 func (c *Controller) Clear() error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -982,7 +1024,7 @@ func (c *Controller) SelectedCount() int {
 // loads or a download runs, as SetSelectedMany is.
 func (c *Controller) SetSelected(i int, on bool) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -1003,7 +1045,7 @@ func (c *Controller) SetSelected(i int, on bool) error {
 // download runs, as Configure is.
 func (c *Controller) SetSelectedMany(indices []int, on bool) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -1026,7 +1068,7 @@ func (c *Controller) SetSelectedMany(indices []int, on bool) error {
 // loads or a download runs.
 func (c *Controller) SetAll(on bool) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -1045,7 +1087,7 @@ func (c *Controller) SetAll(on bool) error {
 // download runs.
 func (c *Controller) SelectRange(text string) (int, error) {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return 0, errBusy
 	}
@@ -1092,7 +1134,7 @@ func (c *Controller) Volumes() (text, site string) {
 // is refused, as is any change while a series loads or a download runs.
 func (c *Controller) SetVolumes(text string) error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -1159,7 +1201,7 @@ func (c *Controller) Log() []LogLine {
 // in the background. Validation errors are returned synchronously.
 func (c *Controller) Start() error {
 	c.mu.Lock()
-	if c.loading || c.running {
+	if c.busyLocked() {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -1234,6 +1276,7 @@ func (c *Controller) Start() error {
 	series := c.series
 	settings := c.settings
 	rng := c.rng
+	url := c.url
 	c.appendLogLocked(LogInfo, fmt.Sprintf("Downloading %d chapter(s) of %s", len(chapters), series.Title))
 	c.mu.Unlock()
 	c.emit()
@@ -1245,18 +1288,26 @@ func (c *Controller) Start() error {
 	release := browser.Hold()
 	go func() {
 		defer release()
-		c.run(ctx, series, settings, chapters, skip, rng)
+		c.run(ctx, url, series, settings, chapters, skip, rng)
 	}()
 	return nil
 }
 
 // run is the download goroutine
-func (c *Controller) run(ctx context.Context, series *core.Series, settings *grabber.Settings, chapters grabber.Filterables, skip []ranges.Range, rng string) {
+func (c *Controller) run(ctx context.Context, url string, series *core.Series, settings *grabber.Settings, chapters grabber.Filterables, skip []ranges.Range, rng string) {
 	file, err := series.Download(ctx, chapters, skip, rng, events{c})
 
 	c.mu.Lock()
 	defer func() {
+		maxSaved := c.stats.maxSaved
+		numbers := chapterNumbers(series.Chapters)
 		c.mu.Unlock()
+		// a run that saved something moves the library's mark for the series
+		if maxSaved > 0 {
+			if lerr := c.library.MarkSaved(url, maxSaved, numbers); lerr != nil {
+				c.addLog(LogWarn, "could not save the library: "+lerr.Error())
+			}
+		}
 		c.emit()
 	}()
 
@@ -1524,6 +1575,7 @@ func (e events) Packed(ch *grabber.Chapter, name string, err error) {
 		c.appendLogLocked(LogError, msg)
 	} else {
 		c.stats.saved++
+		c.stats.maxSaved = max(c.stats.maxSaved, ch.GetNumber())
 		if j != nil {
 			j.State = JobDone
 			// the skipped pages were never counted, so the bar is exact only now
@@ -1540,6 +1592,7 @@ func (e events) Downloaded(ch *grabber.Chapter) {
 	c.mu.Lock()
 	// the pages were counted as they came in; this only tallies the chapter
 	c.stats.saved++
+	c.stats.maxSaved = max(c.stats.maxSaved, ch.GetNumber())
 	c.mu.Unlock()
 	c.emit()
 }
@@ -1650,6 +1703,7 @@ func (e events) VolumePacked(v *core.Volume, name string, err error) {
 		c.appendLogLocked(LogError, "error packing "+msg)
 	default:
 		c.stats.volumes++
+		c.stats.maxSaved = max(c.stats.maxSaved, v.LastNumber())
 		if j != nil {
 			j.State = JobDone
 			j.Done = j.Total
