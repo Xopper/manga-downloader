@@ -195,10 +195,16 @@ func loadOptions(path string, s *grabber.Settings) error {
 // mid-write can't leave a truncated file behind. The file is private to the
 // user, like the Manga Plus secret.
 func saveOptions(path string, o OptionsDTO) error {
+	return writeJSONAtomic(path, o)
+}
+
+// writeJSONAtomic writes v as indented JSON to path, replacing the file in
+// one step (a temp file synced and renamed), private to the user (0600)
+func writeJSONAtomic(path string, v any) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(o, "", "  ")
+	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
