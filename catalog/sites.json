@@ -1,0 +1,991 @@
+[
+ {
+  "site": "3asq.online",
+  "home": "https://3asq.online",
+  "family": "madara",
+  "lang": "ar",
+  "crawl": true,
+  "list": "https://3asq.online/manga/page/{page}/",
+  "label": "Arabic, former 3asq.org"
+ },
+ {
+  "site": "animeallstar1.com",
+  "home": "https://www.animeallstar1.com",
+  "family": "blogger",
+  "lang": "es",
+  "crawl": false,
+  "label": "AnimeAllStar, Spanish"
+ },
+ {
+  "site": "animeallstar30.com",
+  "home": "https://animeallstar30.com",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false,
+  "label": "AnimeAllStar, Spanish"
+ },
+ {
+  "site": "arenascan.com",
+  "home": "https://arenascan.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://arenascan.com/manga/list-mode/"
+ },
+ {
+  "site": "asmotoon.com",
+  "home": "https://asmotoon.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true,
+  "label": "Asmodeus Scans"
+ },
+ {
+  "site": "asurascans.com",
+  "home": "https://asurascans.com",
+  "family": "astro",
+  "lang": "en",
+  "crawl": false,
+  "label": "Asura Scans, former asuratoon.com"
+ },
+ {
+  "site": "atsu.moe",
+  "home": "https://atsu.moe",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Atsumaru"
+ },
+ {
+  "site": "azorafly.com",
+  "home": "https://azorafly.com",
+  "family": "custom",
+  "lang": "ar",
+  "crawl": false,
+  "label": "Azorafly, Arabic"
+ },
+ {
+  "site": "bigsolo.org",
+  "home": "https://bigsolo.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "blackcloveronline.com",
+  "home": "https://blackcloveronline.com",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "Black Clover"
+ },
+ {
+  "site": "bluesolo.org",
+  "home": "https://bluesolo.org",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false,
+  "label": "Blue Solo, French scantrad"
+ },
+ {
+  "site": "chainsawman-chapter.online",
+  "home": "https://w2.chainsawman-chapter.online",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "Chainsaw Man"
+ },
+ {
+  "site": "chainsawmannmanga.com",
+  "home": "https://chainsawmannmanga.com",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "Chainsaw Man"
+ },
+ {
+  "site": "comix.to",
+  "home": "https://comix.to",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "danke.moe",
+  "home": "https://danke.moe",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Danke fürs Lesen"
+ },
+ {
+  "site": "demonicscans.org",
+  "home": "https://demonicscans.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaDemon / Demonic Scans"
+ },
+ {
+  "site": "dragonballmangaa.com",
+  "home": "https://dragonballmangaa.com",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "Dragon Ball Super"
+ },
+ {
+  "site": "dragontea.ink",
+  "home": "https://dragontea.ink",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "drakecomic.net",
+  "home": "https://drakecomic.net",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "Drake Scans, former drakecomic.org"
+ },
+ {
+  "site": "dynasty-scans.com",
+  "home": "https://dynasty-scans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Dynasty Reader"
+ },
+ {
+  "site": "eldermanga.com",
+  "home": "https://eldermanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "elftoon.net",
+  "home": "https://elftoon.net",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "Elf Toon, former elftoon.com"
+ },
+ {
+  "site": "en-hijala.com",
+  "home": "https://en-hijala.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Hijala Translations"
+ },
+ {
+  "site": "en-thunderscans.com",
+  "home": "https://en-thunderscans.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": false,
+  "note": "no /manga/list-mode/ page (2026-10-15)",
+  "label": "Thunderscans"
+ },
+ {
+  "site": "eskimangalar.com",
+  "home": "https://eskimangalar.com",
+  "family": "custom",
+  "lang": "tr",
+  "crawl": false
+ },
+ {
+  "site": "evascans.net",
+  "home": "https://evascans.net",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": false,
+  "note": "no /manga/list-mode/ page (2026-10-15)",
+  "label": "former evascans.org"
+ },
+ {
+  "site": "fanfox.net",
+  "home": "https://fanfox.net",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manga Fox"
+ },
+ {
+  "site": "flamecomics.xyz",
+  "home": "https://flamecomics.xyz",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "Flame Comics, former Flame Scans"
+ },
+ {
+  "site": "fmteam.fr",
+  "home": "https://fmteam.fr",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false
+ },
+ {
+  "site": "furyosociety.com",
+  "home": "https://furyosociety.com",
+  "family": "foolslide",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "gdscans.com",
+  "home": "https://gdscans.com",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://gdscans.com/manga/page/{page}/",
+  "label": "GalaxyDegenScans"
+ },
+ {
+  "site": "genztoons.org",
+  "home": "https://genztoons.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "aliases": [
+   "genzupdates.com"
+  ],
+  "label": "Genz Toon"
+ },
+ {
+  "site": "guya.cubari.moe",
+  "home": "https://guya.cubari.moe",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "aliases": [
+   "guya.moe"
+  ],
+  "label": "Guya, Kaguya-sama"
+ },
+ {
+  "site": "heavenly-delusion.com",
+  "home": "https://w7.heavenly-delusion.com",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "Heavenly Delusion"
+ },
+ {
+  "site": "hivetoons.org",
+  "home": "https://hivetoons.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "HiveToons, VoidScans"
+ },
+ {
+  "site": "inmanga.com",
+  "home": "https://inmanga.com",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false
+ },
+ {
+  "site": "jestful.net",
+  "home": "https://jestful.net",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "jojolandsmanga.com",
+  "home": "https://w9.jojolandsmanga.com",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "The JoJoLands"
+ },
+ {
+  "site": "jujutsukaisenmanga.pro",
+  "home": "https://jujutsukaisenmanga.pro",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "Jujutsu Kaisen"
+ },
+ {
+  "site": "kappabeast.com",
+  "home": "https://kappabeast.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "kaynscans.com",
+  "home": "https://kaynscans.com",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "Kayn Scans, former kaynscan.org"
+ },
+ {
+  "site": "kingofshojo.com",
+  "home": "https://kingofshojo.com",
+  "family": "themesia",
+  "lang": "id",
+  "crawl": true,
+  "list": "https://kingofshojo.com/manga/list-mode/"
+ },
+ {
+  "site": "komikindo.ch",
+  "home": "https://komikindo.ch",
+  "family": "custom",
+  "lang": "id",
+  "crawl": false
+ },
+ {
+  "site": "komikstation.org",
+  "home": "https://komikstation.org",
+  "family": "themesia",
+  "lang": "id",
+  "crawl": true,
+  "list": "https://komikstation.org/manga/list-mode/",
+  "label": "Indonesian"
+ },
+ {
+  "site": "lagoonscans.com",
+  "home": "https://lagoonscans.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://lagoonscans.com/manga/list-mode/"
+ },
+ {
+  "site": "leercapitulo.co",
+  "home": "https://www.leercapitulo.co",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false
+ },
+ {
+  "site": "lelmanga.com",
+  "home": "https://www.lelmanga.com",
+  "family": "themesia",
+  "lang": "fr",
+  "crawl": true,
+  "list": "https://www.lelmanga.com/manga/list-mode/",
+  "label": "French"
+ },
+ {
+  "site": "lhtranslation.net",
+  "home": "https://lhtranslation.net/home",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://lhtranslation.net/home/manga/page/{page}/",
+  "label": "LHTranslation"
+ },
+ {
+  "site": "lilymanga.net",
+  "home": "https://lilymanga.net",
+  "family": "madara",
+  "lang": "en",
+  "crawl": false,
+  "note": "/manga/page/N/ archive missing (2026-10-15)",
+  "label": "yuri, some NSFW"
+ },
+ {
+  "site": "limonmanga.com",
+  "home": "https://limonmanga.com",
+  "family": "custom",
+  "lang": "tr",
+  "crawl": false
+ },
+ {
+  "site": "luacomic.org",
+  "home": "https://luacomic.org",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "LuaScans"
+ },
+ {
+  "site": "madarascans.net",
+  "home": "https://madarascans.net",
+  "family": "madara",
+  "lang": "en",
+  "crawl": false,
+  "note": "/manga/page/N/ archive missing (2026-10-15)",
+  "label": "former madarascans.org/.com"
+ },
+ {
+  "site": "maid.my.id",
+  "home": "https://www.maid.my.id",
+  "family": "themesia",
+  "lang": "id",
+  "crawl": false,
+  "note": "no /manga/list-mode/ page (2026-10-15)"
+ },
+ {
+  "site": "mangaball.com",
+  "home": "https://mangaball.com",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "former mangaball.net"
+ },
+ {
+  "site": "mangabats.com",
+  "home": "https://www.mangabats.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "former mangabat.com"
+ },
+ {
+  "site": "mangaberri.com",
+  "home": "https://mangaberri.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mangadelsiglotvmanga.com.mx",
+  "home": "https://www.mangadelsiglotvmanga.com.mx",
+  "family": "blogger",
+  "lang": "es",
+  "crawl": false,
+  "label": "Manga del Siglo TV Manga, Spanish"
+ },
+ {
+  "site": "mangadenizi.net",
+  "home": "https://mangadenizi.net",
+  "family": "nuxt",
+  "lang": "tr",
+  "crawl": false
+ },
+ {
+  "site": "mangadex.org",
+  "home": "https://mangadex.org",
+  "family": "api",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaDex"
+ },
+ {
+  "site": "mangafire.to",
+  "home": "https://mangafire.to",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "mangahere.cc",
+  "home": "https://www.mangahere.cc",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaHere"
+ },
+ {
+  "site": "mangahub.io",
+  "home": "https://mangahub.io",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "mangak.io",
+  "home": "https://mangak.io",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaK, former mangabuddy.com"
+ },
+ {
+  "site": "mangakakalot.gg",
+  "home": "https://www.mangakakalot.gg",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true,
+  "label": "MangaKakalot"
+ },
+ {
+  "site": "mangakatana.com",
+  "home": "https://mangakatana.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mangalib.me",
+  "home": "https://mangalib.me",
+  "family": "api",
+  "lang": "ru",
+  "crawl": false,
+  "label": "MangaLib"
+ },
+ {
+  "site": "mangalivre.to",
+  "home": "https://mangalivre.to",
+  "family": "madara",
+  "lang": "pt-BR",
+  "crawl": true,
+  "list": "https://mangalivre.to/manga/page/{page}/",
+  "label": "Manga Livre, former mangalivre.tv/mangalivre.net"
+ },
+ {
+  "site": "manganato.gg",
+  "home": "https://www.manganato.gg",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true,
+  "label": "MangaNato"
+ },
+ {
+  "site": "mangapark.cc",
+  "home": "https://mangapark.cc",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaPark"
+ },
+ {
+  "site": "mangapill.com",
+  "home": "https://mangapill.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mangaplus.shueisha.co.jp",
+  "home": "https://mangaplus.shueisha.co.jp",
+  "family": "api",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manga Plus, Shueisha's official reader"
+ },
+ {
+  "site": "mangaread.org",
+  "home": "https://www.mangaread.org",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://www.mangaread.org/manga/page/{page}/"
+ },
+ {
+  "site": "mangasushi.org",
+  "home": "https://mangasushi.org",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://mangasushi.org/manga/page/{page}/"
+ },
+ {
+  "site": "mangasusuku.com",
+  "home": "https://mangasusuku.com",
+  "family": "custom",
+  "lang": "id",
+  "crawl": false,
+  "label": "Indonesian, mostly NSFW"
+ },
+ {
+  "site": "mangataro.org",
+  "home": "https://mangataro.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mangatown.com",
+  "home": "https://www.mangatown.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mangavault.lat",
+  "home": "https://mangavault.lat",
+  "family": "astro",
+  "lang": "es",
+  "crawl": false,
+  "label": "MangaVault"
+ },
+ {
+  "site": "mangaworld.mx",
+  "home": "https://www.mangaworld.mx",
+  "family": "custom",
+  "lang": "it",
+  "crawl": false,
+  "label": "MangaWorld, Italian"
+ },
+ {
+  "site": "mangtto.com",
+  "home": "https://mangtto.com",
+  "family": "nuxt",
+  "lang": "en",
+  "crawl": false,
+  "label": "Mangitto"
+ },
+ {
+  "site": "manhuaplus.com",
+  "home": "https://manhuaplus.com",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://manhuaplus.com/manga/page/{page}/"
+ },
+ {
+  "site": "manhuatop.org",
+  "home": "https://manhuatop.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "manhuaus.com",
+  "home": "https://manhuaus.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "manhwaonline.org",
+  "home": "https://manhwaonline.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mgeko.cc",
+  "home": "https://www.mgeko.cc",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mistscans.com",
+  "home": "https://mistscans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "mkissa.to",
+  "home": "https://mkissa.to",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "natomanga.com",
+  "home": "https://www.natomanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true,
+  "label": "MangaNato, former manganato.com/manganelo.com"
+ },
+ {
+  "site": "projectsuki.com",
+  "home": "https://projectsuki.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "qimanga.com",
+  "home": "https://qimanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "aliases": [
+   "aurorascans.com"
+  ],
+  "label": "Qi Manga, former Aurora Scans"
+ },
+ {
+  "site": "ravenscans.org",
+  "home": "https://ravenscans.org",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://ravenscans.org/manga/list-mode/"
+ },
+ {
+  "site": "rawkuma.net",
+  "home": "https://rawkuma.net",
+  "family": "custom",
+  "lang": "ja",
+  "crawl": false
+ },
+ {
+  "site": "reader.deathtollscans.net",
+  "home": "https://reader.deathtollscans.net",
+  "family": "foolslide",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "ritharscans.com",
+  "home": "https://ritharscans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "rizzfables.com",
+  "home": "https://rizzfables.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": false,
+  "note": "no /manga/list-mode/ page (2026-10-15)"
+ },
+ {
+  "site": "rokaricomics.com",
+  "home": "https://rokaricomics.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://rokaricomics.com/manga/list-mode/"
+ },
+ {
+  "site": "roliascan.com",
+  "home": "https://roliascan.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "sacachispa.site",
+  "home": "https://sacachispa.site",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false
+ },
+ {
+  "site": "sanascans.com",
+  "home": "https://sanascans.com",
+  "family": "astro",
+  "lang": "en",
+  "crawl": false,
+  "label": "Sana Scans"
+ },
+ {
+  "site": "scan-vf.net",
+  "home": "https://www.scan-vf.net",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false,
+  "label": "ScanVF"
+ },
+ {
+  "site": "setsuscans.com",
+  "home": "https://setsuscans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "silentquill.net",
+  "home": "https://silentquill.net",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Armageddon Scanlation"
+ },
+ {
+  "site": "stonescape.xyz",
+  "home": "https://stonescape.xyz",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "sushiscan.net",
+  "home": "https://sushiscan.net",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "taiyo.moe",
+  "home": "https://taiyo.moe",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "tcbonepiecechapters.com",
+  "home": "https://tcbonepiecechapters.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "TCB Scans, former tcbscans.com"
+ },
+ {
+  "site": "team-shadowi.com",
+  "home": "https://www.team-shadowi.com",
+  "family": "nextjs",
+  "lang": "ar",
+  "crawl": false
+ },
+ {
+  "site": "templetoons.com",
+  "home": "https://templetoons.com/challenge?redirect=%2F",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "browser": true,
+  "label": "Temple Scan"
+ },
+ {
+  "site": "the-apothecary-diaries.com",
+  "home": "https://w9.the-apothecary-diaries.com",
+  "family": "single",
+  "lang": "en",
+  "crawl": true,
+  "label": "The Apothecary Diaries"
+ },
+ {
+  "site": "toongod.org",
+  "home": "https://www.toongod.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "toonily.com",
+  "home": "https://toonily.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "browser": true
+ },
+ {
+  "site": "tortugaceviri.com",
+  "home": "https://tortugaceviri.com",
+  "family": "madara",
+  "lang": "tr",
+  "crawl": true,
+  "list": "https://tortugaceviri.com/manga/page/{page}/",
+  "label": "Tortuga Çeviri"
+ },
+ {
+  "site": "tritinia.org",
+  "home": "https://tritinia.org",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://tritinia.org/manga/page/{page}/",
+  "label": "Tritinia Scans"
+ },
+ {
+  "site": "trmanga.com",
+  "home": "https://trmanga.com",
+  "family": "custom",
+  "lang": "tr",
+  "crawl": false
+ },
+ {
+  "site": "tvymanga3.com",
+  "home": "https://tvymanga3.com",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false,
+  "label": "Tv y Manga, Spanish"
+ },
+ {
+  "site": "twmanga.com",
+  "home": "https://www.twmanga.com",
+  "family": "custom",
+  "lang": "zh",
+  "crawl": false,
+  "label": "包子漫画, baozimh.com mirror"
+ },
+ {
+  "site": "utoon.us",
+  "home": "https://www.utoon.us/en",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "UToon, home of reset-scans' content"
+ },
+ {
+  "site": "uzaymanga.com",
+  "home": "https://uzaymanga.com",
+  "family": "custom",
+  "lang": "tr",
+  "crawl": false
+ },
+ {
+  "site": "violetmanga.com",
+  "home": "https://violetmanga.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": false,
+  "aliases": [
+   "violetscans.org"
+  ],
+  "note": "no /manga/list-mode/ page (2026-10-15)"
+ },
+ {
+  "site": "vortexscans.org",
+  "home": "https://vortexscans.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "webtoons.com",
+  "home": "https://www.webtoons.com/en",
+  "family": "api",
+  "lang": "en",
+  "crawl": false,
+  "label": "WEBTOON, free episodes only"
+ },
+ {
+  "site": "weebcentral.com",
+  "home": "https://weebcentral.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "witchtoons.net",
+  "home": "https://witchtoons.net",
+  "family": "nextjs",
+  "lang": "en",
+  "crawl": false,
+  "label": "WitchToons, former witchscans.com"
+ },
+ {
+  "site": "writerscans.com",
+  "home": "https://writerscans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false
+ },
+ {
+  "site": "zonatmo.org",
+  "home": "https://zonatmo.org",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false,
+  "browser": true,
+  "label": "TuMangaOnline, former zonatmo.com"
+ }
+]
