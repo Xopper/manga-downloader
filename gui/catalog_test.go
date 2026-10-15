@@ -183,3 +183,17 @@ func TestStateCarriesCatalog(t *testing.T) {
 		t.Errorf("status: %+v", cs)
 	}
 }
+
+func TestOpenCatalogWithoutConfigDirIsNil(t *testing.T) {
+	t.Setenv("HOME", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	if store := openCatalog(); store != nil {
+		t.Fatalf("a store with no dir would write into the working directory: %+v", store.Dir)
+	}
+	c := NewController(&grabber.Settings{}, nil)
+	c.SetCatalog(nil)
+	c.RefreshCatalog(context.Background(), true)
+	if c.Search("x", "") != nil || len(c.Sites()) != len(catalog.Sites()) {
+		t.Error("a nil store must answer empty")
+	}
+}
