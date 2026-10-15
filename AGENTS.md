@@ -141,9 +141,10 @@ lowercase, NFKD, accents dropped, dakuten kept). Design:
   startup and refreshes in the background when the index is a day old
   (`RefreshCatalog`, cancelled at shutdown like the update check; a failure
   stays in `State.catalog.error`, never the window's log). `Search`, `Sites`,
-  `CatalogStatus` and `UpdateCatalog` are bound; the window's Search mode is
-  `SearchPanel.tsx` + `useSearch.ts`, with the mock's own small catalog
-  (`&nocatalog` starts without one).
+  `CatalogStatus` and `UpdateCatalog` are bound; the window's results page is
+  `ResultsPanel.tsx` + `useSearch.ts`, with the mock's own small catalog
+  (`&nocatalog` starts without one). The library of followed series
+  (`gui/library.go`, `library.json`) is described in the GUI skill.
 - **Adding a family**: a `crawl_<family>.go` with its `init` registration and
   a fixture test, the family name on the sites in `sites.json` with `crawl:
   true` and their `list` URL, and a line in `make catalog/smoke`.

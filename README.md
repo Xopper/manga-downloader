@@ -293,13 +293,22 @@ go install github.com/elboletaire/manga-downloader@latest
 
 ## Using the desktop app
 
-Open the app and follow these steps:
+The app opens on your **library**: the series you follow, each with how many
+chapters it has, how many are new since you last downloaded it, and a
+*Download N new* button. *Download all new* at the top fetches every new
+chapter in one go, and *Check for new chapters* asks each site again.
 
-1. **Paste the series' URL** into the box at the top. The app loads the series
-   on its own, without a button.
-2. **Pick chapters** in the list. Type a range such as `1-10,12` and press
-   *Add range*, Shift+click to select a span, or use *All* and *None*. The
-   arrow keys and Space work too.
+To add a series:
+
+1. **Type its title, or paste its link,** into the box at the top. A title
+   searches the catalogs of every supported site (see [Search](#search)): the
+   results show the site, the language, the chapter count (once the app has
+   opened the series) and a bookmark to follow it. A link loads the series
+   straight away.
+2. **Pick chapters** in the list. *New* selects what you haven't saved yet;
+   type a range such as `1-10,12` and press *Add range*, Shift+click to select
+   a span, or use *All* and *None*. The arrow keys and Space work too. Press
+   **Follow** on the right to keep the series in your library.
 3. **Choose a language and a scanlation group** when the site offers them. The
    selectors tell you when a series has none, and picking one reloads the
    chapter list. Sites that support it also offer *All*.
@@ -309,14 +318,19 @@ Open the app and follow these steps:
      <img alt="The language selector open, with Catalan selected" src="assets/screenshots/03-language-selector-light.png">
    </picture>
 
-4. **Set the options** in the *Options* tab: where the files go, the format (CBZ
-   archive, image folder or EPUB; EPUB adds a *Reading direction*), *Pack as* (a
-   file per chapter, per volume, or one for everything), *Convert to JPEG* for
-   AVIF and WebP pages, and pages to skip. Under *Advanced* are the file name
-   template and *Show the browser window*, which you rarely need: a site that
-   needs the window opens it by itself. Packing by volume adds a *Volumes* box
-   above the chapter list, filled with the site's volumes when it lists them,
-   and groups the list by volume.
+4. **Set how it saves** on the right, under *Save as*: where the files go, the
+   format (CBZ archive, image folder or EPUB; EPUB adds a *Reading
+   direction*) and *Pack as* (a file per chapter, per volume, or one for
+   everything). *Settings* (the sliders at the top right) holds the rest:
+   *Convert to JPEG* for AVIF and WebP pages, pages to skip, and under
+   *Advanced* the file name template and *Show the browser window*, which you
+   rarely need: a site that needs the window opens it by itself. Packing by
+   volume adds a *Volumes* box above the chapter list, filled with the site's
+   volumes when it lists them, and groups the list by volume.
+5. **Press Download.** A strip at the bottom follows the download (its
+   *Details* opens every chapter's progress) and says how it ended. A followed
+   series remembers the highest chapter saved, so its next *Download new*
+   starts there.
 
    <picture>
      <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/06-options-dark.png">
@@ -761,9 +775,9 @@ You don't need a link to start: the sites' **catalogs** (every series a site
 lists, with its page) are downloaded to your disk, so a title is found by name,
 offline, and in every site at once.
 
-In the desktop app, switch the bar to **Search**, type a few words of the title
-and pick the site (or all of them); clicking a result loads it like a pasted
-link. On the command line:
+In the desktop app, type a few words of the title in the box at the top and
+pick the site (or all of them); clicking a result loads it like a pasted link,
+and its bookmark follows it. On the command line:
 
 ```bash
 manga-downloader search "one piece"            # every site
