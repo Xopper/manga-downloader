@@ -2048,13 +2048,12 @@ a.version:hover {
 .hit-site {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 4px 6px;
-  max-width: 55%;
   color: var(--text-3);
   font-size: 12px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .hit-tag,
