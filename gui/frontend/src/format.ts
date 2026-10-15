@@ -121,6 +121,23 @@ export function errorMessage(e: unknown): string {
 }
 
 /** A chapter number as the site would print it: 12, 12.5, never 12.000001 */
+/**
+ * A chapter row's title next to its number: a leading "Chapter N" (or
+ * "Ch. N", "#N") that repeats the number is dropped, with the separator
+ * after it, so "Chapter 4" reads as the number alone and "Chapter 4 - The
+ * fight" as "The fight".
+ */
+export function chapterTitle(title: string, number: number): string {
+  const text = title.trim();
+  const num = formatNumber(number).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lead = new RegExp(`^(?:chapter|chap\\.?|ch\\.?|#)?\\s*#?\\s*0*${num}(?:\\s*[-–—:·.]\\s*|\\s+|$)`, 'i');
+  const m = lead.exec(text);
+  if (m === null || (m[0].trim() === '' && text !== '')) {
+    return text;
+  }
+  return text.slice(m[0].length).trim();
+}
+
 export function formatNumber(n: number): string {
   if (Number.isInteger(n)) {
     return String(n);

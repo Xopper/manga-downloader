@@ -18,7 +18,11 @@ interface RowProps {
   onReload: () => void;
 }
 
-/** Both filters side by side, with the "not applied" note when the list is stale */
+/**
+ * Both filters side by side, with the "not applied" note when the list is
+ * stale. A filter the loaded site has no choice for is left out, and the
+ * row with it when nothing is left to show.
+ */
 export function FilterRow({ state, busy, onPick, onOptions, onError, onReload }: RowProps) {
   const identified = filtersIdentified(state);
   const languageStale = state.loaded && state.options.language !== state.loadedLanguage;
@@ -26,6 +30,10 @@ export function FilterRow({ state, busy, onPick, onOptions, onError, onReload }:
   const pick = (patch: Partial<Options>) => {
     void onPick(patch);
   };
+  const shown = (choice: FilterChoice | null) => filterControl(state, choice) !== 'disabled';
+  if (!shown(state.languages) && !shown(state.scanlators) && !state.stale && identified) {
+    return null;
+  }
 
   return (
     <div className="filter-row">
@@ -116,26 +124,16 @@ export function FilterField({
     );
   }
   if (control === 'disabled' || choice === null) {
-    // cleared: the site ignores the value, so showing it would suggest it
-    // applies. The saved value stays, for the sites that do take it.
-    return (
-      <TextField
-        className="inline-field"
-        label={label}
-        value=""
-        placeholder="any"
-        disabled
-        hint={kind === 'language' ? 'This site has no language choice' : 'This site has no scanlation groups to choose from'}
-        onCommit={() => Promise.resolve()}
-        onError={onError}
-      />
-    );
+    // the site has no choice: nothing to show. The saved value stays, for
+    // the sites that do take it.
+    return null;
   }
 
   return (
     <SelectField
       className="inline-field"
       label={label}
+      title={kind === 'language' ? 'The languages the site lists this series in; picking one reloads the list' : 'The scanlation groups the site lists for this series; picking one reloads the list'}
       value={shownSelection(choice, loaded)}
       options={filterOptions(choice, kind, 'en', loaded)}
       disabled={busy}

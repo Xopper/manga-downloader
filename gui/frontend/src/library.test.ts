@@ -110,9 +110,16 @@ describe('sortFollowed and totals', () => {
 
 describe('chapters of a followed series', () => {
   const chapters: Chapter[] = [7, 8, 9, 10].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0 }));
+  const fromZero: Chapter[] = [0, 1, 2].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0 }));
   it('lists the new ones', () => {
     expect(newIndices(chapters, 8)).toEqual([2, 3]);
     expect(newIndices(chapters, 0)).toEqual([0, 1, 2, 3]);
+  });
+  it('counts chapter 0 as new when nothing was saved', () => {
+    expect(newIndices(fromZero, 0)).toEqual([0, 1, 2]);
+    expect(newIndices(fromZero, 1)).toEqual([2]);
+    expect(chapterMark(0, followed({ savedUpTo: 0 }))).toBe('');
+    expect(chapterMark(0, followed({ savedUpTo: 1 }))).toBe('saved');
   });
   it('marks rows new or saved only for a followed series that saved something', () => {
     const f = followed({});

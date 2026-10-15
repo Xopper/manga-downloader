@@ -27,14 +27,16 @@ interface SelectFieldProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /** A tooltip on the select */
+  title?: string;
 }
 
 /** A native select: keyboard and screen reader behaviour come from the browser */
-export function SelectField({ label, value, options, onChange, disabled, className }: SelectFieldProps) {
+export function SelectField({ label, value, options, onChange, disabled, className, title }: SelectFieldProps) {
   const id = useId();
 
   return (
-    <div className={`field ${className ?? ''}`}>
+    <div className={`field ${className ?? ''}`} title={title}>
       <label htmlFor={id}>{label}</label>
       <select
         id={id}

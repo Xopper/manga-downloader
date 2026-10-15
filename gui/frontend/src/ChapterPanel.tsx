@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { FilterRow } from './FilterField';
-import { errorMessage, formatNumber, plural } from './format';
+import { chapterTitle, errorMessage, formatNumber, plural } from './format';
 import { AlertIcon, ChevronIcon, LinkIcon, RefreshIcon } from './icons';
 import { chapterMark, newIndices } from './library';
 import { Mascot } from './Mascot';
@@ -329,9 +329,9 @@ function ChapterList({
   const freshChosen = fresh.length > 0 && chosen.size === fresh.length && fresh.every((i) => chosen.has(i));
 
   return (
-    <section className="panel chapters" aria-label="Chapters">
+    <section className="panel chapters fit" aria-label="Chapters">
       <div className="chip-row">
-        <span className="muted small">Show</span>
+        <span className="muted small">Select</span>
         {fresh.length > 0 && (
           <button
             type="button"
@@ -519,7 +519,7 @@ function ChapterList({
               >
                 <span className={`box${on ? ' on' : ''}`} aria-hidden="true" />
                 <span className="num">{formatNumber(ch.number)}</span>
-                <span className="title">{ch.title}</span>
+                <span className="title">{chapterTitle(ch.title, ch.number)}</span>
                 {ch.language !== '' && <span className="lang">{ch.language}</span>}
                 {ch.group !== '' && <span className="group">{ch.group}</span>}
                 {chapterMark(ch.number, followed) !== '' && (

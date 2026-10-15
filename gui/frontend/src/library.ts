@@ -109,18 +109,16 @@ export function librarySummary(library: Pick<LibraryInfo, 'followed' | 'checking
 
 /** The indices of the chapters numbered above savedUpTo */
 export function newIndices(chapters: Chapter[], savedUpTo: number): number[] {
-  return chapters.filter((c) => c.number > savedUpTo).map((c) => c.index);
+  // nothing saved: every chapter is new, chapter 0 included
+  return chapters.filter((c) => savedUpTo <= 0 || c.number > savedUpTo).map((c) => c.index);
 }
 
 /** The tag a chapter row shows for a followed series: new above the saved mark, saved below it; none for a series not followed or never saved */
 export function chapterMark(number: number, f: Followed | null): 'new' | 'saved' | '' {
-  if (f === null || !f.downloadable) {
+  if (f === null || !f.downloadable || f.savedUpTo <= 0) {
     return '';
   }
-  if (number > f.savedUpTo) {
-    return f.savedUpTo > 0 ? 'new' : '';
-  }
-  return 'saved';
+  return number > f.savedUpTo ? 'new' : 'saved';
 }
 
 /** The followed entry of the loaded series */

@@ -292,8 +292,12 @@ func (l *Library) trimSeenLocked() {
 	}
 }
 
-// newAbove counts the chapters numbered above savedUpTo
+// newAbove counts the chapters numbered above savedUpTo; with nothing saved
+// (0) every chapter is new, chapter 0 included
 func newAbove(numbers []float64, savedUpTo float64) int {
+	if savedUpTo <= 0 {
+		return len(numbers)
+	}
 	n := 0
 	for _, number := range numbers {
 		if number > savedUpTo {

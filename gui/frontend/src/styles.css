@@ -2529,9 +2529,27 @@ a.version:hover {
   flex: 1;
 }
 
+/* the filters sit at the row's right end, together: on a narrow window the
+   pair drops under the chips as one piece */
 .chip-row .filter-row {
   min-height: 0;
   padding: 0;
+  flex-wrap: nowrap;
+  gap: 6px 14px;
+}
+
+.chip-row .field.inline-field .input {
+  width: 150px;
+}
+
+/* the list box ends with its rows: the hint sits right under them */
+.panel.chapters.fit {
+  align-self: start;
+  max-height: 100%;
+}
+
+.panel.chapters.fit .list {
+  flex: 0 1 auto;
 }
 
 .chip {
@@ -2555,7 +2573,7 @@ a.version:hover {
 
 .chip.on {
   background: var(--accent-soft);
-  border-color: transparent;
+  border-color: var(--accent);
   color: var(--accent-text);
   font-weight: 600;
 }

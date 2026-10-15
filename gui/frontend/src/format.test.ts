@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chapterTitle,
   errorMessage,
   formatNumber,
   jobFraction,
@@ -127,5 +128,21 @@ describe('formatNumber', () => {
     expect(formatNumber(12)).toBe('12');
     expect(formatNumber(12.5)).toBe('12.5');
     expect(formatNumber(1.0100000001)).toBe('1.01');
+  });
+});
+
+describe('chapterTitle', () => {
+  it('drops a leading "Chapter N" that repeats the number', () => {
+    expect(chapterTitle('Chapter 4', 4)).toBe('');
+    expect(chapterTitle('chapter 4 - The fight', 4)).toBe('The fight');
+    expect(chapterTitle('Ch. 12.5: Interlude', 12.5)).toBe('Interlude');
+    expect(chapterTitle('#7 Seven', 7)).toBe('Seven');
+    expect(chapterTitle('Chapter 04', 4)).toBe('');
+  });
+  it('keeps a title that names another number or no number', () => {
+    expect(chapterTitle('Chapter 41', 4)).toBe('Chapter 41');
+    expect(chapterTitle('The fight', 4)).toBe('The fight');
+    expect(chapterTitle('', 4)).toBe('');
+    expect(chapterTitle('Volume 1', 1)).toBe('Volume 1');
   });
 });

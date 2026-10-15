@@ -212,3 +212,13 @@ func TestMissingFileIsEmpty(t *testing.T) {
 		t.Errorf("Load of a missing file: %v, %d entries", err, len(l.List()))
 	}
 }
+
+func TestNewAboveCountsChapterZeroWhenNothingSaved(t *testing.T) {
+	numbers := []float64{0, 1, 2}
+	if got := newAbove(numbers, 0); got != 3 {
+		t.Errorf("newAbove(.., 0) = %d, want 3", got)
+	}
+	if got := newAbove(numbers, 1); got != 1 {
+		t.Errorf("newAbove(.., 1) = %d, want 1", got)
+	}
+}
