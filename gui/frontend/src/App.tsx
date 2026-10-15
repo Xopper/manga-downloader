@@ -20,7 +20,7 @@ import { OptionsPanel } from './OptionsPanel';
 import { SearchPanel } from './SearchPanel';
 import { SourceBar, type Mode } from './SourceBar';
 import { tally } from './run';
-import type { Options } from './types';
+import type { Hit, Options } from './types';
 import { useSearch } from './useSearch';
 import { useWindow } from './useWindow';
 
@@ -32,6 +32,9 @@ export function App({ api }: { api: Api }) {
   // URL mode pastes a link; Search mode finds one in the catalogs
   const [mode, setMode] = useState<Mode>('url');
   const search = useSearch(api, state?.catalog.generation ?? 0, mode === 'search');
+  // a picked hit from a site the downloader has no grabber for, explained in
+  // the panel instead of loaded
+  const [blocked, setBlocked] = useState<Hit | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [loadRefusal, setLoadRefusal] = useState('');
   const [actionError, setActionError] = useState('');
@@ -135,15 +138,26 @@ export function App({ api }: { api: Api }) {
             hits={search.hits}
             searching={search.searching}
             busy={busy}
+            blocked={blocked}
             onQuery={search.setQuery}
             onSite={search.setSite}
-            onPick={(url) => {
+            onPick={(hit) => {
+              if (!hit.downloadable) {
+                setBlocked(hit);
+                return;
+              }
+              setBlocked(null);
               setMode('url');
-              load(url);
+              load(hit.url);
             }}
             onUpdate={() => {
               api.updateCatalog().catch((e) => setActionError(errorMessage(e)));
             }}
+            onCopy={(url) => {
+              navigator.clipboard?.writeText(url).catch(() => undefined);
+            }}
+            onOpen={(url) => api.openURL(url)}
+            onDismissBlocked={() => setBlocked(null)}
           />
         ) : (
         <ChapterPanel

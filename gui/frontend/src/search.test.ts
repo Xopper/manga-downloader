@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { catalogSummary, debounce, resultRows, siteOptions } from './search';
+import { catalogSummary, debounce, resultRows, siteGroups } from './search';
 import type { CatalogInfo, Hit, SiteInfo } from './types';
 
 const hits: Hit[] = [
-  { site: 'mangaread.org', title: 'One Piece', url: 'https://www.mangaread.org/manga/one-piece/', language: 'en' },
-  { site: 'kingofshojo.com', title: 'One Piece', url: 'https://kingofshojo.com/manga/one-piece/', language: 'id' },
+  { site: 'mangaread.org', title: 'One Piece', url: 'https://www.mangaread.org/manga/one-piece/', language: 'en', downloadable: true, nsfw: false },
+  { site: 'kingofshojo.com', title: 'One Piece', url: 'https://kingofshojo.com/manga/one-piece/', language: 'id', downloadable: true, nsfw: false },
 ];
 
 describe('resultRows', () => {
@@ -16,30 +16,37 @@ describe('resultRows', () => {
   });
 });
 
-describe('siteOptions', () => {
+describe('siteGroups', () => {
   const sites: SiteInfo[] = [
-    { site: 'zzz.test', label: '', language: 'en', hasCatalog: true, crawlable: true, entries: 3 },
-    { site: 'mangadex.org', label: 'MangaDex', language: 'en', hasCatalog: false, crawlable: false, entries: 0 },
-    { site: 'aaa.test', label: 'Aaa Scans', language: 'es', hasCatalog: true, crawlable: true, entries: 5 },
-    { site: 'kkk.test', label: '', language: 'en', hasCatalog: false, crawlable: true, entries: 0 },
+    { site: 'zzz.test', label: '', language: 'en', hasCatalog: true, crawlable: true, entries: 3, downloadable: true, nsfw: false },
+    { site: 'mangadex.org', label: 'MangaDex', language: 'en', hasCatalog: false, crawlable: false, entries: 0, downloadable: true, nsfw: false },
+    { site: 'aaa.test', label: 'Aaa Scans', language: 'es', hasCatalog: true, crawlable: true, entries: 5, downloadable: true, nsfw: false },
+    { site: 'only.test', label: 'Only Source', language: 'en', hasCatalog: true, crawlable: true, entries: 9, downloadable: false, nsfw: true },
+    { site: 'kkk.test', label: '', language: 'en', hasCatalog: false, crawlable: true, entries: 0, downloadable: true, nsfw: false },
   ];
-  it('offers all sites first, then the searchable ones by name, then the rest disabled', () => {
-    const options = siteOptions(sites);
-    expect(options[0]).toEqual({ value: '', label: 'All sites', disabled: false });
-    expect(options.slice(1, 3).map((o) => o.value)).toEqual(['aaa.test', 'zzz.test']);
-    expect(options[1].label).toBe('Aaa Scans (aaa.test)');
-    expect(options[2].label).toBe('zzz.test');
-    expect(options.slice(3).every((o) => o.disabled)).toBe(true);
-    expect(options.find((o) => o.value === 'mangadex.org')?.label).toBe('MangaDex (mangadex.org) – no catalog');
-    expect(options.find((o) => o.value === 'kkk.test')?.label).toBe('kkk.test – not downloaded');
+  it('offers all sites, then the downloadable ones, then the search-only ones, and no site without a catalog', () => {
+    const groups = siteGroups(sites);
+    expect(groups[0]).toEqual({ label: '', options: [{ value: '', label: 'All sites' }] });
+    expect(groups[1].label).toBe('Can download');
+    expect(groups[1].options.map((o) => o.value)).toEqual(['aaa.test', 'zzz.test']);
+    expect(groups[1].options[0].label).toBe('Aaa Scans (aaa.test)');
+    expect(groups[2].label).toBe('Search only');
+    expect(groups[2].options.map((o) => o.value)).toEqual(['only.test']);
+    expect(groups.flatMap((g) => g.options).some((o) => o.value === 'mangadex.org' || o.value === 'kkk.test')).toBe(false);
+  });
+  it('leaves an empty group out', () => {
+    expect(siteGroups(sites.filter((s) => s.downloadable)).map((g) => g.label)).toEqual(['', 'Can download']);
   });
 });
 
 describe('catalogSummary', () => {
   const now = new Date('2026-10-15T12:00:00Z');
-  const base: CatalogInfo = { sites: 12, entries: 48210, updatedAt: '2026-10-15T09:00:00Z', updating: false, error: '', generation: 3 };
+  const base: CatalogInfo = { sites: 12, entries: 48210, searchOnly: 0, updatedAt: '2026-10-15T09:00:00Z', updating: false, error: '', generation: 3 };
   it('counts sites and titles and says when it was updated', () => {
     expect(catalogSummary(base, now)).toBe('12 sites, 48,210 titles · updated 3 h ago');
+  });
+  it('counts the search-only sites', () => {
+    expect(catalogSummary({ ...base, searchOnly: 3 }, now)).toBe('12 sites, 48,210 titles (3 search only) · updated 3 h ago');
   });
   it('says so while updating, and shows the error after a failed update', () => {
     expect(catalogSummary({ ...base, updating: true }, now)).toBe('12 sites, 48,210 titles · updating…');

@@ -124,6 +124,10 @@ export interface Hit {
   url: string;
   /** The site's language code (the site table's), "" when mixed */
   language: string;
+  /** The downloader has a grabber for the site; a hit from a search-only site is a link to open elsewhere */
+  downloadable: boolean;
+  /** The site's Tachiyomi source says it may carry adult content */
+  nsfw: boolean;
 }
 
 /** A site of the picker, with its catalog's standing */
@@ -137,12 +141,17 @@ export interface SiteInfo {
   /** A catalog exists for the site at all (false: no crawler yet, or an API site) */
   crawlable: boolean;
   entries: number;
+  /** The downloader has a grabber for the site */
+  downloadable: boolean;
+  nsfw: boolean;
 }
 
 /** The catalogs on disk, summed up */
 export interface CatalogInfo {
   sites: number;
   entries: number;
+  /** How many of the sites can't be downloaded from */
+  searchOnly: number;
   /** RFC 3339, "" without a local index yet */
   updatedAt: string;
   updating: boolean;

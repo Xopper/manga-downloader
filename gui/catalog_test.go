@@ -197,3 +197,45 @@ func TestOpenCatalogWithoutConfigDirIsNil(t *testing.T) {
 		t.Error("a nil store must answer empty")
 	}
 }
+
+func TestHitsCarryDownloadable(t *testing.T) {
+	app, _, _ := newTestApp(t, 1)
+	dir := catalogDir(t, onePiece, catalog.SiteCatalog{Site: "x.test", Language: "en", Crawled: time.Unix(1000, 0).UTC(), Entries: []catalog.Entry{
+		{Title: "One Piece", URL: "https://x.test/manga/one-piece/"},
+	}})
+	rows, _ := json.Marshal([]catalog.SourceRow{{Site: "x.test", Name: "X Source", Lang: "en", SourceID: "2", Entries: 1, NSFW: true}})
+	if err := os.WriteFile(filepath.Join(dir, "sources.json"), rows, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := catalog.NewStore(dir)
+	store.Load()
+	app.ctrl.SetCatalog(store)
+	hits := app.Search("one piece", "")
+	if len(hits) != 2 {
+		t.Fatalf("hits %+v", hits)
+	}
+	for _, h := range hits {
+		switch h.Site {
+		case "mangaread.org":
+			if !h.Downloadable || h.NSFW {
+				t.Errorf("mangaread hit: %+v", h)
+			}
+		case "x.test":
+			if h.Downloadable || !h.NSFW || h.Language != "en" {
+				t.Errorf("x hit: %+v", h)
+			}
+		}
+	}
+	var x SiteDTO
+	for _, s := range app.Sites() {
+		if s.Site == "x.test" {
+			x = s
+		}
+	}
+	if x.Downloadable || !x.NSFW || !x.HasCatalog || x.Label != "X Source" {
+		t.Errorf("x site: %+v", x)
+	}
+	if cs := app.CatalogStatus(); cs.Sites != 2 || cs.SearchOnly != 1 {
+		t.Errorf("status: %+v", cs)
+	}
+}

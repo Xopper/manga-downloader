@@ -18,9 +18,10 @@ const catalogMaxAge = 24 * time.Hour
 // CatalogInfo sums the catalogs up for the window
 type CatalogInfo struct {
 	// Sites and Entries are how many catalogs the store holds and their
-	// entries together
-	Sites   int
-	Entries int
+	// entries together; SearchOnly counts the sites with no grabber
+	Sites      int
+	Entries    int
+	SearchOnly int
 	// UpdatedAt is when the local index was last written, zero without one
 	UpdatedAt time.Time
 	Updating  bool
@@ -132,6 +133,9 @@ func (c *Controller) CatalogInfo() CatalogInfo {
 		if st.HasCatalog {
 			info.Sites++
 			info.Entries += st.Entries
+			if !st.Downloadable {
+				info.SearchOnly++
+			}
 		}
 	}
 	if fi, err := os.Stat(store.Dir + string(os.PathSeparator) + "index.json"); err == nil {
@@ -147,6 +151,11 @@ type HitDTO struct {
 	Title    string `json:"title"`
 	URL      string `json:"url"`
 	Language string `json:"language"`
+	// Downloadable is whether the downloader has a grabber for the site; a
+	// hit from a search-only site is a link to open elsewhere
+	Downloadable bool `json:"downloadable"`
+	// NSFW is the site's Tachiyomi source's flag ("may contain adult content")
+	NSFW bool `json:"nsfw"`
 }
 
 // SiteDTO is a site of the picker
@@ -159,12 +168,17 @@ type SiteDTO struct {
 	HasCatalog bool `json:"hasCatalog"`
 	Crawlable  bool `json:"crawlable"`
 	Entries    int  `json:"entries"`
+	// Downloadable is whether the downloader has a grabber for the site
+	Downloadable bool `json:"downloadable"`
+	NSFW         bool `json:"nsfw"`
 }
 
 // CatalogDTO sums the catalogs up: State.catalog
 type CatalogDTO struct {
 	Sites   int `json:"sites"`
 	Entries int `json:"entries"`
+	// SearchOnly is how many of the sites can't be downloaded from
+	SearchOnly int `json:"searchOnly"`
 	// UpdatedAt is RFC 3339, "" without a local index yet
 	UpdatedAt  string `json:"updatedAt"`
 	Updating   bool   `json:"updating"`
@@ -173,7 +187,7 @@ type CatalogDTO struct {
 }
 
 func catalogDTO(info CatalogInfo) CatalogDTO {
-	dto := CatalogDTO{Sites: info.Sites, Entries: info.Entries, Updating: info.Updating, Error: info.Error, Generation: info.Generation}
+	dto := CatalogDTO{Sites: info.Sites, Entries: info.Entries, SearchOnly: info.SearchOnly, Updating: info.Updating, Error: info.Error, Generation: info.Generation}
 	if !info.UpdatedAt.IsZero() {
 		dto.UpdatedAt = info.UpdatedAt.UTC().Format(time.RFC3339)
 	}
@@ -185,12 +199,17 @@ func catalogDTO(info CatalogInfo) CatalogDTO {
 func (a *App) Search(query, site string) []HitDTO {
 	hits := a.ctrl.Search(query, site)
 	out := make([]HitDTO, 0, len(hits))
+	if len(hits) == 0 {
+		return out
+	}
+	// the sites' standing, once per search rather than per hit
+	sites := map[string]catalog.SiteStatus{}
+	for _, st := range a.ctrl.Sites() {
+		sites[st.Site] = st
+	}
 	for _, h := range hits {
-		lang := ""
-		if s, ok := catalog.SiteByHost(h.Site); ok {
-			lang = s.Lang
-		}
-		out = append(out, HitDTO{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Language: lang})
+		st := sites[h.Site]
+		out = append(out, HitDTO{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Language: st.Language, Downloadable: st.Downloadable, NSFW: st.NSFW})
 	}
 
 	return out
@@ -201,7 +220,7 @@ func (a *App) Sites() []SiteDTO {
 	status := a.ctrl.Sites()
 	out := make([]SiteDTO, 0, len(status))
 	for _, st := range status {
-		out = append(out, SiteDTO{Site: st.Site, Label: st.Label, Language: st.Language, HasCatalog: st.HasCatalog, Crawlable: st.Crawlable, Entries: st.Entries})
+		out = append(out, SiteDTO{Site: st.Site, Label: st.Label, Language: st.Language, HasCatalog: st.HasCatalog, Crawlable: st.Crawlable, Entries: st.Entries, Downloadable: st.Downloadable, NSFW: st.NSFW})
 	}
 
 	return out

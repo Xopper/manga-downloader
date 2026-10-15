@@ -3,6 +3,7 @@ export namespace main {
 	export class CatalogDTO {
 	    sites: number;
 	    entries: number;
+	    searchOnly: number;
 	    updatedAt: string;
 	    updating: boolean;
 	    error: string;
@@ -16,6 +17,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.sites = source["sites"];
 	        this.entries = source["entries"];
+	        this.searchOnly = source["searchOnly"];
 	        this.updatedAt = source["updatedAt"];
 	        this.updating = source["updating"];
 	        this.error = source["error"];
@@ -65,6 +67,8 @@ export namespace main {
 	    title: string;
 	    url: string;
 	    language: string;
+	    downloadable: boolean;
+	    nsfw: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new HitDTO(source);
@@ -76,6 +80,8 @@ export namespace main {
 	        this.title = source["title"];
 	        this.url = source["url"];
 	        this.language = source["language"];
+	        this.downloadable = source["downloadable"];
+	        this.nsfw = source["nsfw"];
 	    }
 	}
 	export class JobDTO {
@@ -175,6 +181,8 @@ export namespace main {
 	    hasCatalog: boolean;
 	    crawlable: boolean;
 	    entries: number;
+	    downloadable: boolean;
+	    nsfw: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SiteDTO(source);
@@ -188,6 +196,8 @@ export namespace main {
 	        this.hasCatalog = source["hasCatalog"];
 	        this.crawlable = source["crawlable"];
 	        this.entries = source["entries"];
+	        this.downloadable = source["downloadable"];
+	        this.nsfw = source["nsfw"];
 	    }
 	}
 	export class UpdateDTO {

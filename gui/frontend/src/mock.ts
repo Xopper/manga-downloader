@@ -281,6 +281,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
   const catalogInfo = (): CatalogInfo => ({
     sites: catalogSites.length,
     entries: catalogSites.reduce((n, s) => n + s.entries.length, 0),
+    searchOnly: catalogSites.filter((s) => !s.downloadable).length,
     updatedAt: catalogUpdatedAt,
     updating: catalogUpdating,
     error: '',
@@ -941,7 +942,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         for (const title of s.entries) {
           const folded = title.toLowerCase();
           if (words.every((w) => folded.includes(w))) {
-            hits.push({ site: s.site, title, url: `https://${s.site}/manga/${slug(title)}/`, language: s.language });
+            hits.push({ site: s.site, title, url: `https://${s.site}/manga/${slug(title)}/`, language: s.language, downloadable: s.downloadable, nsfw: s.nsfw });
           }
         }
       }
@@ -952,7 +953,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       const have = new Map(catalogSites.map((s) => [s.site, s]));
       return MOCK_SITES.map((s): SiteInfo => {
         const c = have.get(s.site);
-        return { ...s, hasCatalog: c !== undefined, entries: c?.entries.length ?? 0 };
+        return { ...s, hasCatalog: c !== undefined, entries: c?.entries.length ?? 0, nsfw: c?.nsfw ?? false };
       });
     },
     async catalogStatus() {
@@ -995,30 +996,52 @@ function slug(title: string): string {
     .replace(/^-|-$/g, '');
 }
 
-/** The sites of the mock's picker: three with a catalog, two without */
-const MOCK_SITES: Omit<SiteInfo, 'hasCatalog' | 'entries'>[] = [
-  { site: 'arenascan.com', label: '', language: 'en', crawlable: true },
-  { site: 'kingofshojo.com', label: '', language: 'id', crawlable: true },
-  { site: 'mangadex.org', label: 'MangaDex', language: 'en', crawlable: false },
-  { site: 'mangaread.org', label: '', language: 'en', crawlable: true },
-  { site: 'weebcentral.com', label: '', language: 'en', crawlable: false },
+/** The sites of the mock's picker: five with a catalog (two of them search only), two without */
+const MOCK_SITES: Omit<SiteInfo, 'hasCatalog' | 'entries' | 'nsfw'>[] = [
+  { site: 'arenascan.com', label: '', language: 'en', crawlable: true, downloadable: true },
+  { site: 'kingofshojo.com', label: '', language: 'id', crawlable: true, downloadable: true },
+  { site: 'mangadex.org', label: 'MangaDex', language: 'en', crawlable: false, downloadable: true },
+  { site: 'mangaread.org', label: '', language: 'en', crawlable: true, downloadable: true },
+  { site: 'weebcentral.com', label: '', language: 'en', crawlable: false, downloadable: true },
+  { site: 'manhwaclan.example', label: 'Manhwa Clan', language: 'en', crawlable: true, downloadable: false },
+  { site: 'toonily.example', label: 'Toonily', language: 'en', crawlable: true, downloadable: false },
 ];
 
 /** The mock catalog: titles per site */
-const MOCK_CATALOG: { site: string; language: string; entries: string[] }[] = [
+const MOCK_CATALOG: { site: string; language: string; downloadable: boolean; nsfw: boolean; entries: string[] }[] = [
+  {
+    site: 'manhwaclan.example',
+    language: 'en',
+    downloadable: false,
+    nsfw: false,
+    entries: ['One Piece', 'Solo Leveling', 'The Breaker', 'Lookism', 'Eleceed', 'Viral Hit', 'Wind Breaker', 'Noblesse', 'Tower of God', 'Hardcore Leveling Warrior'],
+  },
+  {
+    site: 'toonily.example',
+    language: 'en',
+    downloadable: false,
+    nsfw: true,
+    entries: ['Secret Class', 'Queen Bee', 'Stepmother Friends', 'My Landlady Noona', 'Keep It a Secret from Your Mother', 'Boarding Diary', 'Fitness', 'Touch to Unlock', 'Sports Girl', 'Excuse Me, This Is My Room'],
+  },
   {
     site: 'mangaread.org',
     language: 'en',
+    downloadable: true,
+    nsfw: false,
     entries: ['One Piece', 'One Piece: Ace\u2019s Story', 'Bleach', 'Naruto', 'Chainsaw Man', 'Jujutsu Kaisen', 'Spy x Family', 'Dandadan', 'Frieren: Beyond Journey\u2019s End', 'Blue Lock'],
   },
   {
     site: 'kingofshojo.com',
     language: 'id',
+    downloadable: true,
+    nsfw: false,
     entries: ['One Piece', 'Kimi ni Todoke', 'Ao Haru Ride', 'Fruits Basket', 'Ouran High School Host Club', 'Skip Beat!', 'Horimiya', 'Kaguya-sama: Love Is War', 'Wotakoi', 'My Love Story!!'],
   },
   {
     site: 'arenascan.com',
     language: 'en',
+    downloadable: true,
+    nsfw: false,
     entries: ['Solo Leveling', 'The Beginning After the End', 'Omniscient Reader\u2019s Viewpoint', 'Tower of God', 'Return of the Mount Hua Sect', 'Nano Machine', 'One Punch Man', 'Overgeared', 'Second Life Ranker', 'The Greatest Estate Developer'],
   },
 ];

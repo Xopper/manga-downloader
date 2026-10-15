@@ -2210,9 +2210,18 @@ a.version:hover {
 .hit-site {
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 6px;
+  max-width: 55%;
   color: var(--text-3);
   font-size: 12px;
+  text-align: right;
+}
+
+.hit-tag,
+.hit-lang {
+  white-space: nowrap;
 }
 
 .hit-lang {
@@ -2240,4 +2249,29 @@ a.version:hover {
   .mode .mode-label {
     display: none;
   }
+}
+
+.hit-tag {
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.hit-tag.nsfw {
+  border-color: color-mix(in srgb, var(--danger, #d9534f) 50%, var(--border));
+}
+
+.search-only-note {
+  margin: 8px 14px 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search-only-note span {
+  flex: 1;
+  min-width: 200px;
 }

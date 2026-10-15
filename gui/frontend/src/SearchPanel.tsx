@@ -4,7 +4,7 @@
 
 import { AlertIcon, Spinner } from './icons';
 import { Mascot } from './Mascot';
-import { catalogSummary, resultRows, siteOptions } from './search';
+import { catalogSummary, resultRows, siteGroups } from './search';
 import type { CatalogInfo, Hit, SiteInfo } from './types';
 
 export interface SearchPanelProps {
@@ -16,14 +16,21 @@ export interface SearchPanelProps {
   searching: boolean;
   /** A load or a download runs: the field is read-only, a pick waits */
   busy: boolean;
+  /** A picked hit from a search-only site, explained instead of loaded; null when none */
+  blocked: Hit | null;
   onQuery: (query: string) => void;
   onSite: (site: string) => void;
-  /** Loads the picked series */
-  onPick: (url: string) => void;
+  /** A picked hit: loaded when its site is downloadable, else shown as blocked */
+  onPick: (hit: Hit) => void;
   onUpdate: () => void;
+  /** The blocked hit's link to the clipboard */
+  onCopy: (url: string) => void;
+  /** The blocked hit's link in the system's browser */
+  onOpen: (url: string) => void;
+  onDismissBlocked: () => void;
 }
 
-export function SearchPanel({ catalog, sites, query, site, hits, searching, busy, onQuery, onSite, onPick, onUpdate }: SearchPanelProps) {
+export function SearchPanel({ catalog, sites, query, site, hits, searching, busy, blocked, onQuery, onSite, onPick, onUpdate, onCopy, onOpen, onDismissBlocked }: SearchPanelProps) {
   const summary = catalogSummary(catalog, new Date());
   if (catalog.sites === 0) {
     return (
@@ -76,11 +83,23 @@ export function SearchPanel({ catalog, sites, query, site, hits, searching, busy
           {searching && <Spinner />}
         </div>
         <select className="input select-input search-site" aria-label="Site" value={site} onChange={(e) => onSite(e.target.value)}>
-          {siteOptions(sites).map((o) => (
-            <option key={o.value} value={o.value} disabled={o.disabled}>
-              {o.label}
-            </option>
-          ))}
+          {siteGroups(sites).map((g) =>
+            g.label === '' ? (
+              g.options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))
+            ) : (
+              <optgroup key={g.label} label={g.label}>
+                {g.options.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            ),
+          )}
         </select>
       </form>
       <div className="list-toolbar search-head">
@@ -96,6 +115,24 @@ export function SearchPanel({ catalog, sites, query, site, hits, searching, busy
           {catalog.updating ? <Spinner size={11} /> : 'Update'}
         </button>
       </div>
+      {blocked !== null && (
+        <div className="banner search-only-note" role="status">
+          <AlertIcon />
+          <span>
+            <strong>{blocked.site}</strong> isn't supported for download yet. The title is <em>{blocked.title}</em>; you can
+            take its link elsewhere.
+          </span>
+          <button type="button" className="btn small" onClick={() => onCopy(blocked.url)}>
+            Copy link
+          </button>
+          <button type="button" className="btn small" onClick={() => onOpen(blocked.url)}>
+            Open in browser
+          </button>
+          <button type="button" className="btn small" aria-label="Dismiss" onClick={onDismissBlocked}>
+            ×
+          </button>
+        </div>
+      )}
       {!typed ? (
         <div className="search-empty">
           <p className="muted">Type to search {catalog.entries.toLocaleString('en-US')} titles.</p>
@@ -106,13 +143,15 @@ export function SearchPanel({ catalog, sites, query, site, hits, searching, busy
         </div>
       ) : (
         <ul className="hits" aria-label="Results">
-          {rows.map((r) => (
+          {rows.map((r, i) => (
             <li key={r.key}>
-              <button type="button" className="hit" data-url={r.url} disabled={busy} onClick={() => onPick(r.url)}>
+              <button type="button" className="hit" data-url={r.url} disabled={busy} onClick={() => onPick(hits[i])}>
                 <span className="hit-title">{r.title}</span>
                 <span className="hit-site">
                   {r.site}
                   {r.language !== '' && <span className="hit-lang">{r.language}</span>}
+                  {r.nsfw && <span className="hit-tag nsfw">18+</span>}
+                  {!r.downloadable && <span className="hit-tag search-only">search only</span>}
                 </span>
               </button>
             </li>
