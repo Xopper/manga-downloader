@@ -144,6 +144,11 @@ func (a *App) startup(ctx context.Context, rt *wailsRuntime) {
 	if a.tag != "" {
 		go a.ctrl.CheckUpdate(a.updateCtx, a.tag, latestReleaseAPI, updateClient)
 	}
+	// the catalogs load from disk first (fast), then refresh behind the window
+	// when the local index is a day old; cancelled at shutdown like the update
+	// check
+	a.ctrl.SetCatalog(openCatalog())
+	go a.ctrl.RefreshCatalog(a.updateCtx, false)
 }
 
 // shutdown stops the pushes before the window goes away, then cancels any run
@@ -199,6 +204,8 @@ type State struct {
 	// BrowserAlert is the message of a browser window waiting for the user,
 	// "" when none is
 	BrowserAlert string `json:"browserAlert"`
+	// Catalog sums the search catalogs up
+	Catalog CatalogDTO `json:"catalog"`
 }
 
 // VolumesDTO is the Volumes box: the volumes a run packs, in --volumes'
@@ -310,6 +317,7 @@ func (a *App) State() State {
 
 		BrowserVisibleAuto: c.BrowserVisibleAuto(),
 		BrowserAlert:       c.BrowserAlert(),
+		Catalog:            catalogDTO(c.CatalogInfo()),
 	}
 	st.LoadedLanguage, st.LoadedScanlator = c.LoadedFilters()
 	st.Volumes.Text, st.Volumes.Site = c.Volumes()

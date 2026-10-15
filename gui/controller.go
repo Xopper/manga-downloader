@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/elboletaire/manga-downloader/catalog"
 	"sort"
 	"strings"
 	"sync"
@@ -183,6 +184,14 @@ type Controller struct {
 	siteVolumes string
 	// update is the newer release the update check found, nil when none
 	update *Update
+	// catalog is the store Search looks in, nil until SetCatalog; catalogURL
+	// is where RefreshCatalog downloads from (catalog.BaseURL, replaced in
+	// tests); catalogUpdating, catalogErr and catalogGen are its standing
+	catalog         *catalog.Store
+	catalogURL      string
+	catalogUpdating bool
+	catalogErr      string
+	catalogGen      uint64
 	// attention is the browser window waiting for the user (a check to pass
 	// there), nil when none is or the user dismissed it
 	attention *browser.Attention
@@ -221,6 +230,7 @@ func NewController(settings *grabber.Settings, notifyFn func()) *Controller {
 		needsVisible: browser.NeedsVisible,
 		bringToFront: browser.BringToFront,
 		settings:     settings,
+		catalogURL:   catalog.BaseURL(),
 	}
 	notice.SetHandler(func(level notice.Level, msg string) {
 		lvl := LogInfo
