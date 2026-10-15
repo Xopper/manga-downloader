@@ -40,7 +40,12 @@ func (s *Store) Search(query string, sites []string, limit int) []Hit {
 		}
 	}
 
-	s.mu.RLock()
+	// a write lock: the index may need rebuilding after writes
+	s.mu.Lock()
+	if s.dirty {
+		s.reindex()
+		s.dirty = false
+	}
 	var hits []Hit
 	for _, ix := range s.entries {
 		if only != nil && !only[ix.site] {
@@ -56,7 +61,7 @@ func (s *Store) Search(query string, sites []string, limit int) []Hit {
 			hits = append(hits, Hit{Site: ix.site, Entry: ix.entry, Score: score})
 		}
 	}
-	s.mu.RUnlock()
+	s.mu.Unlock()
 
 	sort.SliceStable(hits, func(i, j int) bool {
 		a, b := hits[i], hits[j]

@@ -25,8 +25,10 @@ type Store struct {
 	// through, nil without one
 	sources []SourceRow
 	// entries is every catalog's entries with their folded names, in site
-	// order, what Search scans
+	// order, what Search scans; dirty marks it stale after a Write, so an
+	// update's hundreds of writes fold the titles once, at the next Search
 	entries []indexed
+	dirty   bool
 }
 
 // indexed is an entry ready to match
@@ -78,6 +80,7 @@ func (s *Store) Load() []error {
 	s.catalogs = catalogs
 	s.sources = sources
 	s.reindex()
+	s.dirty = false
 	s.mu.Unlock()
 
 	return warnings
@@ -150,7 +153,7 @@ func (s *Store) Write(c *SiteCatalog) error {
 	cp := *c
 	s.mu.Lock()
 	s.catalogs[c.Site] = &cp
-	s.reindex()
+	s.dirty = true
 	s.mu.Unlock()
 
 	return nil

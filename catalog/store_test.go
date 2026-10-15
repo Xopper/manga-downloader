@@ -3,6 +3,7 @@
 package catalog
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -133,5 +134,30 @@ func TestSourcesLikeHostNamesAreCatalogs(t *testing.T) {
 	}
 	if _, err := MergeSources(dir); err != nil {
 		t.Errorf("merge took a host for a shard file: %v", err)
+	}
+}
+
+func TestManyWritesIndexOnce(t *testing.T) {
+	// an update writes hundreds of files; folding every title again after
+	// each one made a first download take minutes
+	s := NewStore(t.TempDir())
+	entries := make([]Entry, 2000)
+	for i := range entries {
+		entries[i] = Entry{Title: fmt.Sprintf("Título número %d", i), URL: fmt.Sprintf("https://a.test/manga/%d/", i)}
+	}
+	start := time.Now()
+	for i := 0; i < 150; i++ {
+		if err := s.Write(&SiteCatalog{Site: fmt.Sprintf("s%d.test", i), Entries: entries}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if took := time.Since(start); took > 3*time.Second {
+		t.Fatalf("150 writes of 2000 entries took %s: the index is rebuilt on every write", took)
+	}
+	if hits := s.Search("numero 1999", nil, 500); len(hits) != 150 {
+		t.Fatalf("search after the writes: %d hits", len(hits))
+	}
+	if c, ok := s.Catalog("s3.test"); !ok || len(c.Entries) != 2000 {
+		t.Error("catalog missing after writes")
 	}
 }
