@@ -163,6 +163,17 @@ nightly, four shards. Design:
   `/source/{id}/search?searchTerm=&pageNum={n}`; a series URL is the source's
   `baseUrl` plus the manga's `url` by plain concatenation (`joinBase`), as
   Tachiyomi's `HttpSource` does, never URL resolution.
+- **A series link is base + path only for about half the sources** (measured
+  2026-10-15: 273 same, 201 different, 101 unchecked of 585). `resolveLinks`
+  fetches one title's details (`/api/v1/manga/{id}?onlineFetch=true`, which
+  fills `realUrl`) and compares: equal → `links: joined`; else a template is
+  learnt from the sample (the joined path's last segment under another
+  prefix, mangadex's `/manga/x` → `/title/x`) and confirmed on a second
+  title → `templated`; else every title's link is fetched, `--max-fetch`
+  (200) per source and run, the titles not reached left out rather than
+  stored with a wrong link → `fetched`; a check that fails keeps the joins →
+  `unchecked`. A file whose links were joined is rebuilt, not unioned, once
+  its source proves fetched or templated (`linksReplace`).
 - **No listing is complete on every source** (MangaPill: popular is its top
   10, latest is 116 titles on one page, the empty search is empty), so
   `walkSource` unions popular, latest and the empty search, each until

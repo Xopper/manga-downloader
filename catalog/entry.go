@@ -34,7 +34,9 @@ type SourceInfo struct {
 	Lang string `json:"lang"`
 	NSFW bool   `json:"nsfw"`
 	// Pages is how many listing pages the crawl read; Complete is false when
-	// a listing was cut at the page cap
+	// a listing was cut at the page cap or titles wait for their link
 	Pages    int  `json:"pages"`
 	Complete bool `json:"complete"`
+	// Links is how the series links were made: joined, fetched or unchecked
+	Links string `json:"links,omitempty"`
 }

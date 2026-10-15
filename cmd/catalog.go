@@ -32,6 +32,7 @@ var suwayomiFlags struct {
 	server    string
 	langs     []string
 	maxPages  int
+	maxFetch  int
 	parallel  int
 	shard     string
 	sources   []string
@@ -63,6 +64,7 @@ on GitHub.`,
 			Langs:    suwayomiFlags.langs,
 			Out:      catalogFlags.out,
 			MaxPages: suwayomiFlags.maxPages,
+			MaxFetch: suwayomiFlags.maxFetch,
 			Parallel: suwayomiFlags.parallel,
 			Shard:    shard,
 			Shards:   shards,
@@ -401,6 +403,7 @@ func init() {
 	catalogSuwayomiCmd.Flags().StringVar(&suwayomiFlags.server, "server", "http://127.0.0.1:4567", "the Suwayomi-Server URL")
 	catalogSuwayomiCmd.Flags().StringSliceVar(&suwayomiFlags.langs, "lang", []string{"en"}, "source languages to crawl (repeatable; multi-language sources are always included)")
 	catalogSuwayomiCmd.Flags().IntVar(&suwayomiFlags.maxPages, "max-pages", 300, "most pages read per listing of a source")
+	catalogSuwayomiCmd.Flags().IntVar(&suwayomiFlags.maxFetch, "max-fetch", 200, "most series links fetched one by one per source and run (sources whose link isn't base + path)")
 	catalogSuwayomiCmd.Flags().IntVar(&suwayomiFlags.parallel, "parallel", 4, "sources walked at once")
 	catalogSuwayomiCmd.Flags().StringVar(&suwayomiFlags.shard, "shard", "", "only every n-th source, starting at i: \"i/n\"")
 	catalogSuwayomiCmd.Flags().StringSliceVar(&suwayomiFlags.sources, "source", nil, "only these sources, by name or id (repeatable)")

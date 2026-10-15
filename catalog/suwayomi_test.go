@@ -28,7 +28,15 @@ type fakeSuwayomi struct {
 	// fails maps a path to how many 500s it answers before serving
 	fails map[string]int
 	// slow maps a path to how long it sleeps before answering
-	slow  map[string]time.Duration
+	slow map[string]time.Duration
+	// realURL maps a title to the real URL its details answer; a title
+	// missing here answers no realUrl (the join is right for it)
+	realURL map[string]string
+	ids     map[string]int
+	titles  map[int]string
+	// bases remembers which source listed a manga, so its details can
+	// answer the joined link as the real one by default
+	bases map[int]string
 	calls []string
 	srv   *httptest.Server
 }
@@ -65,18 +73,65 @@ func (f *fakeSuwayomi) handle(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	case path == "/api/v1/source/list":
 		json.NewEncoder(w).Encode(f.sources)
+	case strings.HasPrefix(path, "/api/v1/manga/"):
+		var id int
+		fmt.Sscanf(strings.TrimPrefix(r.URL.Path, "/api/v1/manga/"), "%d", &id)
+		f.mu.Lock()
+		title := f.titles[id]
+		real := f.realURL[title]
+		base := f.bases[id]
+		f.mu.Unlock()
+		if title == "" {
+			http.Error(w, "no such manga", 500)
+			return
+		}
+		m := map[string]any{"id": id, "url": "/manga/" + slugOf(title), "title": title}
+		if real == "" {
+			// the join is right for this source
+			real = strings.TrimSuffix(base, "/") + "/manga/" + slugOf(title)
+		}
+		m["realUrl"] = real
+		json.NewEncoder(w).Encode(m)
 	default:
 		page, ok := f.pages[path]
 		if !ok {
 			json.NewEncoder(w).Encode(map[string]any{"mangaList": []any{}, "hasNextPage": false})
 			return
 		}
+		var base string
+		if parts := strings.Split(path, "/"); len(parts) > 4 {
+			f.mu.Lock()
+			for _, src := range f.sources {
+				if src["id"] == parts[4] {
+					base, _ = src["baseUrl"].(string)
+				}
+			}
+			f.mu.Unlock()
+		}
 		list := make([]map[string]any, 0, len(page.Titles))
 		for _, t := range page.Titles {
-			list = append(list, map[string]any{"url": "/manga/" + slugOf(t), "title": t})
+			id := f.idOf(t)
+			f.mu.Lock()
+			f.bases[id] = base
+			f.mu.Unlock()
+			list = append(list, map[string]any{"id": id, "url": "/manga/" + slugOf(t), "title": t})
 		}
 		json.NewEncoder(w).Encode(map[string]any{"mangaList": list, "hasNextPage": page.HasNext})
 	}
+}
+
+// idOf gives a title a stable manga id, as Suwayomi's database would
+func (f *fakeSuwayomi) idOf(title string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if id, ok := f.ids[title]; ok {
+		return id
+	}
+	id := len(f.ids) + 1
+	f.ids[title] = id
+	f.titles[id] = title
+
+	return id
 }
 
 func slugOf(title string) string {
@@ -98,7 +153,7 @@ func (f *fakeSuwayomi) called(prefix string) int {
 
 func newFakeSuwayomi(t *testing.T) *fakeSuwayomi {
 	t.Helper()
-	f := &fakeSuwayomi{pages: map[string]suwayomiPage{}, fails: map[string]int{}}
+	f := &fakeSuwayomi{pages: map[string]suwayomiPage{}, fails: map[string]int{}, realURL: map[string]string{}, ids: map[string]int{}, titles: map[int]string{}, bases: map[int]string{}}
 	f.srv = httptest.NewServer(http.HandlerFunc(f.handle))
 	t.Cleanup(f.srv.Close)
 
@@ -504,5 +559,224 @@ func TestSuwayomiUnchangedSetLeavesTheFileAlone(t *testing.T) {
 	third, _ := os.ReadFile(filepath.Join(out, "alpha.test.json"))
 	if bytes.Equal(second, third) {
 		t.Fatal("a new title must change the file")
+	}
+}
+
+// realFor marks a source's titles as needing a fetched link: their real URL
+// is the site's own form, not base + path
+func realFor(f *fakeSuwayomi, base string, titles ...string) {
+	for _, t := range titles {
+		f.realURL[t] = base + "/series/" + slugOf(t) + "-x1"
+	}
+}
+
+func TestSuwayomiJoinedLinksAreCheckedOnce(t *testing.T) {
+	// a source whose join is right: one details fetch to check it, none after
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Alpha", "en", "https://alpha.test", false)}
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titlesN("Pop", 1, 20), HasNext: false}
+	for _, title := range titlesN("Pop", 1, 20) {
+		f.realURL[title] = "https://alpha.test/manga/" + slugOf(title)
+	}
+	out := t.TempDir()
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := f.called("/api/v1/manga/"); n != 1 {
+		t.Errorf("details fetched %d times, want the one check", n)
+	}
+	c := readCatalog(t, out, "alpha.test")
+	if len(c.Entries) != 20 || c.Entries[0].URL != "https://alpha.test/manga/pop-001" {
+		t.Errorf("got %d entries, first %+v", len(c.Entries), c.Entries[0])
+	}
+	if rep.Sources[0].Links != "joined" {
+		t.Errorf("row: %+v", rep.Sources[0])
+	}
+}
+
+func TestSuwayomiFetchesRealLinksWhenTheJoinIsWrong(t *testing.T) {
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Lily", "en", "https://lily.test", false)}
+	titles := titlesN("Lily", 1, 6)
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titles, HasNext: false}
+	realFor(f, "https://lily.test", titles...)
+	out := t.TempDir()
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := readCatalog(t, out, "lily.test")
+	if len(c.Entries) != 6 {
+		t.Fatalf("got %d entries", len(c.Entries))
+	}
+	for _, e := range c.Entries {
+		if !strings.HasSuffix(e.URL, "-x1") || !strings.Contains(e.URL, "/series/") {
+			t.Errorf("entry kept the joined link: %+v", e)
+		}
+	}
+	if rep.Sources[0].Links != "fetched" || rep.Sources[0].Entries != 6 {
+		t.Errorf("row: %+v", rep.Sources[0])
+	}
+}
+
+func TestSuwayomiFetchBudgetDropsUnverifiedLinks(t *testing.T) {
+	// only MaxFetch titles get their real link per run; the rest are left
+	// out rather than stored with a wrong link, and a later run adds more
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Lily", "en", "https://lily.test", false)}
+	titles := titlesN("Lily", 1, 10)
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titles, HasNext: false}
+	realFor(f, "https://lily.test", titles...)
+	out := t.TempDir()
+	o := crawlOpts(f, out)
+	o.MaxFetch = 4
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// the checked title plus four fetched links
+	c := readCatalog(t, out, "lily.test")
+	if len(c.Entries) != 5 || rep.Sources[0].Complete {
+		t.Fatalf("got %d entries, row %+v", len(c.Entries), rep.Sources[0])
+	}
+	// the next run skips the titles already linked and adds four more
+	f.calls = nil
+	if _, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, o); err != nil {
+		t.Fatal(err)
+	}
+	c = readCatalog(t, out, "lily.test")
+	if len(c.Entries) != 9 {
+		t.Fatalf("second run: %d entries", len(c.Entries))
+	}
+	if n := f.called("/api/v1/manga/"); n > 5 {
+		t.Errorf("second run fetched %d details; the known titles must be skipped", n)
+	}
+}
+
+func TestSuwayomiLinkCheckFailureKeepsJoin(t *testing.T) {
+	// details that can't be fetched at all: the join stays, flagged unchecked
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Alpha", "en", "https://alpha.test", false)}
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titlesN("Pop", 1, 3), HasNext: false}
+	f.fails["/api/v1/manga/1?onlineFetch=true"] = 9
+	out := t.TempDir()
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := readCatalog(t, out, "alpha.test")
+	if len(c.Entries) != 3 || rep.Sources[0].Links != "unchecked" {
+		t.Errorf("got %d entries, row %+v", len(c.Entries), rep.Sources[0])
+	}
+}
+
+func TestInferLinkTemplate(t *testing.T) {
+	cases := []struct{ url, real, url2, want string }{
+		{"https://mangadex.org/manga/06611f84-ff49", "https://mangadex.org/title/06611f84-ff49", "https://mangadex.org/manga/aaaa-bbbb", "https://mangadex.org/title/aaaa-bbbb"},
+		{"https://comick.live/calamity-summoner", "https://comick.live/comic/calamity-summoner", "https://comick.live/other-one", "https://comick.live/comic/other-one"},
+		{"https://e621.net/51343", "https://e621.net/pools/51343", "https://e621.net/999", "https://e621.net/pools/999"},
+		{"https://x.test/manga/slug/", "https://x.test/manga/slug/", "https://x.test/manga/two/", "https://x.test/manga/two/"},
+		// a title slug after the id is dropped: the short form is the canonical page
+		{"https://mangadex.org/manga/06611f84-ff49", "https://mangadex.org/title/06611f84-ff49/the-high-school", "https://mangadex.org/manga/aaaa-bbbb", "https://mangadex.org/title/aaaa-bbbb"},
+	}
+	for _, c := range cases {
+		tpl, ok := inferLinkTemplate(c.url, c.real)
+		if !ok {
+			t.Errorf("%s -> %s: no template", c.url, c.real)
+			continue
+		}
+		if got := tpl.apply(c.url2); got != c.want {
+			t.Errorf("%s: got %s want %s", c.url2, got, c.want)
+		}
+	}
+	// a slug that isn't in the real link (an id turned into a name) has no template
+	if _, ok := inferLinkTemplate("https://lilymanga.net/6955", "https://lilymanga.net/gl/my-food/"); ok {
+		t.Error("id -> slug must not give a template")
+	}
+	if _, ok := inferLinkTemplate("https://asurascans.com/series/overgeared", "https://asurascans.com/comics/overgeared-1bb35e56"); ok {
+		t.Error("a hash suffix is not a template (it differs per title)")
+	}
+}
+
+func TestSuwayomiTemplateWithTitleSlugConfirmedByPrefix(t *testing.T) {
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Dex", "en", "https://dex.test", false)}
+	titles := titlesN("Dex", 1, 5)
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titles, HasNext: false}
+	for _, title := range titles {
+		f.realURL[title] = "https://dex.test/title/" + slugOf(title) + "/some-title-words"
+	}
+	out := t.TempDir()
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := readCatalog(t, out, "dex.test")
+	if rep.Sources[0].Links != "templated" || c.Entries[0].URL != "https://dex.test/title/dex-001" {
+		t.Errorf("row %+v first %+v", rep.Sources[0], c.Entries[0])
+	}
+}
+
+func TestSuwayomiTemplatedLinksNeedTwoChecks(t *testing.T) {
+	// mangadex-like: /manga/<x> listed, /title/<x> real: one sample gives the
+	// template, a second confirms it, no fetch per title
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Dex", "en", "https://dex.test", false)}
+	titles := titlesN("Dex", 1, 30)
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titles, HasNext: false}
+	for _, title := range titles {
+		f.realURL[title] = "https://dex.test/title/" + slugOf(title)
+	}
+	out := t.TempDir()
+	rep, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := f.called("/api/v1/manga/"); n != 2 {
+		t.Errorf("details fetched %d times, want two checks", n)
+	}
+	c := readCatalog(t, out, "dex.test")
+	if len(c.Entries) != 30 || !strings.HasPrefix(c.Entries[0].URL, "https://dex.test/title/dex-0") {
+		t.Errorf("got %d entries, first %+v", len(c.Entries), c.Entries[0])
+	}
+	if rep.Sources[0].Links != "templated" || !rep.Sources[0].Complete {
+		t.Errorf("row: %+v", rep.Sources[0])
+	}
+}
+
+func TestSuwayomiReplacesJoinedLinksOnceTheJoinIsKnownWrong(t *testing.T) {
+	// a file published with joined links (links "" or "joined") is rebuilt
+	// from the real ones, not unioned with the wrong ones
+	f := newFakeSuwayomi(t)
+	f.sources = []map[string]any{source("1", "Lily", "en", "https://lily.test", false)}
+	titles := titlesN("Lily", 1, 3)
+	f.pages["/api/v1/source/1/popular/1"] = suwayomiPage{Titles: titles, HasNext: false}
+	realFor(f, "https://lily.test", titles...)
+	out := t.TempDir()
+	old := NewStore(out)
+	var wrong []Entry
+	for _, title := range titles {
+		wrong = append(wrong, Entry{Title: title, URL: "https://lily.test/manga/" + slugOf(title)})
+	}
+	wrong = append(wrong, Entry{Title: "Gone", URL: "https://lily.test/manga/gone"})
+	if err := old.Write(&SiteCatalog{Site: "lily.test", Home: "https://lily.test", Language: "en", Entries: wrong,
+		Source: &SourceInfo{ID: "1", Name: "Lily", Lang: "en", Complete: true}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CrawlSuwayomi(context.Background(), &bytes.Buffer{}, crawlOpts(f, out)); err != nil {
+		t.Fatal(err)
+	}
+	c := readCatalog(t, out, "lily.test")
+	if len(c.Entries) != 3 {
+		t.Fatalf("got %d entries: %+v", len(c.Entries), c.Entries)
+	}
+	for _, e := range c.Entries {
+		if !strings.Contains(e.URL, "/series/") {
+			t.Errorf("a joined link survived: %+v", e)
+		}
+	}
+	if c.Source.Links != "fetched" {
+		t.Errorf("source: %+v", c.Source)
 	}
 }
