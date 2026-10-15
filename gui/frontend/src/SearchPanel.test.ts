@@ -29,6 +29,7 @@ function render(over: Partial<SearchPanelProps>): string {
     onQuery: () => undefined,
     onSite: () => undefined,
     blocked: null,
+    copied: false,
     onPick: () => undefined,
     onUpdate: () => undefined,
     onCopy: () => undefined,
@@ -69,6 +70,11 @@ describe('SearchPanel', () => {
     expect(markup).toContain('Open in browser');
     expect(markup).toContain('only.test');
   });
+  it('says Copied once the link was copied', () => {
+    const markup = render({ query: 'one piece', hits, blocked: hits[2], copied: true });
+    expect(markup).toContain('Copied');
+    expect(markup).not.toContain('Copy link');
+  });
   it('says when nothing matched', () => {
     expect(render({ query: 'zzz', hits: [] })).toContain('No results for “zzz”');
   });
@@ -97,6 +103,10 @@ describe('mock search', () => {
     expect((await api.state()).catalog.searchOnly).toBeGreaterThan(0);
     expect((await api.sites()).some((s) => s.hasCatalog)).toBe(true);
     expect((await api.state()).catalog.sites).toBeGreaterThan(0);
+  });
+  it('copies text through the api', async () => {
+    const api = createMockApi('empty');
+    await expect(api.copyText('https://x.test/')).resolves.toBeUndefined();
   });
   it('starts without a catalog with &nocatalog', async () => {
     const api = createMockApi({ scenario: 'empty', nocatalog: true });

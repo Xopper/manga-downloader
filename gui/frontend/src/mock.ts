@@ -959,6 +959,9 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     async catalogStatus() {
       return catalogInfo();
     },
+    async copyText(text) {
+      pushLog('info', `copied ${text} (mock)`);
+    },
     async updateCatalog() {
       if (catalogUpdating) {
         throw new Error('the catalog is already updating');

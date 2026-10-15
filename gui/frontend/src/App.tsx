@@ -35,6 +35,10 @@ export function App({ api }: { api: Api }) {
   // a picked hit from a site the downloader has no grabber for, explained in
   // the panel instead of loaded
   const [blocked, setBlocked] = useState<Hit | null>(null);
+  // "Copied" on the note's button for a moment after a copy
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(copiedTimer.current), []);
   const [logOpen, setLogOpen] = useState(false);
   const [loadRefusal, setLoadRefusal] = useState('');
   const [actionError, setActionError] = useState('');
@@ -139,6 +143,7 @@ export function App({ api }: { api: Api }) {
             searching={search.searching}
             busy={busy}
             blocked={blocked}
+            copied={copied}
             onQuery={search.setQuery}
             onSite={search.setSite}
             onPick={(hit) => {
@@ -154,10 +159,20 @@ export function App({ api }: { api: Api }) {
               api.updateCatalog().catch((e) => setActionError(errorMessage(e)));
             }}
             onCopy={(url) => {
-              navigator.clipboard?.writeText(url).catch(() => undefined);
+              api
+                .copyText(url)
+                .then(() => {
+                  setCopied(true);
+                  clearTimeout(copiedTimer.current);
+                  copiedTimer.current = setTimeout(() => setCopied(false), 1500);
+                })
+                .catch((e) => setActionError(errorMessage(e)));
             }}
             onOpen={(url) => api.openURL(url)}
-            onDismissBlocked={() => setBlocked(null)}
+            onDismissBlocked={() => {
+              setBlocked(null);
+              setCopied(false);
+            }}
           />
         ) : (
         <ChapterPanel

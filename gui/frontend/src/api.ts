@@ -3,7 +3,7 @@
 // them in a plain browser, so the UI can be worked on without the Go app.
 
 import * as app from '../wailsjs/go/main/App';
-import { BrowserOpenURL, EventsOn } from '../wailsjs/runtime/runtime';
+import { BrowserOpenURL, ClipboardSetText, EventsOn } from '../wailsjs/runtime/runtime';
 import type { CatalogInfo, Chapter, Hit, LogLine, Options, SiteInfo, State } from './types';
 
 export type Unsubscribe = () => void;
@@ -50,6 +50,8 @@ export interface Api {
   catalogStatus(): Promise<CatalogInfo>;
   /** Downloads the catalogs that changed, in the background; state.catalog follows. Rejects while one update runs */
   updateCatalog(): Promise<void>;
+  /** Puts text on the system clipboard (through the runtime: the webview's own clipboard API needs a secure context) */
+  copyText(text: string): Promise<void>;
 
   // Pushes. Each returns a function that stops the callback.
   onState(cb: (s: State) => void): Unsubscribe;
@@ -117,6 +119,11 @@ export function createWailsApi(): Api {
     sites: () => app.Sites(),
     catalogStatus: () => app.CatalogStatus(),
     updateCatalog: () => app.UpdateCatalog(),
+    copyText: async (text) => {
+      if (!(await ClipboardSetText(text))) {
+        throw new Error('could not copy to the clipboard');
+      }
+    },
 
     onState: (cb) => state.subscribe(cb),
     onChapters: (cb) => chapters.subscribe(cb),

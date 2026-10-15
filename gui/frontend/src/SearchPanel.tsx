@@ -18,6 +18,8 @@ export interface SearchPanelProps {
   busy: boolean;
   /** A picked hit from a search-only site, explained instead of loaded; null when none */
   blocked: Hit | null;
+  /** The blocked hit's link was just copied */
+  copied: boolean;
   onQuery: (query: string) => void;
   onSite: (site: string) => void;
   /** A picked hit: loaded when its site is downloadable, else shown as blocked */
@@ -30,7 +32,7 @@ export interface SearchPanelProps {
   onDismissBlocked: () => void;
 }
 
-export function SearchPanel({ catalog, sites, query, site, hits, searching, busy, blocked, onQuery, onSite, onPick, onUpdate, onCopy, onOpen, onDismissBlocked }: SearchPanelProps) {
+export function SearchPanel({ catalog, sites, query, site, hits, searching, busy, blocked, copied, onQuery, onSite, onPick, onUpdate, onCopy, onOpen, onDismissBlocked }: SearchPanelProps) {
   const summary = catalogSummary(catalog, new Date());
   if (catalog.sites === 0) {
     return (
@@ -123,7 +125,7 @@ export function SearchPanel({ catalog, sites, query, site, hits, searching, busy
             take its link elsewhere.
           </span>
           <button type="button" className="btn small" onClick={() => onCopy(blocked.url)}>
-            Copy link
+            {copied ? 'Copied' : 'Copy link'}
           </button>
           <button type="button" className="btn small" onClick={() => onOpen(blocked.url)}>
             Open in browser
