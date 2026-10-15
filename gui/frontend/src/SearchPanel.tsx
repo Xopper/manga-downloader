@@ -7,6 +7,13 @@ import { Mascot } from './Mascot';
 import { catalogSummary, resultRows, siteGroups } from './search';
 import type { CatalogInfo, Hit, SiteInfo } from './types';
 
+/** A search-only hit the user picked, and the query and site it was picked under */
+export interface BlockedHit {
+  hit: Hit;
+  query: string;
+  site: string;
+}
+
 export interface SearchPanelProps {
   catalog: CatalogInfo;
   sites: SiteInfo[];
@@ -16,8 +23,8 @@ export interface SearchPanelProps {
   searching: boolean;
   /** A load or a download runs: the field is read-only, a pick waits */
   busy: boolean;
-  /** A picked hit from a search-only site, explained instead of loaded; null when none */
-  blocked: Hit | null;
+  /** A picked hit from a search-only site, explained instead of loaded, with the search it was picked under: the note only shows while that search is still the one on screen */
+  blocked: BlockedHit | null;
   /** The blocked hit's link was just copied */
   copied: boolean;
   onQuery: (query: string) => void;
@@ -60,6 +67,8 @@ export function SearchPanel({ catalog, sites, query, site, hits, searching, busy
 
   const rows = resultRows(hits);
   const typed = query.trim() !== '';
+  // the note belongs to the search it came from: a new query or site clears it
+  const note = blocked !== null && blocked.query === query && blocked.site === site ? blocked.hit : null;
 
   return (
     <section className="panel chapters search" aria-label="Search">
@@ -117,17 +126,17 @@ export function SearchPanel({ catalog, sites, query, site, hits, searching, busy
           {catalog.updating ? <Spinner size={11} /> : 'Update'}
         </button>
       </div>
-      {blocked !== null && (
+      {note !== null && (
         <div className="banner search-only-note" role="status">
           <AlertIcon />
           <span>
-            <strong>{blocked.site}</strong> isn't supported for download yet. The title is <em>{blocked.title}</em>; you can
-            take its link elsewhere.
+            <strong>{note.site}</strong> isn't supported for download yet. The title is <em>{note.title}</em>; you can take
+            its link elsewhere.
           </span>
-          <button type="button" className="btn small" onClick={() => onCopy(blocked.url)}>
+          <button type="button" className="btn small" onClick={() => onCopy(note.url)}>
             {copied ? 'Copied' : 'Copy link'}
           </button>
-          <button type="button" className="btn small" onClick={() => onOpen(blocked.url)}>
+          <button type="button" className="btn small" onClick={() => onOpen(note.url)}>
             Open in browser
           </button>
           <button type="button" className="btn small" aria-label="Dismiss" onClick={onDismissBlocked}>

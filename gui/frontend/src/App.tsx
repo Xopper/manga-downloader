@@ -17,10 +17,10 @@ import { Mascot } from './Mascot';
 import { LogDrawer, StatusBar } from './LogPanel';
 import { createOptionsWriter } from './optionsWriter';
 import { OptionsPanel } from './OptionsPanel';
-import { SearchPanel } from './SearchPanel';
+import { type BlockedHit, SearchPanel } from './SearchPanel';
 import { SourceBar, type Mode } from './SourceBar';
 import { tally } from './run';
-import type { Hit, Options } from './types';
+import type { Options } from './types';
 import { useSearch } from './useSearch';
 import { useWindow } from './useWindow';
 
@@ -34,7 +34,7 @@ export function App({ api }: { api: Api }) {
   const search = useSearch(api, state?.catalog.generation ?? 0, mode === 'search');
   // a picked hit from a site the downloader has no grabber for, explained in
   // the panel instead of loaded
-  const [blocked, setBlocked] = useState<Hit | null>(null);
+  const [blocked, setBlocked] = useState<BlockedHit | null>(null);
   // "Copied" on the note's button for a moment after a copy
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -122,7 +122,10 @@ export function App({ api }: { api: Api }) {
       <SourceBar
         state={state}
         mode={mode}
-        onMode={setMode}
+        onMode={(next) => {
+          setMode(next);
+          setBlocked(null);
+        }}
         onLoad={load}
         onClear={clear}
         onOptions={setOptions}
@@ -148,7 +151,8 @@ export function App({ api }: { api: Api }) {
             onSite={search.setSite}
             onPick={(hit) => {
               if (!hit.downloadable) {
-                setBlocked(hit);
+                setBlocked({ hit, query: search.query, site: search.site });
+                setCopied(false);
                 return;
               }
               setBlocked(null);

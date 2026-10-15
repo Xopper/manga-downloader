@@ -64,14 +64,21 @@ describe('SearchPanel', () => {
     expect(markup.match(/class="hit-tag nsfw"/g)?.length).toBe(1);
   });
   it('explains a picked search-only hit instead of loading it', () => {
-    const markup = render({ query: 'one piece', hits, blocked: hits[2] });
+    const markup = render({ query: 'one piece', hits, blocked: { hit: hits[2], query: 'one piece', site: '' } });
     expect(markup).toContain('supported for download yet');
     expect(markup).toContain('Copy link');
     expect(markup).toContain('Open in browser');
     expect(markup).toContain('only.test');
   });
+  it('hides the note once the search it came from changes', () => {
+    const picked = { hit: hits[2], query: 'one piece', site: '' };
+    expect(render({ query: 'one piece', hits, blocked: picked })).toContain('supported for download yet');
+    expect(render({ query: 'one pie', hits, blocked: picked })).not.toContain('supported for download yet');
+    expect(render({ query: '', hits: [], blocked: picked })).not.toContain('supported for download yet');
+    expect(render({ query: 'one piece', site: 'mangaread.org', hits, blocked: picked })).not.toContain('supported for download yet');
+  });
   it('says Copied once the link was copied', () => {
-    const markup = render({ query: 'one piece', hits, blocked: hits[2], copied: true });
+    const markup = render({ query: 'one piece', hits, blocked: { hit: hits[2], query: 'one piece', site: '' }, copied: true });
     expect(markup).toContain('Copied');
     expect(markup).not.toContain('Copy link');
   });
