@@ -256,3 +256,17 @@ func TestRunStatusDLColumn(t *testing.T) {
 		}
 	}
 }
+
+func TestParseShard(t *testing.T) {
+	for in, want := range map[string][2]int{"": {0, 0}, "0/4": {0, 4}, "3/4": {3, 4}} {
+		shard, shards, err := parseShard(in)
+		if err != nil || shard != want[0] || shards != want[1] {
+			t.Errorf("%q: %d/%d %v", in, shard, shards, err)
+		}
+	}
+	for _, bad := range []string{"4/4", "a/b", "1", "-1/2", "1/0"} {
+		if _, _, err := parseShard(bad); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}

@@ -1,0 +1,158 @@
+name: Catalog (Suwayomi)
+
+# Builds the catalogs of every Tachiyomi source of the languages given (the
+# keiyoushi store, adult sources included) through a Suwayomi-Server each
+# runner starts, four shards in parallel, and publishes them gzipped on the
+# orphan `catalog-data` branch next to the hand-written crawlers' files
+# (catalog.yaml). A shard that fails still uploads what it got; the publish
+# job merges every shard, pushes, and then goes red if any shard failed.
+on:
+  schedule:
+    - cron: "7 1 * * *"
+  workflow_dispatch:
+    inputs:
+      langs:
+        description: "Languages to crawl, comma separated"
+        default: "en"
+      max_pages:
+        description: "Most pages per listing of a source"
+        default: "300"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: catalog-data
+
+env:
+  SUWAYOMI_VERSION: v2.4.2366
+  SHARDS: 4
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build
+        run: go build -o bin/manga-downloader .
+
+      - name: Cache the server JAR
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/manga-downloader-suwayomi/Suwayomi-Server-${{ env.SUWAYOMI_VERSION }}.jar
+          key: suwayomi-${{ env.SUWAYOMI_VERSION }}
+
+      - name: Start Suwayomi
+        run: tools/suwayomi/run.sh
+
+      - name: Check out the data branch
+        run: |
+          if git fetch origin catalog-data:catalog-data 2>/dev/null; then
+            git worktree add data catalog-data
+          else
+            mkdir -p data
+          fi
+          mkdir -p data/catalog
+
+      - name: Crawl
+        id: crawl
+        run: |
+          set +e
+          bin/manga-downloader catalog crawl-suwayomi \
+            --lang "${{ github.event.inputs.langs || 'en' }}" \
+            --max-pages "${{ github.event.inputs.max_pages || '300' }}" \
+            --shard "${{ matrix.shard }}/${{ env.SHARDS }}" \
+            --timeout 4h40m \
+            --out data/catalog 2>&1 | tee crawl.log
+          code=${PIPESTATUS[0]}
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          # only what this shard wrote travels to the publish job
+          mkdir -p shard
+          cp "data/catalog/sources-${{ matrix.shard }}.json" shard/ 2>/dev/null || true
+          grep -E '^[a-z0-9.-]+  [0-9]+ entries' crawl.log | cut -d' ' -f1 | sort -u | while read -r site; do
+            cp "data/catalog/$site.json" shard/ 2>/dev/null || true
+          done
+          ls shard | wc -l
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.shard }}
+          path: shard
+          if-no-files-found: warn
+
+      - name: Fail when a source failed
+        if: steps.crawl.outputs.exit != '0'
+        run: |
+          grep -E 'FAIL|skipped' crawl.log | head -50 || true
+          exit 1
+
+  publish:
+    needs: crawl
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Build
+        run: go build -o bin/manga-downloader .
+
+      - name: Check out the data branch
+        run: |
+          if git fetch origin catalog-data:catalog-data 2>/dev/null; then
+            git worktree add data catalog-data
+          else
+            git worktree add --detach data
+            cd data
+            git checkout --orphan catalog-data
+            git rm -rfq . || true
+          fi
+          mkdir -p data/catalog
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shard-*
+          merge-multiple: true
+          path: data/catalog
+
+      - name: Index and gzip
+        run: bin/manga-downloader catalog index --gzip --out data/catalog
+
+      - name: Commit
+        run: |
+          cd data
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A catalog
+          if git diff --cached --quiet; then
+            echo "no change"
+            exit 0
+          fi
+          total=$(python3 -c 'import json; print(sum(s["entries"] for s in json.load(open("catalog/index.json"))["sites"]))')
+          sources=$(python3 -c 'import json; print(len(json.load(open("catalog/sources.json"))))')
+          git commit -qm "Update Suwayomi catalogs: $total entries, $sources sources"
+          git push origin HEAD:catalog-data
+
+      - name: Fail when a shard failed
+        if: needs.crawl.result != 'success'
+        run: exit 1

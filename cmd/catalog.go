@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"text/tabwriter"
@@ -25,6 +26,78 @@ var catalogFlags struct {
 	out   string
 	json  bool
 	gzip  bool
+}
+
+var suwayomiFlags struct {
+	server    string
+	langs     []string
+	maxPages  int
+	parallel  int
+	shard     string
+	sources   []string
+	noInstall bool
+	timeout   time.Duration
+}
+
+var catalogSuwayomiCmd = &cobra.Command{
+	Use:   "crawl-suwayomi",
+	Short: "Builds catalogs through a running Suwayomi-Server (every Tachiyomi source of a language)",
+	Long: `Walks the popular, latest and empty-search listings of every source of the
+languages given on a Suwayomi-Server, and merges the titles into the catalog
+files of --out, one per site (a site a hand-written crawler already covers
+gets the union). The extensions of those languages are installed first unless
+--no-install. Writes sources.json (sources-<shard>.json with --shard) listing
+every source. Exit code 2 when a source failed or was skipped by --timeout.
+
+tools/suwayomi/run.sh starts a server on this machine; the nightly job runs one
+on GitHub.`,
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		shard, shards, err := parseShard(suwayomiFlags.shard)
+		if err != nil {
+			red("%s", err)
+			exit(1)
+		}
+		rep, err := catalog.CrawlSuwayomi(context.Background(), os.Stdout, catalog.SuwayomiOptions{
+			Server:   suwayomiFlags.server,
+			Langs:    suwayomiFlags.langs,
+			Out:      catalogFlags.out,
+			MaxPages: suwayomiFlags.maxPages,
+			Parallel: suwayomiFlags.parallel,
+			Shard:    shard,
+			Shards:   shards,
+			Sources:  suwayomiFlags.sources,
+			Install:  !suwayomiFlags.noInstall,
+			Timeout:  suwayomiFlags.timeout,
+		})
+		if err != nil {
+			red("%s", err)
+			exit(1)
+		}
+		fmt.Printf("%d sources, %d written, %d failed\n", len(rep.Sources), len(rep.Written), rep.Failed)
+		if rep.Failed > 0 {
+			exit(2)
+		}
+	},
+}
+
+// parseShard reads "i/n" ("" is no sharding)
+func parseShard(s string) (shard, shards int, err error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, 0, nil
+	}
+	i, n, ok := strings.Cut(s, "/")
+	if !ok {
+		return 0, 0, fmt.Errorf("--shard wants i/n, got %q", s)
+	}
+	shard, err1 := strconv.Atoi(i)
+	shards, err2 := strconv.Atoi(n)
+	if err1 != nil || err2 != nil || shards <= 0 || shard < 0 || shard >= shards {
+		return 0, 0, fmt.Errorf("--shard wants i/n with 0 <= i < n, got %q", s)
+	}
+
+	return shard, shards, nil
 }
 
 var catalogCmd = &cobra.Command{
@@ -319,6 +392,15 @@ func init() {
 	catalogCrawlCmd.Flags().StringVar(&catalogFlags.out, "out", "./catalog", "directory for the catalog files")
 	catalogIndexCmd.Flags().StringVar(&catalogFlags.out, "out", "./catalog", "the catalog directory")
 	catalogIndexCmd.Flags().BoolVar(&catalogFlags.gzip, "gzip", false, "gzip the catalog files first (the published form)")
-	catalogCmd.AddCommand(catalogUpdateCmd, catalogStatusCmd, catalogCrawlCmd, catalogIndexCmd)
+	catalogSuwayomiCmd.Flags().StringVar(&suwayomiFlags.server, "server", "http://127.0.0.1:4567", "the Suwayomi-Server URL")
+	catalogSuwayomiCmd.Flags().StringSliceVar(&suwayomiFlags.langs, "lang", []string{"en"}, "source languages to crawl (repeatable; multi-language sources are always included)")
+	catalogSuwayomiCmd.Flags().IntVar(&suwayomiFlags.maxPages, "max-pages", 300, "most pages read per listing of a source")
+	catalogSuwayomiCmd.Flags().IntVar(&suwayomiFlags.parallel, "parallel", 4, "sources walked at once")
+	catalogSuwayomiCmd.Flags().StringVar(&suwayomiFlags.shard, "shard", "", "only every n-th source, starting at i: \"i/n\"")
+	catalogSuwayomiCmd.Flags().StringSliceVar(&suwayomiFlags.sources, "source", nil, "only these sources, by name or id (repeatable)")
+	catalogSuwayomiCmd.Flags().BoolVar(&suwayomiFlags.noInstall, "no-install", false, "don't install the languages' missing extensions first")
+	catalogSuwayomiCmd.Flags().DurationVar(&suwayomiFlags.timeout, "timeout", 0, "stop starting sources after this long (e.g. 4h30m)")
+	catalogSuwayomiCmd.Flags().StringVar(&catalogFlags.out, "out", "./catalog", "directory for the catalog files")
+	catalogCmd.AddCommand(catalogUpdateCmd, catalogStatusCmd, catalogCrawlCmd, catalogIndexCmd, catalogSuwayomiCmd)
 	rootCmd.AddCommand(catalogCmd)
 }

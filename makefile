@@ -99,6 +99,17 @@ catalog/smoke:
 	test -s /tmp/catalog-smoke/index.json
 	grep -q '"entries": 1,' /tmp/catalog-smoke/index.json
 
+# two Tachiyomi sources through a local Suwayomi-Server (tools/suwayomi/run.sh
+# starts it; Java 21+), two pages each
+catalog/smoke-suwayomi:
+	rm -rf /tmp/catalog-smoke-suwayomi
+	tools/suwayomi/run.sh
+	go run . catalog crawl-suwayomi --no-install --lang en --max-pages 2 --source MangaPill --source "Weeb Central" --out /tmp/catalog-smoke-suwayomi
+	go run . catalog index --out /tmp/catalog-smoke-suwayomi
+	test -s /tmp/catalog-smoke-suwayomi/mangapill.com.json
+	test -s /tmp/catalog-smoke-suwayomi/weebcentral.com.json
+	test -s /tmp/catalog-smoke-suwayomi/sources.json
+
 # one dependency per line, alphabetically sorted (grabber/html deliberately
 # last), so parallel site-support branches never edit the same line
 grabber: \
