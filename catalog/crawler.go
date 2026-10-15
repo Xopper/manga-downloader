@@ -149,3 +149,8 @@ func isNotFound(err error) bool {
 
 	return false
 }
+
+// RegisterCrawler adds (or replaces) the crawler of a family
+func RegisterCrawler(family string, c Crawler) {
+	crawlers[family] = c
+}

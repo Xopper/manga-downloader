@@ -1,0 +1,171 @@
+// Copyright (C) 2023-2026 Òscar Casajuana Alonso
+
+package cmd
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/elboletaire/manga-downloader/catalog"
+)
+
+// fakeCrawler returns fixed entries, or an error, per site
+type fakeCrawler struct {
+	entries map[string][]catalog.Entry
+	fail    map[string]error
+}
+
+func (f fakeCrawler) Crawl(_ context.Context, site catalog.SiteInfo, _ int) ([]catalog.Entry, error) {
+	if err := f.fail[site.Site]; err != nil {
+		return nil, err
+	}
+
+	return f.entries[site.Site], nil
+}
+
+func crawlSetup(t *testing.T, f fakeCrawler, sites ...catalog.SiteInfo) string {
+	t.Helper()
+	catalog.RegisterCrawler("fake", f)
+	prev := sitesForCrawl
+	sitesForCrawl = func() []catalog.SiteInfo { return sites }
+	t.Cleanup(func() { sitesForCrawl = prev })
+
+	return t.TempDir()
+}
+
+func entries(n int, site string) []catalog.Entry {
+	out := make([]catalog.Entry, n)
+	for i := range out {
+		out[i] = catalog.Entry{Title: site + " " + string(rune('A'+i%26)) + string(rune('a'+i/26)), URL: "https://" + site + "/manga/" + string(rune('a'+i%26)) + string(rune('a'+i/26)) + "/"}
+	}
+
+	return out
+}
+
+func TestCrawlWritesFilesAndIndex(t *testing.T) {
+	a := catalog.SiteInfo{Site: "a.test", Home: "https://a.test", Family: "fake", Lang: "en", Crawl: true}
+	b := catalog.SiteInfo{Site: "b.test", Home: "https://b.test", Family: "fake", Lang: "es", Crawl: true}
+	skipped := catalog.SiteInfo{Site: "c.test", Home: "https://c.test", Family: "custom", Crawl: false}
+	out := crawlSetup(t, fakeCrawler{entries: map[string][]catalog.Entry{"a.test": entries(3, "a.test"), "b.test": entries(5, "b.test")}}, a, b, skipped)
+	var log bytes.Buffer
+	if code := runCrawl(context.Background(), &log, out, "", 0); code != 0 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	s := catalog.NewStore(out)
+	s.Load()
+	ca, _ := s.Catalog("a.test")
+	cb, _ := s.Catalog("b.test")
+	if ca == nil || cb == nil || len(ca.Entries) != 3 || len(cb.Entries) != 5 || cb.Language != "es" || cb.Home != "https://b.test" || time.Since(cb.Crawled) > time.Minute {
+		t.Fatalf("a %+v b %+v", ca, cb)
+	}
+	idx, err := catalog.ReadIndex(out)
+	if err != nil || len(idx.Sites) != 2 {
+		t.Fatalf("index: %+v %v", idx, err)
+	}
+	if !strings.Contains(log.String(), "a.test") || !strings.Contains(log.String(), "5 entries") {
+		t.Errorf("log: %s", log.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "c.test.json")); err == nil {
+		t.Error("a site without crawl must not be written")
+	}
+}
+
+func TestCrawlHalfSizeGuard(t *testing.T) {
+	a := catalog.SiteInfo{Site: "a.test", Home: "https://a.test", Family: "fake", Lang: "en", Crawl: true}
+	out := crawlSetup(t, fakeCrawler{entries: map[string][]catalog.Entry{"a.test": entries(40, "a.test")}}, a)
+	old := catalog.NewStore(out)
+	if err := old.Write(&catalog.SiteCatalog{Site: "a.test", Crawled: time.Unix(100, 0), Entries: entries(100, "a.test")}); err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	if code := runCrawl(context.Background(), &log, out, "", 0); code != 2 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	s := catalog.NewStore(out)
+	s.Load()
+	if c, _ := s.Catalog("a.test"); c == nil || len(c.Entries) != 100 {
+		t.Fatalf("old file lost: %+v", c)
+	}
+	if !strings.Contains(log.String(), "kept") {
+		t.Errorf("log: %s", log.String())
+	}
+	// a crawl at least half the old size replaces it
+	catalog.RegisterCrawler("fake", fakeCrawler{entries: map[string][]catalog.Entry{"a.test": entries(50, "a.test")}})
+	if code := runCrawl(context.Background(), &log, out, "", 0); code != 0 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	s.Load()
+	if c, _ := s.Catalog("a.test"); len(c.Entries) != 50 {
+		t.Errorf("not replaced: %d", len(c.Entries))
+	}
+}
+
+func TestCrawlFailedSiteKeepsOthers(t *testing.T) {
+	a := catalog.SiteInfo{Site: "a.test", Home: "https://a.test", Family: "fake", Lang: "en", Crawl: true}
+	b := catalog.SiteInfo{Site: "b.test", Home: "https://b.test", Family: "fake", Lang: "en", Crawl: true}
+	out := crawlSetup(t, fakeCrawler{entries: map[string][]catalog.Entry{"b.test": entries(2, "b.test")}, fail: map[string]error{"a.test": errors.New("down")}}, a, b)
+	var log bytes.Buffer
+	if code := runCrawl(context.Background(), &log, out, "", 0); code != 2 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "b.test.json")); err != nil {
+		t.Error("b not written")
+	}
+	if !strings.Contains(log.String(), "FAIL") || !strings.Contains(log.String(), "down") {
+		t.Errorf("log: %s", log.String())
+	}
+	// an empty crawl is a failure too, never an empty file
+	catalog.RegisterCrawler("fake", fakeCrawler{})
+	if code := runCrawl(context.Background(), &log, out, "b.test", 0); code != 2 {
+		t.Errorf("empty crawl: exit %d", code)
+	}
+}
+
+func TestCrawlOneSite(t *testing.T) {
+	a := catalog.SiteInfo{Site: "a.test", Home: "https://a.test", Family: "fake", Lang: "en", Crawl: true}
+	b := catalog.SiteInfo{Site: "b.test", Home: "https://b.test", Family: "fake", Lang: "en", Crawl: true}
+	out := crawlSetup(t, fakeCrawler{entries: map[string][]catalog.Entry{"a.test": entries(1, "a.test"), "b.test": entries(1, "b.test")}}, a, b)
+	var log bytes.Buffer
+	if code := runCrawl(context.Background(), &log, out, "www.B.test", 0); code != 0 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	if _, err := os.Stat(filepath.Join(out, "a.test.json")); err == nil {
+		t.Error("a crawled too")
+	}
+	if code := runCrawl(context.Background(), &log, out, "nope.test", 0); code != 1 || !strings.Contains(log.String(), "nope.test") {
+		t.Errorf("unknown site: exit %d, %s", code, log.String())
+	}
+}
+
+func TestStatusJSON(t *testing.T) {
+	dir := t.TempDir()
+	s := catalog.NewStore(dir)
+	s.Write(&catalog.SiteCatalog{Site: "mangaread.org", Crawled: time.Unix(100, 0), Entries: entries(3, "mangaread.org")})
+	var out bytes.Buffer
+	runStatus(&out, s, true)
+	var rows []statusRow
+	if err := json.Unmarshal(out.Bytes(), &rows); err != nil {
+		t.Fatal(err, out.String())
+	}
+	var found bool
+	for _, r := range rows {
+		if r.Site == "mangaread.org" {
+			found = r.Entries == 3 && r.Catalog
+		}
+	}
+	if !found || len(rows) != len(catalog.Sites()) {
+		t.Errorf("rows %d, mangaread found %v", len(rows), found)
+	}
+	out.Reset()
+	runStatus(&out, s, false)
+	if !strings.Contains(out.String(), "mangaread.org") || !strings.Contains(out.String(), "SITE") {
+		t.Errorf("table: %s", out.String())
+	}
+}
