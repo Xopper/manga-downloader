@@ -12,14 +12,14 @@ import (
 
 func TestFold(t *testing.T) {
 	cases := map[string]string{
-		"Café Ōtsuki!!":      "cafe otsuki",
-		"  One   Piece ":     "one piece",
-		"ｶﾌｪ":                "カフェ",
-		"Dr. STONE":          "dr stone",
-		"---":                "",
-		"Naruto: Shippūden":  "naruto shippuden",
-		"東京喰種":               "東京喰種",
-		"Ａｂｃ":                "abc",
+		"Café Ōtsuki!!":     "cafe otsuki",
+		"  One   Piece ":    "one piece",
+		"ｶﾌｪ":               "カフェ",
+		"Dr. STONE":         "dr stone",
+		"---":               "",
+		"Naruto: Shippūden": "naruto shippuden",
+		"東京喰種":              "東京喰種",
+		"Ａｂｃ":               "abc",
 	}
 	for in, want := range cases {
 		if got := Fold(in); got != want {

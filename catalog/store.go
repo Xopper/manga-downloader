@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Store is the catalogs on disk (one <site>.json per site under Dir) held in
@@ -104,3 +105,104 @@ func (s *Store) Catalog(site string) (*SiteCatalog, bool) {
 
 // indexFile is the published listing of the catalog files
 const indexFile = "index.json"
+
+// DefaultDir is where the app keeps its catalogs: next to gui.json
+func DefaultDir() (string, error) {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("could not find a user config dir for the catalog: %w", err)
+	}
+
+	return filepath.Join(dir, "manga-downloader", "catalog"), nil
+}
+
+// Write saves a site's catalog to Dir (atomically, 0600) and loads it
+func (s *Store) Write(c *SiteCatalog) error {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	if err := writeFileAtomic(filepath.Join(s.Dir, c.Site+".json"), b); err != nil {
+		return err
+	}
+	cp := *c
+	s.mu.Lock()
+	s.catalogs[c.Site] = &cp
+	s.reindex()
+	s.mu.Unlock()
+
+	return nil
+}
+
+// writeFileAtomic writes b to path through a temp file next to it, so a
+// reader never sees a half-written file
+func writeFileAtomic(path string, b []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp*")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	if _, err := tmp.Write(b); err != nil {
+		tmp.Close()
+		os.Remove(name)
+		return err
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		os.Remove(name)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(name)
+		return err
+	}
+	if err := os.Rename(name, path); err != nil {
+		os.Remove(name)
+		return err
+	}
+
+	return nil
+}
+
+// SiteStatus is one site's standing in the store, for `catalog status` and
+// the app's site picker
+type SiteStatus struct {
+	Site     string
+	Label    string
+	Language string
+	// Crawlable is the site table's crawl flag: whether a catalog can exist
+	Crawlable bool
+	// HasCatalog is whether this store holds one
+	HasCatalog bool
+	Entries    int
+	// Crawled is when the catalog was built; FileAge how long ago the local
+	// file was written (an update's download, or the crawl)
+	Crawled time.Time
+	FileAge time.Duration
+}
+
+// Status describes every site of the table, in table order
+func (s *Store) Status() []SiteStatus {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	sites := Sites()
+	out := make([]SiteStatus, 0, len(sites))
+	now := time.Now()
+	for _, site := range sites {
+		st := SiteStatus{Site: site.Site, Label: site.Label, Language: site.Lang, Crawlable: site.Crawl}
+		if c, ok := s.catalogs[site.Site]; ok {
+			st.HasCatalog = true
+			st.Entries = len(c.Entries)
+			st.Crawled = c.Crawled
+			if info, err := os.Stat(filepath.Join(s.Dir, site.Site+".json")); err == nil {
+				st.FileAge = now.Sub(info.ModTime())
+			}
+		}
+		out = append(out, st)
+	}
+
+	return out
+}
