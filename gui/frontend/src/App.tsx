@@ -17,9 +17,11 @@ import { Mascot } from './Mascot';
 import { LogDrawer, StatusBar } from './LogPanel';
 import { createOptionsWriter } from './optionsWriter';
 import { OptionsPanel } from './OptionsPanel';
-import { SourceBar } from './SourceBar';
+import { SearchPanel } from './SearchPanel';
+import { SourceBar, type Mode } from './SourceBar';
 import { tally } from './run';
 import type { Options } from './types';
+import { useSearch } from './useSearch';
 import { useWindow } from './useWindow';
 
 type Tab = 'options' | 'activity';
@@ -27,6 +29,9 @@ type Tab = 'options' | 'activity';
 export function App({ api }: { api: Api }) {
   const { state, chapters, selected, log, failure } = useWindow(api);
   const [tab, setTab] = useState<Tab>('options');
+  // URL mode pastes a link; Search mode finds one in the catalogs
+  const [mode, setMode] = useState<Mode>('url');
+  const search = useSearch(api, state?.catalog.generation ?? 0, mode === 'search');
   const [logOpen, setLogOpen] = useState(false);
   const [loadRefusal, setLoadRefusal] = useState('');
   const [actionError, setActionError] = useState('');
@@ -109,6 +114,8 @@ export function App({ api }: { api: Api }) {
     <div className="app">
       <SourceBar
         state={state}
+        mode={mode}
+        onMode={setMode}
         onLoad={load}
         onClear={clear}
         onOptions={setOptions}
@@ -119,6 +126,26 @@ export function App({ api }: { api: Api }) {
       />
 
       <main className="workspace">
+        {mode === 'search' ? (
+          <SearchPanel
+            catalog={state.catalog}
+            sites={search.sites}
+            query={search.query}
+            site={search.site}
+            hits={search.hits}
+            searching={search.searching}
+            busy={busy}
+            onQuery={search.setQuery}
+            onSite={search.setSite}
+            onPick={(url) => {
+              setMode('url');
+              load(url);
+            }}
+            onUpdate={() => {
+              api.updateCatalog().catch((e) => setActionError(errorMessage(e)));
+            }}
+          />
+        ) : (
         <ChapterPanel
           state={state}
           chapters={chapters}
@@ -132,6 +159,7 @@ export function App({ api }: { api: Api }) {
           onReload={() => load(state.url)}
           onError={setActionError}
         />
+        )}
 
         <aside className="side" aria-label="Download">
           <div className="tabs" role="tablist" aria-label="Side panel">

@@ -34,6 +34,13 @@ export const LinkIcon = icon(
   </>,
 );
 
+export const SearchIcon = icon(
+  <>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </>,
+);
+
 export const DownloadIcon = icon(
   <>
     <path d="M12 4v11" />

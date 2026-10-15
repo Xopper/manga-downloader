@@ -6,12 +6,17 @@ import { useEffect, useRef, useState } from 'react';
 import { AUTO_LOAD_DELAY_MS, shouldAutoLoad } from './autoLoad';
 import { SelectField, TextField } from './fields';
 import { filterControl, filtersIdentified, filterOptions, shownSelection, type FilterControl, type FilterKind } from './filters';
-import { AlertIcon, LinkIcon, RefreshIcon, Spinner } from './icons';
+import { AlertIcon, LinkIcon, RefreshIcon, SearchIcon, Spinner } from './icons';
 import { Mascot, useExpression } from './Mascot';
 import type { FilterChoice, Options, State } from './types';
 
+/** What the source bar takes: a pasted link, or a search of the catalogs */
+export type Mode = 'url' | 'search';
+
 interface Props {
   state: State;
+  mode: Mode;
+  onMode: (mode: Mode) => void;
   onLoad: (url: string) => void;
   /** The URL box's clear button: empties the field and forgets the loaded series */
   onClear: () => void;
@@ -25,7 +30,7 @@ interface Props {
   optionError: string;
 }
 
-export function SourceBar({ state, onLoad, onClear, onOptions, onPick, onError, loadRefusal, optionError }: Props) {
+export function SourceBar({ state, mode, onMode, onLoad, onClear, onOptions, onPick, onError, loadRefusal, optionError }: Props) {
   // null until the user types: the field shows the backend's URL until then
   const [typed, setTyped] = useState<string | null>(null);
   const url = typed ?? state.url;
@@ -70,6 +75,26 @@ export function SourceBar({ state, onLoad, onClear, onOptions, onPick, onError, 
         <div className="brand" title="Manga Downloader">
           <Mascot expression={expression} size={48} />
           <span className="brand-name">Manga Downloader</span>
+        </div>
+        <div className="mode-switch" role="tablist" aria-label="Source">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'url'}
+            className={`mode${mode === 'url' ? ' on' : ''}`}
+            onClick={() => onMode('url')}
+          >
+            <LinkIcon /> Link
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'search'}
+            className={`mode${mode === 'search' ? ' on' : ''}`}
+            onClick={() => onMode('search')}
+          >
+            <SearchIcon /> Search
+          </button>
         </div>
         <form
           className="url-form"

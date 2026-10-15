@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function Cancel():Promise<void>;
 
+export function CatalogStatus():Promise<main.CatalogDTO>;
+
 export function Chapters():Promise<Array<main.ChapterDTO>>;
 
 export function ChooseFolder():Promise<string>;
@@ -19,6 +21,8 @@ export function Log():Promise<Array<main.LogDTO>>;
 export function OpenFolder():Promise<void>;
 
 export function Options():Promise<main.OptionsDTO>;
+
+export function Search(arg1:string,arg2:string):Promise<Array<main.HitDTO>>;
 
 export function SelectRange(arg1:string):Promise<number>;
 
@@ -38,8 +42,12 @@ export function SetVolumes(arg1:string):Promise<void>;
 
 export function ShowBrowser():Promise<void>;
 
+export function Sites():Promise<Array<main.SiteDTO>>;
+
 export function Start():Promise<void>;
 
 export function State():Promise<main.State>;
+
+export function UpdateCatalog():Promise<void>;
 
 export function Version():Promise<string>;

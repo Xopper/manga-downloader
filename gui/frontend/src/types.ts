@@ -112,6 +112,44 @@ export interface State {
   browserVisibleAuto: boolean;
   /** What to tell the user while the browser window waits for them; "" when it isn't */
   browserAlert: string;
+  /** The search catalogs: how many sites and titles are on disk, and their standing */
+  catalog: CatalogInfo;
+}
+
+/** A search result: a series of a site's catalog */
+export interface Hit {
+  site: string;
+  title: string;
+  /** The series page, what load() takes */
+  url: string;
+  /** The site's language code (the site table's), "" when mixed */
+  language: string;
+}
+
+/** A site of the picker, with its catalog's standing */
+export interface SiteInfo {
+  site: string;
+  /** The README's note for the site (name, language), "" when none */
+  label: string;
+  language: string;
+  /** The site can be searched: its catalog is on disk */
+  hasCatalog: boolean;
+  /** A catalog exists for the site at all (false: no crawler yet, or an API site) */
+  crawlable: boolean;
+  entries: number;
+}
+
+/** The catalogs on disk, summed up */
+export interface CatalogInfo {
+  sites: number;
+  entries: number;
+  /** RFC 3339, "" without a local index yet */
+  updatedAt: string;
+  updating: boolean;
+  /** The last update's failure, "" once one succeeds */
+  error: string;
+  /** Moves on every refresh that changed something */
+  generation: number;
 }
 
 /** The Volumes box, used when the options pack as volumes */

@@ -2082,3 +2082,162 @@ a.version:hover {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ---- Search mode ---- */
+
+.mode-switch {
+  display: flex;
+  flex: none;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.mode.on {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.panel.search {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.search-form {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.search-box {
+  flex: 1;
+}
+
+.search-site {
+  flex: none;
+  width: 220px;
+  height: 38px;
+}
+
+.search-head {
+  font-size: 12px;
+}
+
+.search-head .spacer {
+  flex: 1;
+}
+
+.search-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 24px;
+  text-align: center;
+}
+
+.hits {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.hit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 16px 8px 14px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hit:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.hit:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.hit:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.hit-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hit-site {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.hit-lang {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .search-form {
+    flex-wrap: wrap;
+  }
+
+  .search-site {
+    width: 100%;
+  }
+
+  .search-box .url-input {
+    font-size: 16px;
+  }
+
+  .mode .mode-label {
+    display: none;
+  }
+}

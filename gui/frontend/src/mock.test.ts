@@ -422,6 +422,7 @@ describe('mockSetupFrom', () => {
       skip: false,
       shot: false,
       epub: false,
+      nocatalog: false,
     });
     expect(mockSetupFrom('?novolumes').novolumes).toBe(true);
     expect(mockSetupFrom('?chapters=nope').chapters).toBeGreaterThan(100);
@@ -429,6 +430,7 @@ describe('mockSetupFrom', () => {
     expect(mockSetupFrom('?skip').skip).toBe(true);
     expect(mockSetupFrom('?shot').shot).toBe(true);
     expect(mockSetupFrom('?epub').epub).toBe(true);
+    expect(mockSetupFrom('?nocatalog').nocatalog).toBe(true);
   });
 
   it('starts with EPUB as the format when epub is set', async () => {

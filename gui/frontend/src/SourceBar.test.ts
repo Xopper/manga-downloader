@@ -15,6 +15,8 @@ function render(state: State): string {
   return renderToStaticMarkup(
     createElement(SourceBar, {
       state,
+      mode: 'url',
+      onMode: () => undefined,
       onLoad: () => undefined,
       onClear: () => undefined,
       onOptions: () => Promise.resolve(),

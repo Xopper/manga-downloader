@@ -6,6 +6,10 @@ export function Cancel() {
   return window['go']['main']['App']['Cancel']();
 }
 
+export function CatalogStatus() {
+  return window['go']['main']['App']['CatalogStatus']();
+}
+
 export function Chapters() {
   return window['go']['main']['App']['Chapters']();
 }
@@ -36,6 +40,10 @@ export function OpenFolder() {
 
 export function Options() {
   return window['go']['main']['App']['Options']();
+}
+
+export function Search(arg1, arg2) {
+  return window['go']['main']['App']['Search'](arg1, arg2);
 }
 
 export function SelectRange(arg1) {
@@ -74,12 +82,20 @@ export function ShowBrowser() {
   return window['go']['main']['App']['ShowBrowser']();
 }
 
+export function Sites() {
+  return window['go']['main']['App']['Sites']();
+}
+
 export function Start() {
   return window['go']['main']['App']['Start']();
 }
 
 export function State() {
   return window['go']['main']['App']['State']();
+}
+
+export function UpdateCatalog() {
+  return window['go']['main']['App']['UpdateCatalog']();
 }
 
 export function Version() {

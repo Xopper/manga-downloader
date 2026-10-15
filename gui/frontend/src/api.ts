@@ -4,7 +4,7 @@
 
 import * as app from '../wailsjs/go/main/App';
 import { BrowserOpenURL, EventsOn } from '../wailsjs/runtime/runtime';
-import type { Chapter, LogLine, Options, State } from './types';
+import type { CatalogInfo, Chapter, Hit, LogLine, Options, SiteInfo, State } from './types';
 
 export type Unsubscribe = () => void;
 
@@ -41,6 +41,15 @@ export interface Api {
   showBrowser(): Promise<void>;
   /** Hides browserAlert; the window and the load waiting for it go on */
   dismissBrowserAlert(): Promise<void>;
+
+  // Search. The catalogs are on disk; the backend keeps them fresh.
+  /** Finds series in the catalogs, best match first; site "" is every site */
+  search(query: string, site: string): Promise<Hit[]>;
+  /** Every site of the table, for the picker */
+  sites(): Promise<SiteInfo[]>;
+  catalogStatus(): Promise<CatalogInfo>;
+  /** Downloads the catalogs that changed, in the background; state.catalog follows. Rejects while one update runs */
+  updateCatalog(): Promise<void>;
 
   // Pushes. Each returns a function that stops the callback.
   onState(cb: (s: State) => void): Unsubscribe;
@@ -104,6 +113,10 @@ export function createWailsApi(): Api {
     cancel: () => app.Cancel(),
     showBrowser: () => app.ShowBrowser(),
     dismissBrowserAlert: () => app.DismissBrowserAlert(),
+    search: (query, site) => app.Search(query, site),
+    sites: () => app.Sites(),
+    catalogStatus: () => app.CatalogStatus(),
+    updateCatalog: () => app.UpdateCatalog(),
 
     onState: (cb) => state.subscribe(cb),
     onChapters: (cb) => chapters.subscribe(cb),

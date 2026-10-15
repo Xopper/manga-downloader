@@ -33,7 +33,7 @@
 // Typed values match ignoring case, and take the spelling the series lists.
 
 import type { Api, Unsubscribe } from './api';
-import type { Chapter, FilterChoice, Job, LogLine, Options, State, Summary, Update } from './types';
+import type { CatalogInfo, Chapter, FilterChoice, Hit, Job, LogLine, Options, SiteInfo, State, Summary, Update } from './types';
 import { groupChapters, parseVolumes, siteVolumes } from './volumes';
 import { OP_CHAPTERS } from './mock-onepiece';
 
@@ -87,6 +87,8 @@ export interface MockSetup {
   shot: boolean;
   /** Start with EPUB as the output format */
   epub: boolean;
+  /** Start without any search catalog on disk */
+  nocatalog: boolean;
 }
 
 /** What the mock series offers for each filter; null when the site lists none */
@@ -143,6 +145,7 @@ export function mockSetupFrom(search: string): MockSetup {
     skip: params.has('skip'),
     shot: params.has('shot'),
     epub: params.has('epub'),
+    nocatalog: params.has('nocatalog'),
   };
 }
 
@@ -226,6 +229,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     skip,
     shot,
     epub,
+    nocatalog,
   } = {
     scenario: 'empty' as Scenario,
     freeze: false,
@@ -237,6 +241,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     skip: false,
     shot: false,
     epub: false,
+    nocatalog: false,
     ...(typeof setup === 'string' ? { scenario: setup } : setup),
   };
   const offers = OFFERS[site];
@@ -268,6 +273,19 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
   // the loaded site needs the browser window, and the alert about it
   let browserAuto = false;
   let browserAlert = '';
+  // the search catalog: a fixed list over three sites, or none with &nocatalog
+  let catalogSites = nocatalog ? [] : MOCK_CATALOG;
+  let catalogUpdating = false;
+  let catalogGeneration = 1;
+  let catalogUpdatedAt = nocatalog ? '' : '2026-10-15T03:20:00Z';
+  const catalogInfo = (): CatalogInfo => ({
+    sites: catalogSites.length,
+    entries: catalogSites.reduce((n, s) => n + s.entries.length, 0),
+    updatedAt: catalogUpdatedAt,
+    updating: catalogUpdating,
+    error: '',
+    generation: catalogGeneration,
+  });
 
   const stateBus = new Bus<State>();
   const chaptersBus = new Bus<Chapter[]>();
@@ -350,6 +368,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       : null,
     browserVisibleAuto: browserAuto,
     browserAlert,
+    catalog: catalogInfo(),
   });
   const push = () => stateBus.emit(snapshot());
 
@@ -909,6 +928,52 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       push();
     },
 
+    async search(query, site) {
+      const words = query.toLowerCase().split(/\s+/).filter((w) => w !== '');
+      if (words.length === 0) {
+        return [];
+      }
+      const hits: Hit[] = [];
+      for (const s of catalogSites) {
+        if (site !== '' && s.site !== site) {
+          continue;
+        }
+        for (const title of s.entries) {
+          const folded = title.toLowerCase();
+          if (words.every((w) => folded.includes(w))) {
+            hits.push({ site: s.site, title, url: `https://${s.site}/manga/${slug(title)}/`, language: s.language });
+          }
+        }
+      }
+      hits.sort((a, b) => a.title.length - b.title.length || a.site.localeCompare(b.site));
+      return hits.slice(0, 50);
+    },
+    async sites() {
+      const have = new Map(catalogSites.map((s) => [s.site, s]));
+      return MOCK_SITES.map((s): SiteInfo => {
+        const c = have.get(s.site);
+        return { ...s, hasCatalog: c !== undefined, entries: c?.entries.length ?? 0 };
+      });
+    },
+    async catalogStatus() {
+      return catalogInfo();
+    },
+    async updateCatalog() {
+      if (catalogUpdating) {
+        throw new Error('the catalog is already updating');
+      }
+      catalogUpdating = true;
+      push();
+      setTimeout(() => {
+        catalogUpdating = false;
+        catalogSites = MOCK_CATALOG;
+        catalogUpdatedAt = new Date().toISOString();
+        catalogGeneration++;
+        pushLog('info', `Catalog updated: ${catalogSites.length} sites`);
+        push();
+      }, 600);
+    },
+
     onState: (cb) => stateBus.subscribe(cb),
     onChapters: (cb) => chaptersBus.subscribe(cb),
     onSelection: (cb) => selectionBus.subscribe(cb),
@@ -919,3 +984,41 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
 }
 
 export { scenarioFrom };
+
+/** A URL slug of a title, the way most sites make one */
+function slug(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** The sites of the mock's picker: three with a catalog, two without */
+const MOCK_SITES: Omit<SiteInfo, 'hasCatalog' | 'entries'>[] = [
+  { site: 'arenascan.com', label: '', language: 'en', crawlable: true },
+  { site: 'kingofshojo.com', label: '', language: 'id', crawlable: true },
+  { site: 'mangadex.org', label: 'MangaDex', language: 'en', crawlable: false },
+  { site: 'mangaread.org', label: '', language: 'en', crawlable: true },
+  { site: 'weebcentral.com', label: '', language: 'en', crawlable: false },
+];
+
+/** The mock catalog: titles per site */
+const MOCK_CATALOG: { site: string; language: string; entries: string[] }[] = [
+  {
+    site: 'mangaread.org',
+    language: 'en',
+    entries: ['One Piece', 'One Piece: Ace\u2019s Story', 'Bleach', 'Naruto', 'Chainsaw Man', 'Jujutsu Kaisen', 'Spy x Family', 'Dandadan', 'Frieren: Beyond Journey\u2019s End', 'Blue Lock'],
+  },
+  {
+    site: 'kingofshojo.com',
+    language: 'id',
+    entries: ['One Piece', 'Kimi ni Todoke', 'Ao Haru Ride', 'Fruits Basket', 'Ouran High School Host Club', 'Skip Beat!', 'Horimiya', 'Kaguya-sama: Love Is War', 'Wotakoi', 'My Love Story!!'],
+  },
+  {
+    site: 'arenascan.com',
+    language: 'en',
+    entries: ['Solo Leveling', 'The Beginning After the End', 'Omniscient Reader\u2019s Viewpoint', 'Tower of God', 'Return of the Mount Hua Sect', 'Nano Machine', 'One Punch Man', 'Overgeared', 'Second Life Ranker', 'The Greatest Estate Developer'],
+  },
+];

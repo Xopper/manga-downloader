@@ -1,5 +1,27 @@
 export namespace main {
 	
+	export class CatalogDTO {
+	    sites: number;
+	    entries: number;
+	    updatedAt: string;
+	    updating: boolean;
+	    error: string;
+	    generation: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CatalogDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sites = source["sites"];
+	        this.entries = source["entries"];
+	        this.updatedAt = source["updatedAt"];
+	        this.updating = source["updating"];
+	        this.error = source["error"];
+	        this.generation = source["generation"];
+	    }
+	}
 	export class ChapterDTO {
 	    index: number;
 	    number: number;
@@ -36,6 +58,24 @@ export namespace main {
 	        this.values = source["values"];
 	        this.all = source["all"];
 	        this.selected = source["selected"];
+	    }
+	}
+	export class HitDTO {
+	    site: string;
+	    title: string;
+	    url: string;
+	    language: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HitDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.site = source["site"];
+	        this.title = source["title"];
+	        this.url = source["url"];
+	        this.language = source["language"];
 	    }
 	}
 	export class JobDTO {
@@ -128,6 +168,28 @@ export namespace main {
 	        this.rows = source["rows"];
 	    }
 	}
+	export class SiteDTO {
+	    site: string;
+	    label: string;
+	    language: string;
+	    hasCatalog: boolean;
+	    crawlable: boolean;
+	    entries: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SiteDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.site = source["site"];
+	        this.label = source["label"];
+	        this.language = source["language"];
+	        this.hasCatalog = source["hasCatalog"];
+	        this.crawlable = source["crawlable"];
+	        this.entries = source["entries"];
+	    }
+	}
 	export class UpdateDTO {
 	    latest: string;
 	    url: string;
@@ -211,6 +273,7 @@ export namespace main {
 	    update?: UpdateDTO;
 	    browserVisibleAuto: boolean;
 	    browserAlert: string;
+	    catalog: CatalogDTO;
 	
 	    static createFrom(source: any = {}) {
 	        return new State(source);
@@ -244,6 +307,7 @@ export namespace main {
 	        this.update = this.convertValues(source["update"], UpdateDTO);
 	        this.browserVisibleAuto = source["browserVisibleAuto"];
 	        this.browserAlert = source["browserAlert"];
+	        this.catalog = this.convertValues(source["catalog"], CatalogDTO);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
