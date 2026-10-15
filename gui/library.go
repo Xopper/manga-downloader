@@ -40,6 +40,9 @@ type Followed struct {
 	LastSaved  time.Time `json:"lastSaved,omitempty"`
 	// Error is the last check's failure, "" once one succeeds
 	Error string `json:"error,omitempty"`
+	// Cover is the file name of the series' cover in the covers dir (see
+	// covers.go), "" until one is fetched
+	Cover string `json:"cover,omitempty"`
 }
 
 // Seen is what the app last saw of a series it loaded, followed or not
@@ -180,6 +183,9 @@ func (l *Library) Follow(f Followed) error {
 		if f.Chapters > 0 && f.New == 0 {
 			f.New = newAboveCount(f.Chapters, f.Latest, f.SavedUpTo)
 		}
+		if f.Cover == "" {
+			f.Cover = l.followed[i].Cover
+		}
 		l.followed[i] = f
 	} else {
 		l.followed = append(l.followed, f)
@@ -256,6 +262,11 @@ func (l *Library) MarkSaved(url string, upTo float64, numbers []float64) error {
 			f.New = newAbove(numbers, f.SavedUpTo)
 		}
 	})
+}
+
+// SetCover records the cover file name of url; a URL not followed is a no-op
+func (l *Library) SetCover(url, name string) error {
+	return l.Update(url, func(f *Followed) { f.Cover = name })
 }
 
 // SeenOf returns what the app last saw of url, followed or not

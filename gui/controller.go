@@ -204,6 +204,9 @@ type Controller struct {
 	// library is the followed series and what the app saw of every series it
 	// loaded (see library.go); memory-only until SetLibrary
 	library *Library
+	// covers keeps the followed series' covers (see covers.go); nil until
+	// SetCovers, and no cover is fetched meanwhile
+	covers *coverStore
 	// checking is set while CheckLibrary fetches the followed series, with
 	// checkDone of checkTotal done; checkCancel ends it early
 	checking    bool
@@ -458,6 +461,7 @@ func (c *Controller) FinishLoad(url string) error {
 		if lerr := c.library.MarkSeen(url, title, numbers); lerr != nil {
 			c.addLog(LogWarn, "could not save the library: "+lerr.Error())
 		}
+		c.ensureCover(url, false)
 	}
 	c.emit()
 	return err

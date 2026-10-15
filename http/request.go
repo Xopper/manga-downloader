@@ -43,6 +43,10 @@ type RequestParams struct {
 	// Accept overrides the default Accept header. Page images set ImageAccept:
 	// some image hosts answer a document-first Accept with an HTML page
 	Accept string
+	// Timeout bounds one attempt, the body's reading included; zero means
+	// no limit. A background fetch (the app's covers) sets it so a stalled
+	// server can't hold a goroutine for good.
+	Timeout time.Duration
 }
 
 // GetURL returns the request URL
@@ -195,9 +199,8 @@ func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Dur
 	tr := &http.Transport{
 		DisableCompression: true,
 	}
-	client := &http.Client{Transport: tr}
-
 	rp, _ := params.(RequestParams)
+	client := &http.Client{Transport: tr, Timeout: rp.Timeout}
 
 	var reqBody io.Reader
 	if rp.Form != nil {

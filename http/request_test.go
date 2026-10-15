@@ -483,3 +483,22 @@ func TestRequestDefaultAccept(t *testing.T) {
 		t.Errorf("Accept = %q, want %q", accept, ImageAccept)
 	}
 }
+
+// a Timeout ends a stalled attempt instead of waiting on the server for good
+func TestRequestTimeoutEndsAStalledAttempt(t *testing.T) {
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	start := time.Now()
+	_, err := Get(RequestParams{URL: srv.URL, DisableRetry: true, Timeout: 50 * time.Millisecond})
+	if err == nil {
+		t.Fatal("a stalled request returned no error")
+	}
+	if took := time.Since(start); took > 2*time.Second {
+		t.Errorf("the timeout took %v", took)
+	}
+}

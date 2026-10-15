@@ -54,6 +54,10 @@ func main() {
 		}
 	})
 	ctrl.SetLibrary(openLibrary())
+	covers := coversDir()
+	if covers != "" {
+		ctrl.SetCovers(newCoverStore(covers))
+	}
 	app = newApp(ctrl, rt, prefsPath, Tag, versionString())
 
 	err := wails.Run(&options.App{
@@ -63,7 +67,7 @@ func main() {
 		MinWidth:         900,
 		MinHeight:        600,
 		BackgroundColour: startupBackground(),
-		AssetServer:      &assetserver.Options{Assets: assets},
+		AssetServer:      &assetserver.Options{Assets: assets, Handler: coverHandler(covers)},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx, rt)
 		},
@@ -114,6 +118,16 @@ func openLibrary() *Library {
 		notice.Warn("ignoring the saved library: %v", err)
 	}
 	return lib
+}
+
+// coversDir is where the followed series' covers are kept, next to
+// library.json; "" without a config dir (then no cover is fetched)
+func coversDir() string {
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(dir, "manga-downloader", "covers")
 }
 
 // versionString is what the window's About text shows: the tag when there is

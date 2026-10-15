@@ -27,6 +27,7 @@ function followed(over: Partial<Followed>): Followed {
     checkedAt: '2026-10-15T09:00:00Z',
     lastSaved: '2026-10-10T00:00:00Z',
     error: '',
+    cover: '',
     ...over,
   };
 }

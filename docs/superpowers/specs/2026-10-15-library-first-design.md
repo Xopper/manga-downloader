@@ -26,8 +26,8 @@ new. The home screen is their library, not an empty URL box.
 
 - Header: "Library", "N series you follow · M new chapters · checked X ago",
   a sort (new first / title / last downloaded) and *Download all new · M*.
-- A grid of cards, one per followed series: a cover placeholder (the first
-  letter), the title, "site · N chapters", a status line, and one button.
+- A grid of cards, one per followed series: the cover (fetched from the
+  series page in the background; the first letter until then), the title, "site · N chapters", a status line, and one button.
   - Status: "K new · saved up to C", "Up to date · all N saved", "Not checked
     yet", "search only · can't download from this site yet", or the last
     check's error.
@@ -64,7 +64,7 @@ Enter) and opens the series page.
   the saved mark) and *All · N*, the language and scanlator selectors, and
   the existing select-all / count / range toolbar. A followed series marks
   its rows: "new" for chapters above the saved mark, "saved" otherwise.
-- Right panel: cover placeholder, title, site link; *Following* / *Follow*;
+- Right panel: cover (or the first letter), title, site link; *Following* / *Follow*;
   the facts (chapters on the site, new since the last download, saved up to,
   last downloaded); "Save as": format, reading direction (EPUB), pack as,
   folder; then the Download button with its blocker text, as the dock has

@@ -5,14 +5,15 @@ go 1.26.0
 replace github.com/elboletaire/manga-downloader => ../
 
 require (
+	github.com/PuerkitoBio/goquery v1.8.0
 	github.com/elboletaire/manga-downloader v0.0.0-00010101000000-000000000000
 	github.com/wailsapp/wails/v2 v2.16.0
+	golang.org/x/image v0.44.0
 	golang.org/x/sys v0.47.0
 )
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
-	github.com/PuerkitoBio/goquery v1.8.0 // indirect
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/chromedp/cdproto v0.0.0-20260714215040-dc233986426f // indirect
@@ -49,7 +50,6 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.22 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/image v0.44.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )

@@ -104,6 +104,7 @@ func (c *Controller) CheckLibrary(ctx context.Context) error {
 			if entry, ok := c.library.Get(f.URL); ok && entry.New > 0 {
 				c.addLog(LogInfo, fmt.Sprintf("%s: %d new", entry.Title, entry.New))
 			}
+			c.ensureCover(f.URL, false)
 		}
 		c.mu.Lock()
 		c.checkDone++

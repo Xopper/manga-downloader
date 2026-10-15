@@ -150,6 +150,7 @@ export function App({ api }: { api: Api }) {
       checkedAt: '',
       lastSaved: '',
       error: '',
+      cover: '',
     });
   };
   const followLoaded = () => {
@@ -166,6 +167,7 @@ export function App({ api }: { api: Api }) {
       checkedAt: '',
       lastSaved: '',
       error: '',
+      cover: '',
     });
   };
   const unfollow = (url: string) => {

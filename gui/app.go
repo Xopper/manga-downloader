@@ -151,6 +151,9 @@ func (a *App) startup(ctx context.Context, rt *wailsRuntime) {
 		a.ctrl.SetCatalog(openCatalog())
 		a.ctrl.RefreshCatalog(a.updateCtx, false)
 	}()
+	// followed series that have no cover yet (followed before covers
+	// existed, or whose fetch failed) get one now, one at a time
+	go a.ctrl.FetchMissingCovers(a.updateCtx)
 }
 
 // shutdown stops the pushes before the window goes away, then cancels any run

@@ -115,7 +115,7 @@ function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL }
   return (
     <article className={`card${f.new > 0 && f.downloadable ? ' fresh' : ''}`} aria-label={f.title}>
       <div className="cover" aria-hidden="true">
-        <span className="cover-letter">{letter}</span>
+        {f.cover !== '' ? <img className="cover-img" src={f.cover} alt="" /> : <span className="cover-letter">{letter}</span>}
       </div>
       <button
         type="button"

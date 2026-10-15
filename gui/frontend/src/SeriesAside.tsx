@@ -32,13 +32,14 @@ export function SeriesAside(props: Props) {
   const host = hostOf(state.url);
   const title = state.title !== '' ? state.title : followed?.title ?? host;
   const letter = (title.trim()[0] ?? '?').toUpperCase();
+  const cover = followed?.cover ?? '';
   const now = new Date();
 
   return (
     <aside className="side series-aside" aria-label="This series">
       <div className="aside-head">
         <div className="cover aside-cover" aria-hidden="true">
-          <span className="cover-letter">{letter}</span>
+          {cover !== '' ? <img className="cover-img" src={cover} alt="" /> : <span className="cover-letter">{letter}</span>}
         </div>
         <div className="aside-id">
           <h2 className="series-title" title={title}>

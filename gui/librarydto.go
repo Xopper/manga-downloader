@@ -25,6 +25,9 @@ type FollowedDTO struct {
 	CheckedAt  string `json:"checkedAt"`
 	LastSaved  string `json:"lastSaved"`
 	Error      string `json:"error"`
+	// Cover is the series' cover as the window loads it, "/covers/<file>",
+	// "" when the app has none
+	Cover string `json:"cover"`
 }
 
 // LibraryDTO is State.library: the followed series, and the check and the
@@ -68,7 +71,16 @@ func followedDTO(f Followed) FollowedDTO {
 		CheckedAt:    timeDTO(f.CheckedAt),
 		LastSaved:    timeDTO(f.LastSaved),
 		Error:        f.Error,
+		Cover:        coverPath(f.Cover),
 	}
+}
+
+// coverPath is the window's path of a cover file name, "" for none
+func coverPath(name string) string {
+	if name == "" {
+		return ""
+	}
+	return "/covers/" + name
 }
 
 func libraryDTO(c *Controller) LibraryDTO {
@@ -109,6 +121,7 @@ func (a *App) Follow(f FollowedDTO) error {
 		return err
 	}
 	c.addLog(LogInfo, fmt.Sprintf("Following %s", nonEmpty(entry.Title, url)))
+	c.ensureCover(url, true)
 	return nil
 }
 
@@ -121,6 +134,11 @@ func (a *App) Unfollow(url string) error {
 	}
 	if ok {
 		c.addLog(LogInfo, fmt.Sprintf("Unfollowed %s", nonEmpty(entry.Title, url)))
+		if s := c.Covers(); s != nil && entry.Cover != "" {
+			if err := s.Remove(entry.Cover); err != nil {
+				c.addLog(LogWarn, "could not remove the cover: "+err.Error())
+			}
+		}
 	}
 	c.emit()
 	return nil

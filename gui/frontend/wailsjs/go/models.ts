@@ -95,6 +95,7 @@ export namespace main {
 	    checkedAt: string;
 	    lastSaved: string;
 	    error: string;
+	    cover: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new FollowedDTO(source);
@@ -114,6 +115,7 @@ export namespace main {
 	        this.checkedAt = source["checkedAt"];
 	        this.lastSaved = source["lastSaved"];
 	        this.error = source["error"];
+	        this.cover = source["cover"];
 	    }
 	}
 	export class HitDTO {

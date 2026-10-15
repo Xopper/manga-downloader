@@ -153,7 +153,13 @@ export function mockSetupFrom(search: string): MockSetup {
   };
 }
 
-/** The mock's library: the mock series (12 chapters past its saved mark), one up to date, one search only */
+/** A fake cover, for the mock only: a flat 2:3 panel with a circle, in the given colours */
+function mockCover(ground: string, mark: string): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'><rect width='200' height='300' fill='${ground}'/><circle cx='100' cy='118' r='46' fill='${mark}'/><rect x='40' y='200' width='120' height='14' rx='4' fill='${mark}' opacity='0.7'/><rect x="60" y="226" width="80" height="10" rx="4" fill='${mark}' opacity='0.45'/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/** The mock's library: the mock series (12 chapters past its saved mark), one up to date, one search only; the first two have covers */
 function mockLibrary(): Followed[] {
   return [
     {
@@ -169,6 +175,7 @@ function mockLibrary(): Followed[] {
       checkedAt: '2026-10-15T08:50:00Z',
       lastSaved: '2026-10-11T19:00:00Z',
       error: '',
+      cover: mockCover('#1d4ed8', '#fbbf24'),
     },
     {
       url: 'https://www.mangaread.org/manga/berserk/',
@@ -183,6 +190,7 @@ function mockLibrary(): Followed[] {
       checkedAt: '2026-10-15T08:50:00Z',
       lastSaved: '2026-10-02T19:00:00Z',
       error: '',
+      cover: mockCover('#3f3f46', '#e4e4e7'),
     },
     {
       url: 'https://manhwaclan.example/manga/kingdom/',
@@ -197,6 +205,7 @@ function mockLibrary(): Followed[] {
       checkedAt: '',
       lastSaved: '',
       error: '',
+      cover: '',
     },
   ];
 }
@@ -1114,6 +1123,15 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       }
       pushLog('info', `Following ${entry.title || target}`);
       push();
+      // the cover arrives a moment later, as the app's background fetch does
+      if (entry.cover === '' && !freeze) {
+        setTimeout(() => {
+          if (followed.includes(entry)) {
+            entry.cover = mockCover('#7c2d12', '#fdba74');
+            push();
+          }
+        }, 900);
+      }
     },
     async unfollow(target) {
       const entry = followedOf(target);

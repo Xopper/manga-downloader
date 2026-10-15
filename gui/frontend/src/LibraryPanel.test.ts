@@ -37,6 +37,12 @@ describe('LibraryPanel', () => {
     expect(markup).toContain('3 series you follow · 12 new chapters');
     expect(markup).toContain('aria-label="Following One Piece, click to unfollow"');
   });
+  it('shows the cover when the entry has one, the first letter otherwise', async () => {
+    const state = await createMockApi({ scenario: 'empty', freeze: true }).state();
+    const markup = render(state);
+    expect(markup.match(/<img class="cover-img" src="data:image\/svg\+xml,[^"]+" alt=""\/>/g)?.length).toBe(2);
+    expect(markup.match(/<span class="cover-letter">K<\/span>/g)?.length).toBe(1);
+  });
   it('puts the series with new chapters first', async () => {
     const state = await createMockApi({ scenario: 'empty', freeze: true }).state();
     const markup = render(state);

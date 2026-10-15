@@ -139,6 +139,8 @@ export interface Followed {
   lastSaved: string;
   /** The last check's failure, "" once one succeeds */
   error: string;
+  /** The series' cover as the window loads it ("/covers/<file>"), "" when the app has none yet */
+  cover: string;
 }
 
 /** The download of every followed series' new chapters, one after the other */

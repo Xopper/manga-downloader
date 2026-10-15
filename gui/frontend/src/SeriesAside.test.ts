@@ -39,6 +39,8 @@ describe('SeriesAside', () => {
     expect(markup).toContain('Save as');
     expect(markup).toContain('Browse…');
     expect(markup).toContain('Download');
+    expect(markup).toContain('<img class="cover-img" src="data:image/svg+xml,');
+    expect(markup).not.toContain('cover-letter');
   });
   it('offers Follow without the facts for a series not followed', async () => {
     const state = await createMockApi({ scenario: 'loaded', freeze: true, nolibrary: true }).state();
