@@ -89,6 +89,16 @@ test/gui: build/gui/frontend
 	cd gui && $(GUI_CGO) go test -tags $(GUI_GO_TAGS) ./...
 	cd gui/frontend && pnpm test
 
+# a two-page crawl of one site per crawler family, live (network); the
+# single-series family gets exactly one entry
+catalog/smoke:
+	rm -rf /tmp/catalog-smoke
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site kingofshojo.com
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site mangaread.org
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site heavenly-delusion.com
+	test -s /tmp/catalog-smoke/index.json
+	grep -q '"entries": 1,' /tmp/catalog-smoke/index.json
+
 # one dependency per line, alphabetically sorted (grabber/html deliberately
 # last), so parallel site-support branches never edit the same line
 grabber: \
