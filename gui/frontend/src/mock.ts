@@ -33,7 +33,8 @@
 // Typed values match ignoring case, and take the spelling the series lists.
 
 import type { Api, Unsubscribe } from './api';
-import type { CatalogInfo, Chapter, FilterChoice, Hit, Job, LogLine, Options, SiteInfo, State, Summary, Update } from './types';
+import { urlKey } from './library';
+import type { CatalogInfo, Chapter, FilterChoice, Followed, Hit, Job, LibraryInfo, LogLine, Options, SiteInfo, State, Summary, Update } from './types';
 import { groupChapters, parseVolumes, siteVolumes } from './volumes';
 import { OP_CHAPTERS } from './mock-onepiece';
 
@@ -89,6 +90,8 @@ export interface MockSetup {
   epub: boolean;
   /** Start without any search catalog on disk */
   nocatalog: boolean;
+  /** Start with nothing followed */
+  nolibrary: boolean;
 }
 
 /** What the mock series offers for each filter; null when the site lists none */
@@ -146,7 +149,56 @@ export function mockSetupFrom(search: string): MockSetup {
     shot: params.has('shot'),
     epub: params.has('epub'),
     nocatalog: params.has('nocatalog'),
+    nolibrary: params.has('nolibrary'),
   };
+}
+
+/** The mock's library: the mock series (12 chapters past its saved mark), one up to date, one search only */
+function mockLibrary(): Followed[] {
+  return [
+    {
+      url: 'https://example.com/manga/one-piece',
+      title: 'One Piece',
+      site: 'example.com',
+      downloadable: true,
+      chapters: CHAPTERS,
+      latest: 1194,
+      savedUpTo: 1182,
+      new: 12,
+      followedAt: '2026-10-03T10:00:00Z',
+      checkedAt: '2026-10-15T08:50:00Z',
+      lastSaved: '2026-10-11T19:00:00Z',
+      error: '',
+    },
+    {
+      url: 'https://www.mangaread.org/manga/berserk/',
+      title: 'Berserk',
+      site: 'mangaread.org',
+      downloadable: true,
+      chapters: 379,
+      latest: 379,
+      savedUpTo: 379,
+      new: 0,
+      followedAt: '2026-09-20T10:00:00Z',
+      checkedAt: '2026-10-15T08:50:00Z',
+      lastSaved: '2026-10-02T19:00:00Z',
+      error: '',
+    },
+    {
+      url: 'https://manhwaclan.example/manga/kingdom/',
+      title: 'Kingdom',
+      site: 'manhwaclan.example',
+      downloadable: false,
+      chapters: 0,
+      latest: 0,
+      savedUpTo: 0,
+      new: 0,
+      followedAt: '2026-10-12T10:00:00Z',
+      checkedAt: '',
+      lastSaved: '',
+      error: '',
+    },
+  ];
 }
 
 // the extension each format's output carries; raw writes a folder without one
@@ -230,6 +282,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     shot,
     epub,
     nocatalog,
+    nolibrary,
   } = {
     scenario: 'empty' as Scenario,
     freeze: false,
@@ -242,6 +295,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     shot: false,
     epub: false,
     nocatalog: false,
+    nolibrary: false,
     ...(typeof setup === 'string' ? { scenario: setup } : setup),
   };
   const offers = OFFERS[site];
@@ -286,6 +340,24 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     updating: catalogUpdating,
     error: '',
     generation: catalogGeneration,
+  });
+
+  // the library: the followed series, what the mock saw of every series it
+  // loaded (chapter counts for the hits), the check and the batch
+  let followed: Followed[] = nolibrary ? [] : mockLibrary();
+  const seen = new Map<string, number>();
+  let checking = false;
+  let checkDone = 0;
+  let checkTotal = 0;
+  let batch = { active: false, done: 0, total: 0, current: '' };
+  let batchStop = false;
+  const followedOf = (target: string): Followed | undefined => followed.find((f) => urlKey(f.url) === urlKey(target));
+  const libraryInfo = (): LibraryInfo => ({
+    followed: followed.map((f) => ({ ...f })),
+    checking,
+    checkDone,
+    checkTotal,
+    batch: { ...batch },
   });
 
   const stateBus = new Bus<State>();
@@ -370,6 +442,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     browserVisibleAuto: browserAuto,
     browserAlert,
     catalog: catalogInfo(),
+    library: libraryInfo(),
   });
   const push = () => stateBus.emit(snapshot());
 
@@ -391,6 +464,16 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     jobs = [];
     summary = null;
     pushLog('info', `Loaded ${title}: ${chapters.length} chapters`);
+    seen.set(urlKey(url), chapters.length);
+    const f = followedOf(url);
+    if (f !== undefined) {
+      f.title = title;
+      f.chapters = chapters.length;
+      f.latest = Math.max(...chapters.map((c) => c.number));
+      f.new = chapters.filter((c) => c.number > f.savedUpTo).length;
+      f.checkedAt = new Date().toISOString();
+      f.error = '';
+    }
     chaptersBus.emit(chapters);
     selectionBus.emit([]);
     push();
@@ -437,12 +520,22 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     if (failures.length > 0) {
       pushLog('warn', `${failures.length} chapter(s) failed`);
     }
+    // a run that saved something moves the library's mark, as the backend does
+    const f = followedOf(url);
+    const savedNumbers = bundled && !cancelling ? runNumbers : jobs.filter((j) => j.state === 'done' && !j.volume).map((j) => j.number);
+    if (f !== undefined && savedNumbers.length > 0) {
+      f.savedUpTo = Math.max(f.savedUpTo, ...savedNumbers);
+      f.new = chapters.filter((c) => c.number > f.savedUpTo).length;
+      f.lastSaved = new Date().toISOString();
+    }
     push();
   }
 
   // the chapters of the run that haven't started; the backend only creates a
   // job when a chapter starts, so the mock does too
   let pending: Chapter[] = [];
+  // the numbers of the chapters the run was started with, for the library's mark
+  let runNumbers: number[] = [];
   // how many chapters each volume row of the run holds, by title
   let volumeChapters = new Map<string, number>();
 
@@ -557,6 +650,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
 
   function beginRun(list: Chapter[]): void {
     running = true;
+    runNumbers = list.map((c) => c.number);
     cancelling = false;
     runChapters = list.length;
     runBundle = options.packAs === 'bundle';
@@ -942,7 +1036,18 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         for (const title of s.entries) {
           const folded = title.toLowerCase();
           if (words.every((w) => folded.includes(w))) {
-            hits.push({ site: s.site, title, url: `https://${s.site}/manga/${slug(title)}/`, language: s.language, downloadable: s.downloadable, nsfw: s.nsfw });
+            const hitURL = `https://${s.site}/manga/${slug(title)}/`;
+            const entry = followedOf(hitURL);
+            hits.push({
+              site: s.site,
+              title,
+              url: hitURL,
+              language: s.language,
+              downloadable: s.downloadable,
+              nsfw: s.nsfw,
+              chapters: entry?.chapters ?? seen.get(urlKey(hitURL)) ?? 0,
+              followed: entry !== undefined,
+            });
           }
         }
       }
@@ -978,6 +1083,141 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       }, 600);
     },
 
+    async follow(f) {
+      const target = f.url.trim();
+      if (target === '') {
+        throw 'a followed series needs a link';
+      }
+      const entry: Followed = {
+        ...f,
+        url: target,
+        site: hostOfURL(target),
+        followedAt: f.followedAt !== '' ? f.followedAt : new Date().toISOString(),
+      };
+      if (loaded && urlKey(url) === urlKey(target)) {
+        entry.title = title;
+        entry.chapters = chapters.length;
+        entry.latest = Math.max(...chapters.map((c) => c.number));
+        entry.new = chapters.filter((c) => c.number > entry.savedUpTo).length;
+        entry.checkedAt = new Date().toISOString();
+        entry.downloadable = true;
+      } else if (entry.chapters === 0) {
+        entry.chapters = seen.get(urlKey(target)) ?? 0;
+      }
+      const at = followed.findIndex((g) => urlKey(g.url) === urlKey(target));
+      if (at >= 0) {
+        entry.savedUpTo = entry.savedUpTo || followed[at].savedUpTo;
+        followed[at] = entry;
+      } else {
+        followed = [...followed, entry];
+      }
+      pushLog('info', `Following ${entry.title || target}`);
+      push();
+    },
+    async unfollow(target) {
+      const entry = followedOf(target);
+      followed = followed.filter((f) => f !== entry);
+      if (entry !== undefined) {
+        pushLog('info', `Unfollowed ${entry.title}`);
+      }
+      push();
+    },
+    async checkLibrary() {
+      if (checking) {
+        throw 'a check is already running';
+      }
+      if (loading || running) {
+        throw 'a series is loading or a download is running';
+      }
+      const todo = followed.filter((f) => f.downloadable);
+      if (todo.length === 0) {
+        throw 'nothing to check: no followed series the downloader can read';
+      }
+      checking = true;
+      checkDone = 0;
+      checkTotal = todo.length;
+      pushLog('info', `Checking ${todo.length} followed series for new chapters`);
+      push();
+      for (const f of todo) {
+        if (!checking) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, freeze ? 0 : 600));
+        f.checkedAt = new Date().toISOString();
+        if (urlKey(f.url) === urlKey('https://example.com/manga/one-piece')) {
+          f.chapters = CHAPTERS;
+          f.latest = 1194;
+          f.new = OP_CHAPTERS.filter(([number]) => number > f.savedUpTo).length;
+        }
+        f.error = '';
+        checkDone++;
+        push();
+      }
+      checking = false;
+      pushLog('info', 'Check done');
+      push();
+    },
+    async cancelCheck() {
+      checking = false;
+      push();
+    },
+    async downloadNew(target) {
+      const f = followedOf(target);
+      if (f === undefined) {
+        throw "that series isn't followed";
+      }
+      if (!f.downloadable) {
+        throw "the downloader can't read this site yet";
+      }
+      await startLoad(f.url);
+      if (!loaded) {
+        return;
+      }
+      const fresh = chapters.filter((c) => c.number > f.savedUpTo);
+      if (fresh.length === 0) {
+        pushLog('info', `${f.title}: nothing new to download`);
+        return;
+      }
+      selected = new Set(fresh.map((c) => c.index));
+      selectionBus.emit(selectionOf());
+      pushLog('info', `Downloading ${fresh.length} chapter(s) of ${title}`);
+      simulateRun(fresh);
+    },
+    async downloadAllNew() {
+      if (loading || running || checking) {
+        throw 'a series is loading or a download is running';
+      }
+      if (batch.active) {
+        throw 'a download of every new chapter is already running';
+      }
+      const todo = followed.filter((f) => f.downloadable && f.new > 0);
+      if (todo.length === 0) {
+        throw 'nothing new in the library';
+      }
+      batch = { active: true, done: 0, total: todo.length, current: '' };
+      batchStop = false;
+      push();
+      void (async () => {
+        for (const [i, f] of todo.entries()) {
+          if (batchStop) {
+            break;
+          }
+          batch = { ...batch, current: f.title, done: i };
+          push();
+          await api.downloadNew(f.url);
+          while (running) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+        }
+        batch = { active: false, done: 0, total: 0, current: '' };
+        push();
+      })();
+    },
+    async cancelBatch() {
+      batchStop = true;
+      await api.cancel();
+    },
+
     onState: (cb) => stateBus.subscribe(cb),
     onChapters: (cb) => chaptersBus.subscribe(cb),
     onSelection: (cb) => selectionBus.subscribe(cb),
@@ -988,6 +1228,15 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
 }
 
 export { scenarioFrom };
+
+/** The host of a URL without "www.", "" when it doesn't parse */
+function hostOfURL(raw: string): string {
+  try {
+    return new URL(raw).hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
 
 /** A URL slug of a title, the way most sites make one */
 function slug(title: string): string {

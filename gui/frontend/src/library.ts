@@ -1,0 +1,129 @@
+// The library's pure parts: what a card says and offers, the home's header
+// line, the sort, which chapters are new, and the URL key two spellings of
+// one series share (as the backend's urlKey).
+
+import { isSeriesUrl } from './autoLoad';
+import { plural } from './format';
+import { ago } from './search';
+import type { Chapter, Followed, LibraryInfo, State } from './types';
+
+/** The form two spellings of one series URL share: lower-case scheme and host, no "www.", no trailing slash */
+export function urlKey(raw: string): string {
+  const text = raw.trim();
+  try {
+    const u = new URL(text);
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    const port = u.port !== '' ? `:${u.port}` : '';
+    return `${u.protocol.toLowerCase()}//${host}${port}${u.pathname.replace(/\/+$/, '')}${u.search}`;
+  } catch {
+    return text.toLowerCase().replace(/\/+$/, '');
+  }
+}
+
+/** The followed entry of url, null when it isn't followed */
+export function followedOf(library: Pick<LibraryInfo, 'followed'>, url: string): Followed | null {
+  if (url.trim() === '') {
+    return null;
+  }
+  const key = urlKey(url);
+  return library.followed.find((f) => urlKey(f.url) === key) ?? null;
+}
+
+/** Whether the top box holds a link to load rather than a title to search */
+export function isLinkQuery(text: string): boolean {
+  const t = text.trim();
+  return /^https?:\/\//i.test(t) || isSeriesUrl(t);
+}
+
+export type Tone = 'new' | 'ok' | 'muted' | 'warn' | 'danger';
+
+/** The status line of a card */
+export function cardStatus(f: Followed): { text: string; tone: Tone } {
+  if (!f.downloadable) {
+    return { text: "search only · can't download from this site yet", tone: 'warn' };
+  }
+  if (f.error !== '') {
+    return { text: `Check failed: ${f.error}`, tone: 'danger' };
+  }
+  if (f.chapters === 0) {
+    return { text: 'Not checked yet', tone: 'muted' };
+  }
+  if (f.new > 0) {
+    const saved = f.savedUpTo > 0 ? ` · saved up to ${f.savedUpTo}` : ' · nothing saved yet';
+    return { text: `${f.new} new${saved}`, tone: 'new' };
+  }
+  return { text: `Up to date · all ${f.chapters} saved`, tone: 'ok' };
+}
+
+/** The one button of a card */
+export function cardAction(f: Followed): { label: string; kind: 'new' | 'none' | 'open' } {
+  if (!f.downloadable) {
+    return { label: 'Open on the site', kind: 'open' };
+  }
+  if (f.new > 0) {
+    return { label: f.savedUpTo > 0 ? `Download ${f.new} new` : `Download all ${f.new}`, kind: 'new' };
+  }
+  return { label: f.chapters === 0 ? 'Not checked yet' : 'Nothing new', kind: 'none' };
+}
+
+export type Sort = 'new' | 'title' | 'saved';
+
+/** The cards in order: new chapters first (then title), by title, or by last download */
+export function sortFollowed(list: Followed[], by: Sort): Followed[] {
+  const byTitle = (a: Followed, b: Followed) => a.title.localeCompare(b.title);
+  const out = [...list];
+  switch (by) {
+    case 'new':
+      return out.sort((a, b) => b.new - a.new || byTitle(a, b));
+    case 'title':
+      return out.sort(byTitle);
+    case 'saved':
+      return out.sort((a, b) => b.lastSaved.localeCompare(a.lastSaved) || byTitle(a, b));
+  }
+}
+
+/** How many new chapters the library has in all, over the series the downloader can read */
+export function totalNew(library: Pick<LibraryInfo, 'followed'>): number {
+  return library.followed.filter((f) => f.downloadable).reduce((n, f) => n + f.new, 0);
+}
+
+/** The home's header line: "5 series you follow · 3 new chapters · checked 5 min ago" */
+export function librarySummary(library: Pick<LibraryInfo, 'followed' | 'checking' | 'checkDone' | 'checkTotal'>, now: Date): string {
+  const n = library.followed.length;
+  if (n === 0) {
+    return 'Nothing followed yet';
+  }
+  const parts = [`${plural(n, 'series you follow', 'series you follow')}`];
+  const fresh = totalNew(library);
+  parts.push(fresh > 0 ? plural(fresh, 'new chapter', 'new chapters') : 'nothing new');
+  if (library.checking) {
+    parts.push(`checking ${library.checkDone + 1} of ${library.checkTotal}…`);
+  } else {
+    const checked = library.followed.map((f) => f.checkedAt).filter((t) => t !== '').sort();
+    if (checked.length > 0) {
+      parts.push(`checked ${ago(checked[checked.length - 1], now)}`);
+    }
+  }
+  return parts.join(' · ');
+}
+
+/** The indices of the chapters numbered above savedUpTo */
+export function newIndices(chapters: Chapter[], savedUpTo: number): number[] {
+  return chapters.filter((c) => c.number > savedUpTo).map((c) => c.index);
+}
+
+/** The tag a chapter row shows for a followed series: new above the saved mark, saved below it; none for a series not followed or never saved */
+export function chapterMark(number: number, f: Followed | null): 'new' | 'saved' | '' {
+  if (f === null || !f.downloadable) {
+    return '';
+  }
+  if (number > f.savedUpTo) {
+    return f.savedUpTo > 0 ? 'new' : '';
+  }
+  return 'saved';
+}
+
+/** The followed entry of the loaded series */
+export function loadedFollowed(state: Pick<State, 'url' | 'library'>): Followed | null {
+  return followedOf(state.library, state.url);
+}

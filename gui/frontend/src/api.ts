@@ -4,7 +4,7 @@
 
 import * as app from '../wailsjs/go/main/App';
 import { BrowserOpenURL, ClipboardSetText, EventsOn } from '../wailsjs/runtime/runtime';
-import type { CatalogInfo, Chapter, Hit, LogLine, Options, SiteInfo, State } from './types';
+import type { CatalogInfo, Chapter, Followed, Hit, LogLine, Options, SiteInfo, State } from './types';
 
 export type Unsubscribe = () => void;
 
@@ -52,6 +52,19 @@ export interface Api {
   updateCatalog(): Promise<void>;
   /** Puts text on the system clipboard (through the runtime: the webview's own clipboard API needs a secure context) */
   copyText(text: string): Promise<void>;
+
+  // The library. state.library follows every change.
+  /** Follows a series (or updates its entry); the loaded series fills in its own count */
+  follow(f: Followed): Promise<void>;
+  unfollow(url: string): Promise<void>;
+  /** Fetches every followed series' chapter list in the background; refused while busy or already checking */
+  checkLibrary(): Promise<void>;
+  cancelCheck(): Promise<void>;
+  /** Loads a followed series, selects the chapters above its saved mark and starts; refused while busy */
+  downloadNew(url: string): Promise<void>;
+  /** The same for every followed series with new chapters, one after the other; progress in state.library.batch */
+  downloadAllNew(): Promise<void>;
+  cancelBatch(): Promise<void>;
 
   // Pushes. Each returns a function that stops the callback.
   onState(cb: (s: State) => void): Unsubscribe;
@@ -124,6 +137,13 @@ export function createWailsApi(): Api {
         throw new Error('could not copy to the clipboard');
       }
     },
+    follow: (f) => app.Follow(f as unknown as Parameters<typeof app.Follow>[0]),
+    unfollow: (url) => app.Unfollow(url),
+    checkLibrary: () => app.CheckLibrary(),
+    cancelCheck: () => app.CancelCheck(),
+    downloadNew: (url) => app.DownloadNew(url),
+    downloadAllNew: () => app.DownloadAllNew(),
+    cancelBatch: () => app.CancelBatch(),
 
     onState: (cb) => state.subscribe(cb),
     onChapters: (cb) => chapters.subscribe(cb),

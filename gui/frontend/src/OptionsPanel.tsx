@@ -1,6 +1,8 @@
 // How the chapters are saved. Every control commits on its own (see fields.tsx)
 // as a patch; App applies each patch over the last options sent, so two
-// controls can't overwrite each other's edits.
+// controls can't overwrite each other's edits. SaveOptions (folder, format,
+// pack as) sits on the series page; MoreOptions (pages, advanced) in the
+// Settings drawer; OptionsPanel is both, for the tests and the screenshots.
 
 import { browserSwitchOf } from './browserVisible';
 import { AVIF_EPUB_HINT, avifSwitchOf, convertFlagsOf, convertValueOf } from './convertImages';
@@ -27,24 +29,39 @@ interface Props {
 }
 
 export function OptionsPanel({ state, onOptions, onChooseFolder, onError }: Props) {
+  return (
+    <div className="options">
+      <SaveOptions state={state} onOptions={onOptions} onChooseFolder={onChooseFolder} onError={onError} heading="Save" />
+      <MoreOptions state={state} onOptions={onOptions} onError={onError} />
+    </div>
+  );
+}
+
+/** The note shown above locked options */
+function LockedNote({ state }: { state: State }) {
+  if (!state.loading && !state.running) {
+    return null;
+  }
+  return (
+    <p className="locked-note" role="status">
+      {state.running ? 'Options are locked while a download runs.' : 'Options are locked while the series loads.'}
+    </p>
+  );
+}
+
+/** Where and how the chapters are saved: folder, format, reading direction, pack as */
+export function SaveOptions({ state, onOptions, onChooseFolder, onError, heading }: Props & { heading: string }) {
   const o = state.options;
   const locked = state.loading || state.running;
-  const flags = convertFlagsOf(o.convertImages);
-  const avif = avifSwitchOf(flags, o.format);
-  const browser = browserSwitchOf(state);
   const set = (patch: Partial<Options>) => {
     onOptions(patch).catch(() => undefined);
   };
 
   return (
-    <div className="options">
-      {locked && (
-        <p className="locked-note" role="status">
-          {state.running ? 'Options are locked while a download runs.' : 'Options are locked while the series loads.'}
-        </p>
-      )}
+    <>
+      <LockedNote state={state} />
       <section className="opt-group" aria-labelledby="opt-save">
-        <h3 id="opt-save">Save</h3>
+        <h3 id="opt-save">{heading}</h3>
         <div className="field">
           <span className="label" id="folder-label">
             Folder
@@ -113,7 +130,23 @@ export function OptionsPanel({ state, onOptions, onChooseFolder, onError }: Prop
           </p>
         </div>
       </section>
+    </>
+  );
+}
 
+/** The options that aren't about one series: pages, the filename template, the browser window */
+export function MoreOptions({ state, onOptions, onError }: Omit<Props, 'onChooseFolder'>) {
+  const o = state.options;
+  const locked = state.loading || state.running;
+  const flags = convertFlagsOf(o.convertImages);
+  const avif = avifSwitchOf(flags, o.format);
+  const browser = browserSwitchOf(state);
+  const set = (patch: Partial<Options>) => {
+    onOptions(patch).catch(() => undefined);
+  };
+
+  return (
+    <>
       <section className="opt-group" aria-labelledby="opt-pages">
         <h3 id="opt-pages">Pages</h3>
         <fieldset className="field" disabled={locked}>
@@ -177,6 +210,6 @@ export function OptionsPanel({ state, onOptions, onChooseFolder, onError }: Prop
           />
         </div>
       </details>
-    </div>
+    </>
   );
 }

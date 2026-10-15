@@ -423,8 +423,10 @@ describe('mockSetupFrom', () => {
       shot: false,
       epub: false,
       nocatalog: false,
+      nolibrary: false,
     });
     expect(mockSetupFrom('?novolumes').novolumes).toBe(true);
+    expect(mockSetupFrom('?nolibrary').nolibrary).toBe(true);
     expect(mockSetupFrom('?chapters=nope').chapters).toBeGreaterThan(100);
     expect(mockSetupFrom('?fail').fail).toBe(true);
     expect(mockSetupFrom('?skip').skip).toBe(true);

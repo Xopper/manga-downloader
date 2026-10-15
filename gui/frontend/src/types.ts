@@ -114,6 +114,49 @@ export interface State {
   browserAlert: string;
   /** The search catalogs: how many sites and titles are on disk, and their standing */
   catalog: CatalogInfo;
+  /** The followed series, with the check or batch download in progress */
+  library: LibraryInfo;
+}
+
+/** A series the user follows, as the library keeps it */
+export interface Followed {
+  url: string;
+  title: string;
+  /** The host of url without "www." */
+  site: string;
+  /** The downloader has a grabber for the site; a search-only series is a link only */
+  downloadable: boolean;
+  /** The listed chapter count and the highest number, as of the last load or check */
+  chapters: number;
+  latest: number;
+  /** The highest chapter number the app saved for it, 0 when it never did */
+  savedUpTo: number;
+  /** How many listed chapters are numbered above savedUpTo */
+  new: number;
+  /** RFC 3339, "" when unset */
+  followedAt: string;
+  checkedAt: string;
+  lastSaved: string;
+  /** The last check's failure, "" once one succeeds */
+  error: string;
+}
+
+/** The download of every followed series' new chapters, one after the other */
+export interface BatchInfo {
+  active: boolean;
+  done: number;
+  total: number;
+  /** The title of the series being downloaded */
+  current: string;
+}
+
+export interface LibraryInfo {
+  followed: Followed[];
+  /** The followed series are being checked for new chapters, checkDone of checkTotal so far */
+  checking: boolean;
+  checkDone: number;
+  checkTotal: number;
+  batch: BatchInfo;
 }
 
 /** A search result: a series of a site's catalog */
@@ -128,6 +171,10 @@ export interface Hit {
   downloadable: boolean;
   /** The site's Tachiyomi source says it may carry adult content */
   nsfw: boolean;
+  /** The chapter count the app last saw for the series (one it loaded or follows), 0 when it never opened it */
+  chapters: number;
+  /** The series is in the library */
+  followed: boolean;
 }
 
 /** A site of the picker, with its catalog's standing */

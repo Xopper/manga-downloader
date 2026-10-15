@@ -1,45 +1,59 @@
-// The window. Three bands, top to bottom, following the job's own order:
+// The window. Top to bottom:
 //
-//   source bar  what to fetch (URL, language and scanlator filters)
-//   workspace   the chapter list | a side panel with Options and Activity,
-//               and the Download action pinned under both tabs
+//   top bar     always there: the brand (home), one box that searches a
+//               title or loads a link, Check for new chapters, Settings
+//   page        the library (home), the search results (while the box holds
+//               a title), or the series: its chapters, with what belongs to
+//               it on the right (facts, Follow, Save as, Download)
+//   strip       what's happening now: the running download, then how it ended
 //   status bar  the latest log line (the full log opens as a drawer), version
+//
+// Settings and the download's details open as drawers over the window.
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityPanel } from './ActivityPanel';
+import { ActivityDrawer } from './ActivityDrawer';
 import type { Api } from './api';
 import { BrowserAlert } from './BrowserAlert';
 import { ChapterPanel } from './ChapterPanel';
-import { DownloadDock } from './DownloadDock';
 import { errorMessage } from './format';
-import { ActivityIcon, SlidersIcon, Spinner } from './icons';
-import { Mascot } from './Mascot';
+import { Spinner } from './icons';
+import { followedOf, isLinkQuery, urlKey, type Sort } from './library';
+import { LibraryPanel } from './LibraryPanel';
 import { LogDrawer, StatusBar } from './LogPanel';
+import { Mascot } from './Mascot';
 import { createOptionsWriter } from './optionsWriter';
-import { OptionsPanel } from './OptionsPanel';
-import { type BlockedHit, SearchPanel } from './SearchPanel';
-import { SourceBar, type Mode } from './SourceBar';
-import { tally } from './run';
-import type { Options } from './types';
+import { ProgressStrip } from './ProgressStrip';
+import { type BlockedHit, ResultsPanel } from './ResultsPanel';
+import { SeriesAside } from './SeriesAside';
+import { SettingsDrawer } from './SettingsDrawer';
+import { TopBar } from './TopBar';
+import type { Followed, Hit, Options } from './types';
 import { useSearch } from './useSearch';
 import { useWindow } from './useWindow';
 
-type Tab = 'options' | 'activity';
+/** The page under the top bar: the library, or the series */
+type Page = 'home' | 'series';
 
 export function App({ api }: { api: Api }) {
   const { state, chapters, selected, log, failure } = useWindow(api);
-  const [tab, setTab] = useState<Tab>('options');
-  // URL mode pastes a link; Search mode finds one in the catalogs
-  const [mode, setMode] = useState<Mode>('url');
-  const search = useSearch(api, state?.catalog.generation ?? 0, mode === 'search');
+  const [page, setPage] = useState<Page>('home');
+  const [sort, setSort] = useState<Sort>('new');
+  // the top box: a title searches the catalogs (the results page shows
+  // while it holds one); a link loads
+  const search = useSearch(api, state?.catalog.generation ?? 0, true);
+  const results = search.query.trim() !== '' && !isLinkQuery(search.query);
   // a picked hit from a site the downloader has no grabber for, explained in
-  // the panel instead of loaded
+  // the results instead of loaded
   const [blocked, setBlocked] = useState<BlockedHit | null>(null);
   // "Copied" on the note's button for a moment after a copy
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(copiedTimer.current), []);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
+  // the finished run's strip, until dismissed; a new run shows it again
+  const [stripDismissed, setStripDismissed] = useState(false);
   const [loadRefusal, setLoadRefusal] = useState('');
   const [actionError, setActionError] = useState('');
   const [optionError, setOptionError] = useState('');
@@ -56,20 +70,13 @@ export function App({ api }: { api: Api }) {
     }
   }, [state, optionsWriter]);
 
-  // a run that starts brings its progress into view, as does opening the
-  // window on a run (or its outcome); the tab stays the user's to change
+  // a run that starts brings its strip back
   const running = state?.running ?? false;
-  const wasRunning = useRef<boolean | null>(null);
   useEffect(() => {
-    if (state === null) {
-      return;
+    if (running) {
+      setStripDismissed(false);
     }
-    const first = wasRunning.current === null;
-    if ((running && !wasRunning.current) || (first && state.summary !== null)) {
-      setTab('activity');
-    }
-    wasRunning.current = running;
-  }, [running, state === null]);
+  }, [running]);
 
   if (state === null) {
     return (
@@ -89,15 +96,26 @@ export function App({ api }: { api: Api }) {
   }
 
   const busy = state.loading || state.running;
+  const library = state.library;
+  const libraryBusy = busy || library.checking || library.batch.active;
+  const followed = followedOf(library, state.url);
+  const fail = (set: (m: string) => void) => (e: unknown) => set(errorMessage(e));
 
   const load = (target: string) => {
     setLoadRefusal('');
     setActionError('');
-    api.load(target).catch((e) => setLoadRefusal(errorMessage(e)));
+    setPage('series');
+    search.setQuery('');
+    api.load(target).catch(fail(setLoadRefusal));
   };
-  const clear = () => {
-    setLoadRefusal('');
-    api.clear().catch((e) => setLoadRefusal(errorMessage(e)));
+  // the series page of url: loaded unless it's the loaded one already
+  const openSeries = (url: string) => {
+    if (urlKey(url) === urlKey(state.url) && (state.loaded || state.loading)) {
+      setPage('series');
+      search.setQuery('');
+      return;
+    }
+    load(url);
   };
   const setOptions = (patch: Partial<Options>) => {
     setOptionError('');
@@ -114,30 +132,79 @@ export function App({ api }: { api: Api }) {
       setOptionError(errorMessage(e));
     });
   };
-  const counts = tally(state.jobs);
-  const failed = state.summary && !state.running ? state.summary.failures.length : counts.failed;
+  const follow = (f: Followed) => {
+    setActionError('');
+    api.follow(f).catch(fail(setActionError));
+  };
+  const followHit = (hit: Hit) => {
+    follow({
+      url: hit.url,
+      title: hit.title,
+      site: hit.site,
+      downloadable: hit.downloadable,
+      chapters: hit.chapters,
+      latest: 0,
+      savedUpTo: 0,
+      new: 0,
+      followedAt: '',
+      checkedAt: '',
+      lastSaved: '',
+      error: '',
+    });
+  };
+  const followLoaded = () => {
+    follow({
+      url: state.url,
+      title: state.title,
+      site: '',
+      downloadable: true,
+      chapters: state.chapterCount,
+      latest: 0,
+      savedUpTo: 0,
+      new: 0,
+      followedAt: '',
+      checkedAt: '',
+      lastSaved: '',
+      error: '',
+    });
+  };
+  const unfollow = (url: string) => {
+    setActionError('');
+    api.unfollow(url).catch(fail(setActionError));
+  };
+  const problem = loadRefusal !== '' ? loadRefusal : optionError;
 
   return (
     <div className="app">
-      <SourceBar
+      <TopBar
         state={state}
-        mode={mode}
-        onMode={(next) => {
-          setMode(next);
-          setBlocked(null);
+        query={search.query}
+        onQuery={(text) => {
+          search.setQuery(text);
+          if (text.trim() === '') {
+            setBlocked(null);
+          }
         }}
         onLoad={load}
-        onClear={clear}
-        onOptions={setOptions}
-        onPick={pickFilter}
-        onError={setOptionError}
-        loadRefusal={loadRefusal}
-        optionError={optionError}
+        onHome={() => {
+          setPage('home');
+          search.setQuery('');
+        }}
+        onCheck={() => {
+          setActionError('');
+          api.checkLibrary().catch(fail(setActionError));
+        }}
+        onCancelCheck={() => {
+          api.cancelCheck().catch(() => undefined);
+        }}
+        onSettings={() => setSettingsOpen((o) => !o)}
+        settingsOpen={settingsOpen}
+        problem={problem}
       />
 
-      <main className="workspace">
-        {mode === 'search' ? (
-          <SearchPanel
+      {results ? (
+        <main className="page results-page">
+          <ResultsPanel
             catalog={state.catalog}
             sites={search.sites}
             query={search.query}
@@ -147,7 +214,6 @@ export function App({ api }: { api: Api }) {
             busy={busy}
             blocked={blocked}
             copied={copied}
-            onQuery={search.setQuery}
             onSite={search.setSite}
             onPick={(hit) => {
               if (!hit.downloadable) {
@@ -156,11 +222,12 @@ export function App({ api }: { api: Api }) {
                 return;
               }
               setBlocked(null);
-              setMode('url');
               load(hit.url);
             }}
+            onFollow={followHit}
+            onUnfollow={unfollow}
             onUpdate={() => {
-              api.updateCatalog().catch((e) => setActionError(errorMessage(e)));
+              api.updateCatalog().catch(fail(setActionError));
             }}
             onCopy={(url) => {
               api
@@ -170,7 +237,7 @@ export function App({ api }: { api: Api }) {
                   clearTimeout(copiedTimer.current);
                   copiedTimer.current = setTimeout(() => setCopied(false), 1500);
                 })
-                .catch((e) => setActionError(errorMessage(e)));
+                .catch(fail(setActionError));
             }}
             onOpen={(url) => api.openURL(url)}
             onDismissBlocked={() => {
@@ -178,94 +245,131 @@ export function App({ api }: { api: Api }) {
               setCopied(false);
             }}
           />
-        ) : (
-        <ChapterPanel
-          state={state}
-          chapters={chapters}
-          selected={selected}
-          disabled={busy}
-          onToggle={(index, on) => api.setSelected(index, on)}
-          onToggleMany={(indices, on) => api.setSelectedMany(indices, on)}
-          onSetAll={(on) => api.setAll(on)}
-          onRange={(text) => api.selectRange(text)}
-          onVolumes={(text) => api.setVolumes(text)}
-          onReload={() => load(state.url)}
-          onError={setActionError}
-        />
-        )}
-
-        <aside className="side" aria-label="Download">
-          <div className="tabs" role="tablist" aria-label="Side panel">
-            <TabButton id="options" tab={tab} onSelect={setTab}>
-              <SlidersIcon size={15} /> Options
-            </TabButton>
-            <TabButton id="activity" tab={tab} onSelect={setTab}>
-              <ActivityIcon size={15} /> Activity
-              {state.running ? (
-                <span className="tab-badge live" aria-label="running">
-                  <Spinner size={11} />
-                </span>
-              ) : failed > 0 ? (
-                <span className="tab-badge danger" aria-label={`${failed} failed`}>
-                  {failed}
-                </span>
-              ) : state.summary ? (
-                <span className="tab-badge success" aria-label="finished" />
-              ) : null}
-            </TabButton>
-          </div>
-
-          {/* both panels stay mounted, so each tab's aria-controls has a target */}
-          <div
-            className="side-body"
-            role="tabpanel"
-            id="panel-options"
-            aria-labelledby="tab-options"
-            tabIndex={0}
-            hidden={tab !== 'options'}
-          >
-            <OptionsPanel
-              state={state}
-              onOptions={setOptions}
-              onChooseFolder={async () => {
-                setOptionError('');
-                await api.chooseFolder();
-              }}
-              onError={setOptionError}
-            />
-          </div>
-          <div
-            className="side-body"
-            role="tabpanel"
-            id="panel-activity"
-            aria-labelledby="tab-activity"
-            tabIndex={0}
-            hidden={tab !== 'activity'}
-          >
-            <ActivityPanel
-              state={state}
-              onOpenFolder={() => {
-                api.openFolder().catch((e) => setActionError(errorMessage(e)));
-              }}
-            />
-          </div>
-
-          <DownloadDock
+        </main>
+      ) : page === 'home' ? (
+        <main className="page home">
+          <LibraryPanel
             state={state}
-            error={actionError}
+            busy={libraryBusy}
+            sort={sort}
+            onSort={setSort}
+            onOpen={(f) => openSeries(f.url)}
+            onDownloadNew={(url) => {
+              setActionError('');
+              api.downloadNew(url).catch(fail(setActionError));
+            }}
+            onDownloadAllNew={() => {
+              setActionError('');
+              api.downloadAllNew().catch(fail(setActionError));
+            }}
+            onCancelBatch={() => {
+              api.cancelBatch().catch(() => undefined);
+            }}
+            onUnfollow={(f) => unfollow(f.url)}
+            onOpenURL={(url) => api.openURL(url)}
+          />
+          {actionError !== '' && (
+            <p className="error-text small page-error" role="alert">
+              {actionError}
+            </p>
+          )}
+        </main>
+      ) : (
+        <main className="workspace series-page">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <button
+              type="button"
+              className="btn ghost small"
+              onClick={() => {
+                setPage('home');
+              }}
+            >
+              ← Library
+            </button>
+            {state.title !== '' && (
+              <>
+                <span className="muted" aria-hidden="true">
+                  /
+                </span>
+                <span className="muted crumb-title">{state.title}</span>
+              </>
+            )}
+          </nav>
+          <ChapterPanel
+            state={state}
             chapters={chapters}
             selected={selected}
+            disabled={busy}
+            followed={followed}
+            onToggle={(index, on) => api.setSelected(index, on)}
+            onToggleMany={(indices, on) => api.setSelectedMany(indices, on)}
+            onSetAll={(on) => api.setAll(on)}
+            onRange={(text) => api.selectRange(text)}
+            onVolumes={(text) => api.setVolumes(text)}
+            onReload={() => load(state.url)}
+            onError={setActionError}
+            onPick={pickFilter}
+            onOptions={setOptions}
+          />
+          <SeriesAside
+            state={state}
+            chapters={chapters}
+            selected={selected}
+            followed={followed}
+            actionError={actionError}
+            onFollow={followLoaded}
+            onUnfollow={() => unfollow(state.url)}
+            onOpenURL={(url) => api.openURL(url)}
+            onOptions={setOptions}
+            onChooseFolder={async () => {
+              setOptionError('');
+              await api.chooseFolder();
+            }}
+            onError={setOptionError}
             onStart={() => {
               setActionError('');
-              api.start().catch((e) => setActionError(errorMessage(e)));
+              api.start().catch(fail(setActionError));
             }}
             onCancel={() => {
-              api.cancel().catch((e) => setActionError(errorMessage(e)));
+              api.cancel().catch(fail(setActionError));
             }}
           />
-        </aside>
-      </main>
+        </main>
+      )}
 
+      <ProgressStrip
+        state={state}
+        dismissed={stripDismissed}
+        onDetails={() => setActivityOpen(true)}
+        onCancel={() => {
+          api.cancel().catch(fail(setActionError));
+        }}
+        onOpenFolder={() => {
+          api.openFolder().catch(fail(setActionError));
+        }}
+        onDismiss={() => setStripDismissed(true)}
+      />
+
+      {settingsOpen && (
+        <SettingsDrawer
+          state={state}
+          onOptions={setOptions}
+          onError={setOptionError}
+          onUpdateCatalog={() => {
+            api.updateCatalog().catch(fail(setActionError));
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {activityOpen && (
+        <ActivityDrawer
+          state={state}
+          onOpenFolder={() => {
+            api.openFolder().catch(fail(setActionError));
+          }}
+          onClose={() => setActivityOpen(false)}
+        />
+      )}
       {logOpen && <LogDrawer log={log} onClose={() => setLogOpen(false)} />}
       {state.browserAlert !== '' && (
         <BrowserAlert
@@ -288,41 +392,5 @@ export function App({ api }: { api: Api }) {
         onOpenURL={(url) => api.openURL(url)}
       />
     </div>
-  );
-}
-
-function TabButton({
-  id,
-  tab,
-  onSelect,
-  children,
-}: {
-  id: Tab;
-  tab: Tab;
-  onSelect: (t: Tab) => void;
-  children: React.ReactNode;
-}) {
-  const on = id === tab;
-  return (
-    <button
-      type="button"
-      role="tab"
-      id={`tab-${id}`}
-      aria-selected={on}
-      aria-controls={`panel-${id}`}
-      tabIndex={on ? 0 : -1}
-      className={`tab${on ? ' on' : ''}`}
-      onClick={() => onSelect(id)}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-          e.preventDefault();
-          const next: Tab = id === 'options' ? 'activity' : 'options';
-          onSelect(next);
-          document.getElementById(`tab-${next}`)?.focus();
-        }
-      }}
-    >
-      {children}
-    </button>
   );
 }

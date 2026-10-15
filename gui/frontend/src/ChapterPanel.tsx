@@ -3,12 +3,14 @@
 // arrows move, Space toggles, Shift extends, as in a native list box.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { FilterRow } from './FilterField';
 import { errorMessage, formatNumber, plural } from './format';
 import { AlertIcon, ChevronIcon, LinkIcon, RefreshIcon } from './icons';
+import { chapterMark, newIndices } from './library';
 import { Mascot } from './Mascot';
 import { extendsSpan, moveActive, spanIndices } from './listKeys';
 import { hostOf } from './run';
-import type { Chapter, State } from './types';
+import type { Chapter, Followed, Options, State } from './types';
 import { useVirtualList } from './virtual';
 import { chapterSpan, groupChapters, groupedRows, parseVolumes, selectedIn, type GroupedRow } from './volumes';
 
@@ -29,6 +31,12 @@ interface Props {
   onVolumes: (text: string) => Promise<void>;
   onReload: () => void;
   onError: (message: string) => void;
+  /** The library's entry for the loaded series, null when it isn't followed: marks the rows new or saved */
+  followed: Followed | null;
+  /** A filter picked from a selector: applied at once, with the series' reload */
+  onPick: (patch: Partial<Options>) => Promise<void>;
+  /** A typed filter: saved, applied at the next load */
+  onOptions: (patch: Partial<Options>) => Promise<void>;
 }
 
 export function ChapterPanel(props: Props) {
@@ -52,9 +60,7 @@ function EmptyState() {
     <section className="panel chapters empty-state" aria-label="Chapters">
       <Mascot expression="happy" size={112} />
       <h2>Start with a series</h2>
-      <p>
-        Paste the link to a series in the bar above. A link to any of its chapters works too.
-      </p>
+      <p>Pick one from your library, search a title in the box above, or paste a link to a series or a chapter.</p>
       <p className="muted">Its chapters will be listed here, ready to pick and save for your reader.</p>
     </section>
   );
@@ -119,6 +125,10 @@ function ChapterList({
   onRange,
   onVolumes,
   onError,
+  onReload,
+  followed,
+  onPick,
+  onOptions,
 }: Props) {
   const [rangeText, setRangeText] = useState('');
   const [rangeNote, setRangeNote] = useState<{ text: string; bad: boolean } | null>(null);
@@ -128,7 +138,6 @@ function ChapterList({
   // where Shift+click and Shift+Space extend from
   const anchor = useRef(-1);
   const chosen = useMemo(() => new Set(selected), [selected]);
-  const host = hostOf(state.url);
   const byVolume = state.options.packAs === 'volumes';
 
   // the backend only takes a Volumes box that parses, so this is the grouping
@@ -315,27 +324,38 @@ function ChapterList({
   const some = state.selectedCount > 0 && !all;
   const { first, last } = list.span;
   const activeRow = active >= first && active < last ? rows[active] : undefined;
+  // the chapters above the library's saved mark, which the New chip selects
+  const fresh = followed !== null && followed.downloadable ? newIndices(chapters, followed.savedUpTo) : [];
+  const freshChosen = fresh.length > 0 && chosen.size === fresh.length && fresh.every((i) => chosen.has(i));
 
   return (
     <section className="panel chapters" aria-label="Chapters">
-      <div className="series-head">
-        <div className="series-id">
-          <h2 className="series-title" title={state.title}>
-            {state.title}
-          </h2>
-          <p className="series-meta">
-            {host !== '' && (
-              <>
-                <span className="host">{host}</span>
-                <span className="dot" aria-hidden="true">
-                  ·
-                </span>
-              </>
-            )}
-            <span>{plural(state.chapterCount, 'chapter', 'chapters')}</span>
-            {state.loading && <span className="reloading">Reloading…</span>}
-          </p>
-        </div>
+      <div className="chip-row">
+        <span className="muted small">Show</span>
+        {fresh.length > 0 && (
+          <button
+            type="button"
+            className={`chip${freshChosen ? ' on' : ''}`}
+            disabled={disabled}
+            title={followed !== null && followed.savedUpTo > 0 ? `Above chapter ${followed.savedUpTo}, the last one saved` : 'Nothing saved yet: every chapter'}
+            onClick={() => {
+              // the selection becomes exactly the new chapters
+              const freshSet = new Set(fresh);
+              const off = [...chosen].filter((i) => !freshSet.has(i));
+              const on = fresh.filter((i) => !chosen.has(i));
+              const first = off.length > 0 ? onToggleMany(off, false) : Promise.resolve();
+              first.then(() => (on.length > 0 ? onToggleMany(on, true) : undefined)).catch(fail);
+            }}
+          >
+            New · {fresh.length}
+          </button>
+        )}
+        <button type="button" className={`chip${all ? ' on' : ''}`} disabled={disabled || all} onClick={() => onSetAll(true).catch(fail)}>
+          All · {state.chapterCount.toLocaleString('en-US')}
+        </button>
+        {state.loading && <span className="reloading">Reloading…</span>}
+        <span className="spacer" />
+        <FilterRow state={state} busy={disabled} onPick={onPick} onOptions={onOptions} onError={onError} onReload={onReload} />
       </div>
 
       <div className="list-toolbar">
@@ -502,6 +522,9 @@ function ChapterList({
                 <span className="title">{ch.title}</span>
                 {ch.language !== '' && <span className="lang">{ch.language}</span>}
                 {ch.group !== '' && <span className="group">{ch.group}</span>}
+                {chapterMark(ch.number, followed) !== '' && (
+                  <span className={`mark ${chapterMark(ch.number, followed)}`}>{chapterMark(ch.number, followed)}</span>
+                )}
               </div>
             );
           })}
