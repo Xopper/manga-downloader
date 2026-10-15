@@ -5,7 +5,7 @@
   "family": "madara",
   "lang": "ar",
   "crawl": true,
-  "list": "https://3asq.online/manga/page/{page}/",
+  "list": "https://3asq.online/manga/page/{page}/?m_orderby=alphabet",
   "label": "Arabic, former 3asq.org"
  },
  {
@@ -244,7 +244,7 @@
   "family": "madara",
   "lang": "en",
   "crawl": true,
-  "list": "https://gdscans.com/manga/page/{page}/",
+  "list": "https://gdscans.com/manga/page/{page}/?m_orderby=alphabet",
   "label": "GalaxyDegenScans"
  },
  {
@@ -385,7 +385,7 @@
   "family": "madara",
   "lang": "en",
   "crawl": true,
-  "list": "https://lhtranslation.net/home/manga/page/{page}/",
+  "list": "https://lhtranslation.net/home/manga/page/{page}/?m_orderby=alphabet",
   "label": "LHTranslation"
  },
  {
@@ -537,7 +537,7 @@
   "family": "madara",
   "lang": "pt-BR",
   "crawl": true,
-  "list": "https://mangalivre.to/manga/page/{page}/",
+  "list": "https://mangalivre.to/manga/page/{page}/?m_orderby=alphabet",
   "label": "Manga Livre, former mangalivre.tv/mangalivre.net"
  },
  {
@@ -578,7 +578,7 @@
   "family": "madara",
   "lang": "en",
   "crawl": true,
-  "list": "https://www.mangaread.org/manga/page/{page}/"
+  "list": "https://www.mangaread.org/manga/page/{page}/?m_orderby=alphabet"
  },
  {
   "site": "mangasushi.org",
@@ -586,7 +586,7 @@
   "family": "madara",
   "lang": "en",
   "crawl": true,
-  "list": "https://mangasushi.org/manga/page/{page}/"
+  "list": "https://mangasushi.org/manga/page/{page}/?m_orderby=alphabet"
  },
  {
   "site": "mangasusuku.com",
@@ -640,7 +640,7 @@
   "family": "madara",
   "lang": "en",
   "crawl": true,
-  "list": "https://manhuaplus.com/manga/page/{page}/"
+  "list": "https://manhuaplus.com/manga/page/{page}/?m_orderby=alphabet"
  },
  {
   "site": "manhuatop.org",
@@ -881,7 +881,7 @@
   "family": "madara",
   "lang": "tr",
   "crawl": true,
-  "list": "https://tortugaceviri.com/manga/page/{page}/",
+  "list": "https://tortugaceviri.com/manga/page/{page}/?m_orderby=alphabet",
   "label": "Tortuga Çeviri"
  },
  {
@@ -890,7 +890,7 @@
   "family": "madara",
   "lang": "en",
   "crawl": true,
-  "list": "https://tritinia.org/manga/page/{page}/",
+  "list": "https://tritinia.org/manga/page/{page}/?m_orderby=alphabet",
   "label": "Tritinia Scans"
  },
  {

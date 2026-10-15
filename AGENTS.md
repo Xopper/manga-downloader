@@ -112,7 +112,9 @@ lowercase, NFKD, accents dropped, dakuten kept). Design:
   browser-gated one is `crawl: false` and shows "no catalog" in `status`.
 - **Crawlers are per family, not per site** (`crawl_*.go`, registered in
   `crawlers` by `init`): `themesia` (`/manga/list-mode/`, else the
-  `/manga/?page=N` grid), `madara` (`/manga/page/N/`), `single` (one entry:
+  `/manga/?page=N` grid), `madara` (`/manga/page/N/?m_orderby=alphabet`: the default order is
+  "latest update", which shifts between requests so pages overlap and the
+  walk stops early), `single` (one entry:
   the home page). They run without a browser, through `http.GetText` with
   `DisableRetry` (a 404 is how a paged list ends), paced by `pagePause`, and
   stop when a page adds nothing new (a site that ignores `page=`). Tests use
