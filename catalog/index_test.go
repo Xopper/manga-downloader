@@ -205,3 +205,86 @@ func TestUpdateCancelled(t *testing.T) {
 	}
 	_ = json.Valid
 }
+
+func TestUpdateRejectsSitesOutsideTheDir(t *testing.T) {
+	// a published index naming a site like "../gui" must never write outside Dir
+	a := SiteCatalog{Site: "../gui", Crawled: time.Unix(100, 0).UTC(), Entries: []Entry{{Title: "A", URL: "https://a.test/a/"}}}
+	b := SiteCatalog{Site: "b.test", Crawled: time.Unix(100, 0).UTC(), Entries: []Entry{{Title: "B", URL: "https://b.test/b/"}}}
+	p := &published{dir: t.TempDir(), fails: map[string]bool{}}
+	ab, _ := json.Marshal(a)
+	os.WriteFile(filepath.Join(p.dir, "evil.json"), ab, 0o600)
+	writeCatalog(t, p.dir, b)
+	sum := sha256.Sum256(ab)
+	bb, _ := os.ReadFile(filepath.Join(p.dir, "b.test.json"))
+	sumB := sha256.Sum256(bb)
+	idx := &Index{Sites: []IndexEntry{
+		{Site: "../gui", File: "evil.json", Entries: 1, SHA256: hex.EncodeToString(sum[:])},
+		{Site: "b.test", File: "../b.test.json", Entries: 1, SHA256: hex.EncodeToString(sumB[:])},
+	}}
+	WriteIndex(p.dir, idx)
+	p.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(p.dir, filepath.Base(r.URL.Path)))
+	}))
+	t.Cleanup(p.srv.Close)
+	root := t.TempDir()
+	s := NewStore(filepath.Join(root, "catalog"))
+	changed, err := s.Update(context.Background(), p.base())
+	if err == nil || len(changed) != 0 {
+		t.Fatalf("got %v %v", changed, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "gui.json")); err == nil {
+		t.Fatal("wrote outside the catalog dir")
+	}
+	if _, ok := s.Catalog("b.test"); ok {
+		t.Error("a file named with a path separator was accepted")
+	}
+}
+
+func TestUpdateCancelledMidwayKeepsTheIndexWhole(t *testing.T) {
+	a := SiteCatalog{Site: "a.test", Crawled: time.Unix(100, 0).UTC(), Entries: []Entry{{Title: "A", URL: "https://a.test/a/"}}}
+	b := SiteCatalog{Site: "b.test", Crawled: time.Unix(100, 0).UTC(), Entries: []Entry{{Title: "B", URL: "https://b.test/b/"}}}
+	p := publish(t, a, b)
+	s := NewStore(t.TempDir())
+	if _, err := s.Update(context.Background(), p.base()); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := ReadIndex(s.Dir)
+	info, _ := os.Stat(filepath.Join(s.Dir, indexFile))
+	old := time.Now().Add(-48 * time.Hour)
+	os.Chtimes(filepath.Join(s.Dir, indexFile), old, old)
+	// both change upstream; the context is cancelled once a's file is served
+	a.Entries = append(a.Entries, Entry{Title: "A2", URL: "https://a.test/a2/"})
+	b.Entries = append(b.Entries, Entry{Title: "B2", URL: "https://b.test/b2/"})
+	p2 := publish(t, a, b)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	served := p2.srv.Config.Handler
+	p2.srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served.ServeHTTP(w, r)
+		if filepath.Base(r.URL.Path) == "a.test.json" {
+			cancel()
+		}
+	})
+	changed, err := s.Update(ctx, p2.base())
+	if err == nil {
+		t.Fatal("a cancelled update must say so")
+	}
+	if len(changed) != 1 || changed[0] != "a.test" {
+		t.Errorf("changed %v", changed)
+	}
+	after, err := ReadIndex(s.Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Sites) != 2 {
+		t.Fatalf("the index lost sites: %+v", after.Sites)
+	}
+	for _, e := range after.Sites {
+		if e.Site == "b.test" && e.SHA256 != before.Sites[1].SHA256 {
+			t.Error("b, never reached, must keep its old index entry")
+		}
+	}
+	if fi, _ := os.Stat(filepath.Join(s.Dir, indexFile)); !fi.ModTime().Equal(info.ModTime()) && fi.ModTime().After(time.Now().Add(-time.Hour)) {
+		t.Error("a cancelled update must not make the index look fresh")
+	}
+}

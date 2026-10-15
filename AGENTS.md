@@ -120,14 +120,17 @@ lowercase, NFKD, accents dropped, dakuten kept). Design:
 - **Published on the orphan `catalog-data` branch** by
   `.github/workflows/catalog.yaml` nightly, like `star-tracker-data`:
   `<site>.json` files plus `index.json` (entries, crawl time, sha256).
-  `Store.Update` downloads only files whose hash changed, verifies the hash,
+  `Store.Update` refuses an index entry whose site isn't a bare domain or whose
+  file isn't `<site>.json` (the name becomes a path under the catalog dir),
+  downloads only files whose hash changed, verifies the hash,
   and keeps the local file and index entry of anything that fails, so the next
   update retries it. `catalog.BaseURL()` is the branch's raw URL, overridden by
   `MANGA_DOWNLOADER_CATALOG_URL`.
 - **The half-size guard**: `catalog crawl` keeps a site's existing file when
   the new crawl has fewer than half its entries (exit 2, "kept" in the log), so
-  a broken site never wipes a catalog. An empty crawl is a failure, never an
-  empty file. The workflow commits what worked and then fails on exit 2, so a
+  a broken site never wipes a catalog. An empty crawl, or one that stopped on
+  an error partway (a 503 on page 12), is a failure: nothing is written, so a
+  catalog can't shrink run by run. The workflow commits what worked and then fails on exit 2, so a
   broken crawler is noticed.
 - **Files are written atomically** (temp + rename, 0600) under
   `os.UserConfigDir()/manga-downloader/catalog/`, next to `gui.json`

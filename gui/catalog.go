@@ -224,12 +224,14 @@ func (a *App) UpdateCatalog() error {
 }
 
 // openCatalog loads the catalog store from the config dir; a missing dir is
-// an empty store. Warnings (a file that doesn't parse) go to stderr.
+// an empty store. Without a config dir at all there is no store (nil: search
+// finds nothing, nothing is downloaded), rather than one writing into the
+// working directory. Warnings (a file that doesn't parse) go to stderr.
 func openCatalog() *catalog.Store {
 	dir, err := catalog.DefaultDir()
 	if err != nil {
 		log.Printf("no catalog dir: %v", err)
-		return catalog.NewStore("")
+		return nil
 	}
 	store := catalog.NewStore(dir)
 	for _, warn := range store.Load() {

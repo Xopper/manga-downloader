@@ -169,3 +169,40 @@ func TestStatusJSON(t *testing.T) {
 		t.Errorf("table: %s", out.String())
 	}
 }
+
+// partialCrawler returns some entries and then an error, like a walk that hit a 503
+type partialCrawler struct{}
+
+func (partialCrawler) Crawl(context.Context, catalog.SiteInfo, int) ([]catalog.Entry, error) {
+	return entries(3, "a.test"), errors.New("received 503 response code")
+}
+
+func TestCrawlStoppedEarlyIsNotWritten(t *testing.T) {
+	a := catalog.SiteInfo{Site: "a.test", Home: "https://a.test", Family: "fake", Lang: "en", Crawl: true}
+	out := crawlSetup(t, fakeCrawler{}, a)
+	catalog.RegisterCrawler("fake", partialCrawler{})
+	old := catalog.NewStore(out)
+	if err := old.Write(&catalog.SiteCatalog{Site: "a.test", Crawled: time.Unix(100, 0), Entries: entries(5, "a.test")}); err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	if code := runCrawl(context.Background(), &log, out, "", 0); code != 2 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	s := catalog.NewStore(out)
+	s.Load()
+	if c, _ := s.Catalog("a.test"); c == nil || len(c.Entries) != 5 {
+		t.Fatalf("a partial crawl replaced the file: %+v", c)
+	}
+	if !strings.Contains(log.String(), "FAIL") || !strings.Contains(log.String(), "503") {
+		t.Errorf("log: %s", log.String())
+	}
+}
+
+func TestStatusJSONOmitsCrawledWithoutCatalog(t *testing.T) {
+	var out bytes.Buffer
+	runStatus(&out, catalog.NewStore(t.TempDir()), true)
+	if strings.Contains(out.String(), "0001-01-01") {
+		t.Error("a site without a catalog prints a zero crawl time")
+	}
+}

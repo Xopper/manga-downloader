@@ -96,9 +96,10 @@ func openStore(download bool) (*catalog.Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	// stdout is for the results (--json is piped), so every message goes to stderr
 	store := catalog.NewStore(dir)
 	for _, warn := range store.Load() {
-		yellow("%s", warn)
+		fmt.Fprintln(os.Stderr, color.YellowString("%s", warn))
 	}
 	if !download {
 		return store, nil
@@ -106,9 +107,9 @@ func openStore(download bool) (*catalog.Store, error) {
 	if _, err := catalog.ReadIndex(dir); err == nil {
 		return store, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
-		yellow("%s", err)
+		fmt.Fprintln(os.Stderr, color.YellowString("%s", err))
 	}
-	fmt.Println("Downloading the catalog…")
+	fmt.Fprintln(os.Stderr, "Downloading the catalog…")
 	if _, err := store.Update(context.Background(), catalog.BaseURL()); err != nil {
 		return nil, fmt.Errorf("no catalog yet (%s): run manga-downloader catalog update", err)
 	}

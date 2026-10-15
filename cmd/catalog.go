@@ -90,9 +90,9 @@ type statusRow struct {
 	// Crawlable is whether the site has a crawler at all
 	Crawlable bool `json:"crawlable"`
 	// Catalog is whether a catalog is on disk
-	Catalog bool      `json:"catalog"`
-	Entries int       `json:"entries"`
-	Crawled time.Time `json:"crawled,omitempty"`
+	Catalog bool       `json:"catalog"`
+	Entries int        `json:"entries"`
+	Crawled *time.Time `json:"crawled,omitempty"`
 	// Age is how long ago the local file was written
 	Age string `json:"age,omitempty"`
 }
@@ -101,8 +101,10 @@ type statusRow struct {
 func runStatus(w io.Writer, store *catalog.Store, asJSON bool) {
 	var rows []statusRow
 	for _, st := range store.Status() {
-		r := statusRow{Site: st.Site, Label: st.Label, Language: st.Language, Crawlable: st.Crawlable, Catalog: st.HasCatalog, Entries: st.Entries, Crawled: st.Crawled}
+		r := statusRow{Site: st.Site, Label: st.Label, Language: st.Language, Crawlable: st.Crawlable, Catalog: st.HasCatalog, Entries: st.Entries}
 		if st.HasCatalog {
+			crawled := st.Crawled
+			r.Crawled = &crawled
 			r.Age = st.FileAge.Round(time.Minute).String()
 		}
 		rows = append(rows, r)
@@ -177,7 +179,9 @@ func runCrawl(ctx context.Context, w io.Writer, out, only string, limit int) int
 		if !ok {
 			report("%s  %s", site.Site, color.YellowString("no crawler for family %q", site.Family))
 			if only != "" {
+				mu.Lock()
 				failed = true
+				mu.Unlock()
 			}
 			continue
 		}
@@ -187,9 +191,14 @@ func runCrawl(ctx context.Context, w io.Writer, out, only string, limit int) int
 			sem <- struct{}{}
 			defer func() { <-sem }()
 			entries, err := crawler.Crawl(ctx, site, limit)
-			if len(entries) == 0 {
-				if err == nil {
-					err = fmt.Errorf("no entries")
+			// a walk that stopped on an error (a 503 on page 12) is partial: it
+			// never replaces a file, or the catalog would shrink run by run
+			if err == nil && len(entries) == 0 {
+				err = fmt.Errorf("no entries")
+			}
+			if err != nil {
+				if len(entries) > 0 {
+					err = fmt.Errorf("stopped after %d entries: %w", len(entries), err)
 				}
 				report("%s  %s", site.Site, color.RedString("FAIL: %s", err))
 				mu.Lock()
@@ -216,9 +225,6 @@ func runCrawl(ctx context.Context, w io.Writer, out, only string, limit int) int
 			delta := ""
 			if had {
 				delta = fmt.Sprintf(" (%+d)", len(entries)-len(old.Entries))
-			}
-			if err != nil {
-				delta += color.YellowString(" (stopped early: %s)", err)
 			}
 			report("%s  %d entries%s", site.Site, len(entries), delta)
 		}(site)

@@ -144,11 +144,13 @@ func (a *App) startup(ctx context.Context, rt *wailsRuntime) {
 	if a.tag != "" {
 		go a.ctrl.CheckUpdate(a.updateCtx, a.tag, latestReleaseAPI, updateClient)
 	}
-	// the catalogs load from disk first (fast), then refresh behind the window
-	// when the local index is a day old; cancelled at shutdown like the update
-	// check
-	a.ctrl.SetCatalog(openCatalog())
-	go a.ctrl.RefreshCatalog(a.updateCtx, false)
+	// the catalogs are read from disk behind the window (parsing and folding
+	// a few hundred thousand titles takes a moment), then refreshed when the
+	// local index is a day old; cancelled at shutdown like the update check
+	go func() {
+		a.ctrl.SetCatalog(openCatalog())
+		a.ctrl.RefreshCatalog(a.updateCtx, false)
+	}()
 }
 
 // shutdown stops the pushes before the window goes away, then cancels any run

@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -113,6 +114,17 @@ func BaseURL() string {
 	return strings.TrimSuffix(u, "/") + "/"
 }
 
+// siteNameRe is what a site name in a published index may look like: a bare
+// domain. Anything else (a path, "..", a separator) is refused, since the
+// name becomes a file name under Dir.
+var siteNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]*$`)
+
+// validEntry reports whether a published index entry is safe to act on: the
+// site is a bare domain and the file is that site's own file
+func validEntry(e IndexEntry) bool {
+	return siteNameRe.MatchString(e.Site) && !strings.Contains(e.Site, "..") && e.File == e.Site+".json"
+}
+
 // Update fetches the published index at baseURL and downloads every site
 // file whose hash differs from the local index's, keeping the local file
 // when a download fails or doesn't match its hash. The local index is
@@ -131,6 +143,7 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 	if err := json.Unmarshal([]byte(text), &remote); err != nil {
 		return nil, fmt.Errorf("catalog index: %w", err)
 	}
+	oldIndex, _ := os.Stat(filepath.Join(s.Dir, indexFile))
 	local, err := ReadIndex(s.Dir)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		// unreadable: treat as none, it's rewritten below
@@ -145,7 +158,12 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 		}
 	}
 	merged := &Index{Generated: remote.Generated}
-	for _, re := range remote.Sites {
+	cancelled := false
+	for i, re := range remote.Sites {
+		if !validEntry(re) {
+			fail(fmt.Errorf("catalog index: refusing entry %q (%s)", re.Site, re.File))
+			continue
+		}
 		if le := local.entry(re.Site); le != nil && le.SHA256 == re.SHA256 {
 			if _, ok := s.Catalog(re.Site); ok {
 				merged.Sites = append(merged.Sites, re)
@@ -153,7 +171,15 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 			}
 		}
 		if err := ctx.Err(); err != nil {
+			// the sites not reached keep their local entries, so the index
+			// stays whole and the next update picks up where this one stopped
 			fail(err)
+			cancelled = true
+			for _, rest := range remote.Sites[i:] {
+				if le := local.entry(rest.Site); le != nil {
+					merged.Sites = append(merged.Sites, *le)
+				}
+			}
 			break
 		}
 		body, err := http.GetText(http.RequestParams{URL: baseURL + re.File, DisableRetry: true})
@@ -184,8 +210,17 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 		merged.Sites = append(merged.Sites, re)
 		changed = append(changed, re.Site)
 	}
+	if cancelled && len(changed) == 0 {
+		// nothing moved: the old index (and its age) stands
+		return nil, firstErr
+	}
 	if err := WriteIndex(s.Dir, merged); err != nil {
 		fail(err)
+	}
+	if cancelled && oldIndex != nil {
+		// the index isn't fresh: it keeps its old age so the next start
+		// refreshes instead of waiting a day
+		_ = os.Chtimes(filepath.Join(s.Dir, indexFile), oldIndex.ModTime(), oldIndex.ModTime())
 	}
 
 	return changed, firstErr

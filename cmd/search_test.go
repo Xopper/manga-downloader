@@ -95,3 +95,32 @@ func TestRunSearchLimit(t *testing.T) {
 		t.Errorf("want a header and one row, got %q", out.String())
 	}
 }
+
+func TestOpenStoreKeepsStdoutForResults(t *testing.T) {
+	// the first-run download message and the load warnings go to stderr, so
+	// `search --json | jq` works on a fresh machine
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", home)
+	dir, err := catalog.DefaultDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(dir, 0o700)
+	os.WriteFile(filepath.Join(dir, "bad.json"), []byte("{"), 0o600)
+	t.Setenv("MANGA_DOWNLOADER_CATALOG_URL", "http://127.0.0.1:1/")
+	r, w, _ := os.Pipe()
+	stdout := os.Stdout
+	os.Stdout = w
+	_, err = openStore(true)
+	w.Close()
+	os.Stdout = stdout
+	var got bytes.Buffer
+	got.ReadFrom(r)
+	if err == nil {
+		t.Fatal("an unreachable publish must be an error")
+	}
+	if got.Len() != 0 {
+		t.Errorf("stdout got %q", got.String())
+	}
+}
