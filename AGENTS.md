@@ -97,3 +97,49 @@ EPUB is another archive next to CBZ, grouped the same way (per chapter, `--volum
 - **The identifier is a UUID v5 of the series and what the book holds** (`chapter`, `volume N` or `bundle` plus each chapter's number, language and `Chapter.ID`, or its group and title without one), so a repack keeps it and two releases of one chapter don't share it. A grabber that lists several releases per number sets their groups and `Chapter.ID` as described in "Scanlation groups", and `FetchChapter` keeps both on what it returns.
 - **Pages are fixed layout**: one XHTML per image, with a viewport at the image's size, and the first page is the cover. Calibre ignores fixed layout and stretches the image box to the screen, so the `<img>` carries `object-fit: scale-down` (a no-op in readers that honour the viewport).
 - **epubcheck isn't in CI yet**: check a change by running epubcheck on a real download, the way `tools/verify-cbz` checks CBZs.
+
+### Catalog and search (`search`, `catalog …`)
+
+A catalog is one JSON per site (title, series URL, other names) in
+`catalog/`; `Store.Search` scans them in memory after folding (`Fold`:
+lowercase, NFKD, accents dropped, dakuten kept). Design:
+`docs/superpowers/specs/2026-10-15-catalog-design.md`.
+
+- **The site table is `catalog/sites.json`** (embedded): every README site
+  with its crawler `family`, list page, language, former domains (`aliases`)
+  and `crawl` flag. `tools/site-check/` is the probe that filled it; rerun it
+  before editing the table. A site with no crawler yet, an API site or a
+  browser-gated one is `crawl: false` and shows "no catalog" in `status`.
+- **Crawlers are per family, not per site** (`crawl_*.go`, registered in
+  `crawlers` by `init`): `themesia` (`/manga/list-mode/`, else the
+  `/manga/?page=N` grid), `madara` (`/manga/page/N/`), `single` (one entry:
+  the home page). They run without a browser, through `http.GetText` with
+  `DisableRetry` (a 404 is how a paged list ends), paced by `pagePause`, and
+  stop when a page adds nothing new (a site that ignores `page=`). Tests use
+  `withFakeFetch` and trimmed fixtures under `catalog/testdata/<family>/`.
+- **Published on the orphan `catalog-data` branch** by
+  `.github/workflows/catalog.yaml` nightly, like `star-tracker-data`:
+  `<site>.json` files plus `index.json` (entries, crawl time, sha256).
+  `Store.Update` downloads only files whose hash changed, verifies the hash,
+  and keeps the local file and index entry of anything that fails, so the next
+  update retries it. `catalog.BaseURL()` is the branch's raw URL, overridden by
+  `MANGA_DOWNLOADER_CATALOG_URL`.
+- **The half-size guard**: `catalog crawl` keeps a site's existing file when
+  the new crawl has fewer than half its entries (exit 2, "kept" in the log), so
+  a broken site never wipes a catalog. An empty crawl is a failure, never an
+  empty file. The workflow commits what worked and then fails on exit 2, so a
+  broken crawler is noticed.
+- **Files are written atomically** (temp + rename, 0600) under
+  `os.UserConfigDir()/manga-downloader/catalog/`, next to `gui.json`
+  (`catalog.DefaultDir`).
+- **The app** (`gui/catalog.go`): the controller owns the store, loads it at
+  startup and refreshes in the background when the index is a day old
+  (`RefreshCatalog`, cancelled at shutdown like the update check; a failure
+  stays in `State.catalog.error`, never the window's log). `Search`, `Sites`,
+  `CatalogStatus` and `UpdateCatalog` are bound; the window's Search mode is
+  `SearchPanel.tsx` + `useSearch.ts`, with the mock's own small catalog
+  (`&nocatalog` starts without one).
+- **Adding a family**: a `crawl_<family>.go` with its `init` registration and
+  a fixture test, the family name on the sites in `sites.json` with `crawl:
+  true` and their `list` URL, and a line in `make catalog/smoke`.
+

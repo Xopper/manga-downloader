@@ -49,6 +49,9 @@ Linux, and as a **command line tool** for scripts, servers and Docker.
 
 - **[125 supported sites](#supported-sites)**, from big aggregators to small
   scanlation groups.
+- **[Search without a link](#search)**: the supported sites' catalogs are
+  on your disk, so a title is found by name, offline, in the app or with
+  `manga-downloader search`.
 - **Chapter ranges** such as `1,3,5-10`, so you download only what's missing.
 - **E-reader friendly output**: AVIF pages are converted to JPEG, so they don't
   show up blank on Kobo, KOReader or Calibre (WebP too, if you ask).
@@ -751,6 +754,31 @@ to a minute.
 
 Other sites built on the same platforms often work too, even when they aren't
 listed. If one doesn't, [open an issue][issues] or send a pull request.
+
+## Search
+
+You don't need a link to start: the sites' **catalogs** (every series a site
+lists, with its page) are downloaded to your disk, so a title is found by name,
+offline, and in every site at once.
+
+In the desktop app, switch the bar to **Search**, type a few words of the title
+and pick the site (or all of them); clicking a result loads it like a pasted
+link. On the command line:
+
+```bash
+manga-downloader search "one piece"            # every site
+manga-downloader search --site mangaread.org bleach
+manga-downloader search --json naruto          # [{"site","title","url"}]
+manga-downloader catalog status                # per site: entries, crawled, age
+manga-downloader catalog update                # download what changed
+```
+
+Pass a printed URL to the download command as usual. The catalogs are fetched
+on first use and refreshed by the app once a day; `catalog update` does it by
+hand. They are rebuilt nightly from the sites by this repository's `Catalog`
+workflow, published on the `catalog-data` branch (`MANGA_DOWNLOADER_CATALOG_URL`
+points a build at another copy). Not every site has a catalog yet: `catalog
+status` says which, and `catalog crawl` builds them locally.
 
 ## Troubleshooting
 
