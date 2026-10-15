@@ -53,6 +53,9 @@ type searchHit struct {
 	Site  string `json:"site"`
 	Title string `json:"title"`
 	URL   string `json:"url"`
+	// Downloadable is whether the downloader has a grabber for the site;
+	// a hit from a search-only site is a link to open elsewhere
+	Downloadable bool `json:"downloadable"`
 }
 
 // runSearch prints the hits of query (in one site, or all), as aligned
@@ -65,7 +68,7 @@ func runSearch(w io.Writer, store *catalog.Store, query, site string, limit int,
 	hits := store.Search(query, sites, limit)
 	rows := make([]searchHit, 0, len(hits))
 	for _, h := range hits {
-		rows = append(rows, searchHit{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL})
+		rows = append(rows, searchHit{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Downloadable: store.Downloadable(h.Site)})
 	}
 	if asJSON {
 		enc := json.NewEncoder(w)
@@ -75,9 +78,13 @@ func runSearch(w io.Writer, store *catalog.Store, query, site string, limit int,
 		fmt.Fprintln(w, color.YellowString("No results"))
 	} else {
 		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(tw, "SITE\tTITLE\tURL")
+		fmt.Fprintln(tw, "SITE\tDL\tTITLE\tURL")
 		for _, r := range rows {
-			fmt.Fprintf(tw, "%s\t%s\t%s\n", r.Site, truncateString(r.Title, 60), r.URL)
+			dl := "-"
+			if r.Downloadable {
+				dl = "yes"
+			}
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.Site, dl, truncateString(r.Title, 60), r.URL)
 		}
 		tw.Flush()
 	}

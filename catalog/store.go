@@ -20,6 +20,9 @@ type Store struct {
 
 	mu       sync.RWMutex
 	catalogs map[string]*SiteCatalog
+	// sources is sources.json: the Tachiyomi sources the catalogs came
+	// through, nil without one
+	sources []SourceRow
 	// entries is every catalog's entries with their folded names, in site
 	// order, what Search scans
 	entries []indexed
@@ -65,8 +68,14 @@ func (s *Store) Load() []error {
 		catalogs[c.Site] = &c
 	}
 
+	sources, err := readRows(filepath.Join(s.Dir, sourcesFile))
+	if err != nil && !os.IsNotExist(err) {
+		warnings = append(warnings, fmt.Errorf("%s: %w", sourcesFile, err))
+	}
+
 	s.mu.Lock()
 	s.catalogs = catalogs
+	s.sources = sources
 	s.reindex()
 	s.mu.Unlock()
 
@@ -191,25 +200,51 @@ type SiteStatus struct {
 	// file was written (an update's download, or the crawl)
 	Crawled time.Time
 	FileAge time.Duration
+	// Downloadable is whether the downloader has a grabber for the site (it
+	// is in the site table); a site known only through a Tachiyomi source is
+	// search only
+	Downloadable bool
+	// NSFW and Source come from the site's Tachiyomi source, when it has one
+	NSFW   bool
+	Source string
 }
 
-// Status describes every site of the table, in table order
+// Status describes every site: the table's, in table order, then the
+// sites known only through a Tachiyomi source (sources.json), by site
 func (s *Store) Status() []SiteStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	sites := Sites()
-	out := make([]SiteStatus, 0, len(sites))
+	out := make([]SiteStatus, 0, len(sites)+len(s.sources))
 	now := time.Now()
-	for _, site := range sites {
-		st := SiteStatus{Site: site.Site, Label: site.Label, Language: site.Lang, Crawlable: site.Crawl}
-		if c, ok := s.catalogs[site.Site]; ok {
+	fill := func(st *SiteStatus) {
+		if c, ok := s.catalogs[st.Site]; ok {
 			st.HasCatalog = true
 			st.Entries = len(c.Entries)
 			st.Crawled = c.Crawled
-			if info, err := os.Stat(filepath.Join(s.Dir, site.Site+".json")); err == nil {
+			if info, err := os.Stat(filepath.Join(s.Dir, st.Site+".json")); err == nil {
 				st.FileAge = now.Sub(info.ModTime())
 			}
 		}
+		if r, ok := s.sourceOf(st.Site); ok {
+			st.NSFW = r.NSFW
+			st.Source = r.Name
+			st.Crawlable = st.Crawlable || r.SourceID != ""
+		}
+	}
+	inTable := map[string]bool{}
+	for _, site := range sites {
+		inTable[site.Site] = true
+		st := SiteStatus{Site: site.Site, Label: site.Label, Language: site.Lang, Crawlable: site.Crawl, Downloadable: true}
+		fill(&st)
+		out = append(out, st)
+	}
+	for _, r := range s.sources {
+		if inTable[r.Site] {
+			continue
+		}
+		st := SiteStatus{Site: r.Site, Label: hostLabel(r), Language: r.Lang}
+		fill(&st)
 		out = append(out, st)
 	}
 

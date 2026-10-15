@@ -124,3 +124,26 @@ func TestOpenStoreKeepsStdoutForResults(t *testing.T) {
 		t.Errorf("stdout got %q", got.String())
 	}
 }
+
+func TestRunSearchShowsDownloadable(t *testing.T) {
+	dir := t.TempDir()
+	s := catalog.NewStore(dir)
+	s.Write(&catalog.SiteCatalog{Site: "x.test", Crawled: time.Now(), Entries: []catalog.Entry{{Title: "One Piece", URL: "https://x.test/manga/one-piece/"}}})
+	s.Write(&catalog.SiteCatalog{Site: "mangaread.org", Crawled: time.Now(), Entries: []catalog.Entry{{Title: "One Piece", URL: "https://www.mangaread.org/manga/one-piece/"}}})
+	var out bytes.Buffer
+	runSearch(&out, s, "one piece", "", 0, false)
+	if !strings.Contains(out.String(), "DL") {
+		t.Errorf("no DL column: %s", out.String())
+	}
+	out.Reset()
+	runSearch(&out, s, "one piece", "", 0, true)
+	var hits []searchHit
+	if err := json.Unmarshal(out.Bytes(), &hits); err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range hits {
+		if (h.Site == "mangaread.org") != h.Downloadable {
+			t.Errorf("hit %+v", h)
+		}
+	}
+}

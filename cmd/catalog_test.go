@@ -206,3 +206,53 @@ func TestStatusJSONOmitsCrawledWithoutCatalog(t *testing.T) {
 		t.Error("a site without a catalog prints a zero crawl time")
 	}
 }
+
+func TestCatalogIndexCommand(t *testing.T) {
+	dir := t.TempDir()
+	s := catalog.NewStore(dir)
+	s.Write(&catalog.SiteCatalog{Site: "x.test", Crawled: time.Unix(100, 0), Entries: entries(2, "x.test")})
+	b, _ := json.Marshal([]catalog.SourceRow{{Site: "x.test", Name: "X", Lang: "en", SourceID: "2", Entries: 2}})
+	os.WriteFile(filepath.Join(dir, "sources-0.json"), b, 0o600)
+	var log bytes.Buffer
+	if code := runIndex(&log, dir, false); code != 0 {
+		t.Fatalf("exit %d: %s", code, log.String())
+	}
+	idx, err := catalog.ReadIndex(dir)
+	if err != nil || len(idx.Sites) != 1 {
+		t.Fatalf("index %+v %v", idx, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sources.json")); err != nil {
+		t.Error("sources.json not written")
+	}
+	if !strings.Contains(log.String(), "1 site") {
+		t.Errorf("log: %s", log.String())
+	}
+}
+
+func TestRunStatusDLColumn(t *testing.T) {
+	dir := t.TempDir()
+	s := catalog.NewStore(dir)
+	s.Write(&catalog.SiteCatalog{Site: "x.test", Crawled: time.Unix(100, 0), Entries: entries(1, "x.test")})
+	b, _ := json.Marshal([]catalog.SourceRow{{Site: "x.test", Name: "X", Lang: "en", SourceID: "2", Entries: 1, NSFW: true}})
+	os.WriteFile(filepath.Join(dir, "sources.json"), b, 0o600)
+	s.Load()
+	var out bytes.Buffer
+	runStatus(&out, s, false)
+	if !strings.Contains(out.String(), "DL") {
+		t.Errorf("no DL column: %s", out.String())
+	}
+	for _, line := range strings.Split(out.String(), "\n") {
+		if strings.HasPrefix(line, "x.test") && (!strings.Contains(line, "nsfw") || !strings.Contains(line, " - ")) {
+			t.Errorf("x row: %q", line)
+		}
+	}
+	out.Reset()
+	runStatus(&out, s, true)
+	var rows []statusRow
+	json.Unmarshal(out.Bytes(), &rows)
+	for _, r := range rows {
+		if r.Site == "x.test" && (r.Downloadable || !r.NSFW || r.Source != "X") {
+			t.Errorf("json row: %+v", r)
+		}
+	}
+}

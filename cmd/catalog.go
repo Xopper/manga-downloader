@@ -24,6 +24,7 @@ var catalogFlags struct {
 	limit int
 	out   string
 	json  bool
+	gzip  bool
 }
 
 var catalogCmd = &cobra.Command{
@@ -82,6 +83,57 @@ ends with exit code 2 if any site failed or was kept.`,
 	},
 }
 
+var catalogIndexCmd = &cobra.Command{
+	Use:   "index",
+	Short: "Rebuilds index.json (and sources.json) of a catalog directory",
+	Long: `Merges the sources-<shard>.json files a sharded Suwayomi crawl left into
+sources.json, then writes index.json listing every catalog file with its
+hash. With --gzip, the catalog files are gzipped first (the published form).`,
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		exit(runIndex(os.Stdout, catalogFlags.out, catalogFlags.gzip))
+	},
+}
+
+// runIndex merges the sources files and rebuilds the index of dir
+func runIndex(w io.Writer, dir string, gzip bool) int {
+	rows, err := catalog.MergeSources(dir)
+	if err != nil {
+		fmt.Fprintln(w, color.RedString("sources: %s", err))
+		return 2
+	}
+	if gzip {
+		if err := catalog.Gzip(dir); err != nil {
+			fmt.Fprintln(w, color.RedString("gzip: %s", err))
+			return 2
+		}
+	}
+	idx, err := catalog.BuildIndex(dir)
+	if err == nil {
+		err = catalog.WriteIndex(dir, idx)
+	}
+	if err != nil {
+		fmt.Fprintln(w, color.RedString("index: %s", err))
+		return 2
+	}
+	total := 0
+	for _, s := range idx.Sites {
+		total += s.Entries
+	}
+	fmt.Fprintf(w, "%d %s, %d entries, %d sources\n", len(idx.Sites), plural(len(idx.Sites), "site"), total, len(rows))
+
+	return 0
+}
+
+// plural is "site" or "sites"
+func plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+
+	return word + "s"
+}
+
 // statusRow is a site in the status output
 type statusRow struct {
 	Site     string `json:"site"`
@@ -89,6 +141,11 @@ type statusRow struct {
 	Language string `json:"lang"`
 	// Crawlable is whether the site has a crawler at all
 	Crawlable bool `json:"crawlable"`
+	// Downloadable is whether the downloader has a grabber for the site
+	Downloadable bool `json:"downloadable"`
+	// NSFW and Source come from the site's Tachiyomi source
+	NSFW   bool   `json:"nsfw,omitempty"`
+	Source string `json:"source,omitempty"`
 	// Catalog is whether a catalog is on disk
 	Catalog bool       `json:"catalog"`
 	Entries int        `json:"entries"`
@@ -101,7 +158,7 @@ type statusRow struct {
 func runStatus(w io.Writer, store *catalog.Store, asJSON bool) {
 	var rows []statusRow
 	for _, st := range store.Status() {
-		r := statusRow{Site: st.Site, Label: st.Label, Language: st.Language, Crawlable: st.Crawlable, Catalog: st.HasCatalog, Entries: st.Entries}
+		r := statusRow{Site: st.Site, Label: st.Label, Language: st.Language, Crawlable: st.Crawlable, Downloadable: st.Downloadable, NSFW: st.NSFW, Source: st.Source, Catalog: st.HasCatalog, Entries: st.Entries}
 		if st.HasCatalog {
 			crawled := st.Crawled
 			r.Crawled = &crawled
@@ -116,15 +173,23 @@ func runStatus(w io.Writer, store *catalog.Store, asJSON bool) {
 		return
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "SITE\tLANG\tENTRIES\tCRAWLED\tAGE")
+	fmt.Fprintln(tw, "SITE\tLANG\tDL\tENTRIES\tCRAWLED\tAGE\tNOTE")
 	for _, r := range rows {
+		dl := "-"
+		if r.Downloadable {
+			dl = "yes"
+		}
+		note := ""
+		if r.NSFW {
+			note = "nsfw"
+		}
 		switch {
 		case r.Catalog:
-			fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\n", r.Site, r.Language, r.Entries, r.Crawled.Local().Format("2006-01-02 15:04"), r.Age)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\n", r.Site, r.Language, dl, r.Entries, r.Crawled.Local().Format("2006-01-02 15:04"), r.Age, note)
 		case r.Crawlable:
-			fmt.Fprintf(tw, "%s\t%s\t-\tnot downloaded\t\n", r.Site, r.Language)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t-\tnot downloaded\t\t%s\n", r.Site, r.Language, dl, note)
 		default:
-			fmt.Fprintf(tw, "%s\t%s\t-\tno catalog\t\n", r.Site, r.Language)
+			fmt.Fprintf(tw, "%s\t%s\t%s\t-\tno catalog\t\t%s\n", r.Site, r.Language, dl, note)
 		}
 	}
 	tw.Flush()
@@ -252,6 +317,8 @@ func init() {
 	catalogCrawlCmd.Flags().StringVar(&catalogFlags.site, "site", "", "only this site (its domain)")
 	catalogCrawlCmd.Flags().IntVar(&catalogFlags.limit, "limit", 0, "stop after this many list pages per site (smoke checks)")
 	catalogCrawlCmd.Flags().StringVar(&catalogFlags.out, "out", "./catalog", "directory for the catalog files")
-	catalogCmd.AddCommand(catalogUpdateCmd, catalogStatusCmd, catalogCrawlCmd)
+	catalogIndexCmd.Flags().StringVar(&catalogFlags.out, "out", "./catalog", "the catalog directory")
+	catalogIndexCmd.Flags().BoolVar(&catalogFlags.gzip, "gzip", false, "gzip the catalog files first (the published form)")
+	catalogCmd.AddCommand(catalogUpdateCmd, catalogStatusCmd, catalogCrawlCmd, catalogIndexCmd)
 	rootCmd.AddCommand(catalogCmd)
 }

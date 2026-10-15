@@ -3,6 +3,8 @@
 package catalog
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -224,4 +226,38 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 	}
 
 	return changed, firstErr
+}
+
+// Gzip turns every catalog file of dir into <site>.json.gz (the published
+// form) and removes the plain file
+func Gzip(dir string) error {
+	names, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		if !isCatalogFile(filepath.Base(name)) {
+			continue
+		}
+		b, err := os.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		var buf bytes.Buffer
+		zw := gzip.NewWriter(&buf)
+		if _, err := zw.Write(b); err != nil {
+			return err
+		}
+		if err := zw.Close(); err != nil {
+			return err
+		}
+		if err := writeFileAtomic(name+".gz", buf.Bytes()); err != nil {
+			return err
+		}
+		if err := os.Remove(name); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
