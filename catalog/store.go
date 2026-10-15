@@ -49,7 +49,7 @@ func (s *Store) Load() []error {
 	catalogs := make(map[string]*SiteCatalog, len(names))
 	var warnings []error
 	for _, name := range names {
-		if filepath.Base(name) == indexFile {
+		if !isCatalogFile(filepath.Base(name)) {
 			continue
 		}
 		b, err := os.ReadFile(name)
@@ -105,6 +105,15 @@ func (s *Store) Catalog(site string) (*SiteCatalog, bool) {
 
 // indexFile is the published listing of the catalog files
 const indexFile = "index.json"
+
+// sourcesFile lists the Tachiyomi sources the catalogs came through
+const sourcesFile = "sources.json"
+
+// isCatalogFile tells a site's file from the index and the sources files
+// that sit next to them
+func isCatalogFile(name string) bool {
+	return name != indexFile && !strings.HasPrefix(name, "sources")
+}
 
 // DefaultDir is where the app keeps its catalogs: next to gui.json
 func DefaultDir() (string, error) {

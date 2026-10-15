@@ -58,7 +58,7 @@ func BuildIndex(dir string) (*Index, error) {
 	sort.Strings(names)
 	idx := &Index{Generated: time.Now().UTC()}
 	for _, name := range names {
-		if filepath.Base(name) == indexFile {
+		if !isCatalogFile(filepath.Base(name)) {
 			continue
 		}
 		b, err := os.ReadFile(name)

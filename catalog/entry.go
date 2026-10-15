@@ -21,5 +21,20 @@ type SiteCatalog struct {
 	Home     string    `json:"home"`
 	Language string    `json:"lang"`
 	Crawled  time.Time `json:"crawled"`
-	Entries  []Entry   `json:"entries"`
+	// Source is the Tachiyomi source the list came through, when a Suwayomi
+	// crawl built or extended it
+	Source  *SourceInfo `json:"source,omitempty"`
+	Entries []Entry     `json:"entries"`
+}
+
+// SourceInfo describes the Tachiyomi source a catalog came through
+type SourceInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Lang string `json:"lang"`
+	NSFW bool   `json:"nsfw"`
+	// Pages is how many listing pages the crawl read; Complete is false when
+	// a listing was cut at the page cap
+	Pages    int  `json:"pages"`
+	Complete bool `json:"complete"`
 }
