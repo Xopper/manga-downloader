@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,6 +36,23 @@ type IndexEntry struct {
 type Index struct {
 	Generated time.Time    `json:"generated"`
 	Sites     []IndexEntry `json:"sites"`
+	// Extra lists the files published beside the catalogs (sources.json),
+	// with Site empty
+	Extra []IndexEntry `json:"extra,omitempty"`
+}
+
+// extra returns the entry of an extra file, nil when none
+func (idx *Index) extra(file string) *IndexEntry {
+	if idx == nil {
+		return nil
+	}
+	for i := range idx.Extra {
+		if idx.Extra[i].File == file {
+			return &idx.Extra[i]
+		}
+	}
+
+	return nil
 }
 
 // entry returns the site's entry, nil when it has none
@@ -51,31 +69,81 @@ func (idx *Index) entry(site string) *IndexEntry {
 	return nil
 }
 
-// BuildIndex hashes every <site>.json in dir
+// BuildIndex hashes every <site>.json (or .json.gz) in dir, and sources.json
+// as an extra file
 func BuildIndex(dir string) (*Index, error) {
-	names, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	names, err := catalogFiles(dir)
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(names)
 	idx := &Index{Generated: time.Now().UTC()}
 	for _, name := range names {
-		if !isCatalogFile(filepath.Base(name)) {
-			continue
-		}
 		b, err := os.ReadFile(name)
 		if err != nil {
 			return nil, err
 		}
+		content, err := maybeGunzip(filepath.Base(name), b)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", filepath.Base(name), err)
+		}
 		var c SiteCatalog
-		if err := json.Unmarshal(b, &c); err != nil || c.Site == "" {
+		if err := json.Unmarshal(content, &c); err != nil || c.Site == "" {
 			continue
 		}
 		sum := sha256.Sum256(b)
 		idx.Sites = append(idx.Sites, IndexEntry{Site: c.Site, File: filepath.Base(name), Entries: len(c.Entries), Crawled: c.Crawled, SHA256: hex.EncodeToString(sum[:])})
 	}
+	if b, err := os.ReadFile(filepath.Join(dir, sourcesFile)); err == nil {
+		sum := sha256.Sum256(b)
+		idx.Extra = append(idx.Extra, IndexEntry{File: sourcesFile, SHA256: hex.EncodeToString(sum[:])})
+	}
 
 	return idx, nil
+}
+
+// catalogFiles lists dir's catalog files, plain or gzipped, sorted. A site
+// with both (a crawl's fresh plain file next to the published gz) is listed
+// by the plain one, the newer of the two.
+func catalogFiles(dir string) ([]string, error) {
+	plain, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	if err != nil {
+		return nil, err
+	}
+	gzipped, err := filepath.Glob(filepath.Join(dir, "*.json.gz"))
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	has := map[string]bool{}
+	for _, name := range plain {
+		if isCatalogFile(filepath.Base(name)) {
+			names = append(names, name)
+			has[name] = true
+		}
+	}
+	for _, name := range gzipped {
+		if isCatalogFile(filepath.Base(name)) && !has[strings.TrimSuffix(name, ".gz")] {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+
+	return names, nil
+}
+
+// maybeGunzip returns the content of a catalog file, gunzipped when its name
+// says so
+func maybeGunzip(name string, b []byte) ([]byte, error) {
+	if !strings.HasSuffix(name, ".gz") {
+		return b, nil
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+
+	return io.ReadAll(io.LimitReader(zr, 256<<20))
 }
 
 // WriteIndex saves the index into dir, atomically
@@ -124,7 +192,7 @@ var siteNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]*$`)
 // validEntry reports whether a published index entry is safe to act on: the
 // site is a bare domain and the file is that site's own file
 func validEntry(e IndexEntry) bool {
-	return siteNameRe.MatchString(e.Site) && !strings.Contains(e.Site, "..") && e.File == e.Site+".json"
+	return siteNameRe.MatchString(e.Site) && !strings.Contains(e.Site, "..") && (e.File == e.Site+".json" || e.File == e.Site+".json.gz")
 }
 
 // Update fetches the published index at baseURL and downloads every site
@@ -200,8 +268,13 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 			}
 			continue
 		}
+		content, err := maybeGunzip(re.File, []byte(body))
+		if err != nil {
+			fail(fmt.Errorf("%s: %w", re.File, err))
+			continue
+		}
 		var c SiteCatalog
-		if err := json.Unmarshal([]byte(body), &c); err != nil || c.Site != re.Site {
+		if err := json.Unmarshal(content, &c); err != nil || c.Site != re.Site {
 			fail(fmt.Errorf("%s: not the catalog of %s", re.File, re.Site))
 			continue
 		}
@@ -211,6 +284,47 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 		}
 		merged.Sites = append(merged.Sites, re)
 		changed = append(changed, re.Site)
+	}
+	// the extra files (sources.json), fetched when their hash moved
+	for _, re := range remote.Extra {
+		if re.File != sourcesFile {
+			continue
+		}
+		if le := local.extra(re.File); le != nil && le.SHA256 == re.SHA256 {
+			if _, err := os.Stat(filepath.Join(s.Dir, re.File)); err == nil {
+				merged.Extra = append(merged.Extra, re)
+				continue
+			}
+		}
+		if cancelled {
+			break
+		}
+		body, err := http.GetText(http.RequestParams{URL: baseURL + re.File, DisableRetry: true})
+		if err != nil {
+			fail(fmt.Errorf("%s: %w", re.File, err))
+			if le := local.extra(re.File); le != nil {
+				merged.Extra = append(merged.Extra, *le)
+			}
+			continue
+		}
+		sum := sha256.Sum256([]byte(body))
+		if hex.EncodeToString(sum[:]) != re.SHA256 {
+			fail(fmt.Errorf("%s: downloaded file doesn't match its hash", re.File))
+			continue
+		}
+		var rows []SourceRow
+		if err := json.Unmarshal([]byte(body), &rows); err != nil {
+			fail(fmt.Errorf("%s: %w", re.File, err))
+			continue
+		}
+		if err := writeFileAtomic(filepath.Join(s.Dir, re.File), []byte(body)); err != nil {
+			fail(err)
+			continue
+		}
+		s.mu.Lock()
+		s.sources = rows
+		s.mu.Unlock()
+		merged.Extra = append(merged.Extra, re)
 	}
 	if cancelled && len(changed) == 0 {
 		// nothing moved: the old index (and its age) stands

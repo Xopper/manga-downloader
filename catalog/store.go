@@ -44,20 +44,20 @@ func NewStore(dir string) *Store {
 // Load reads every <site>.json in Dir (index.json excluded). A missing dir
 // is an empty store; a file that doesn't parse is skipped and reported.
 func (s *Store) Load() []error {
-	names, err := filepath.Glob(filepath.Join(s.Dir, "*.json"))
+	names, err := catalogFiles(s.Dir)
 	if err != nil {
 		return []error{err}
 	}
-	sort.Strings(names)
 	catalogs := make(map[string]*SiteCatalog, len(names))
 	var warnings []error
 	for _, name := range names {
-		if !isCatalogFile(filepath.Base(name)) {
-			continue
-		}
 		b, err := os.ReadFile(name)
 		if err != nil {
 			warnings = append(warnings, err)
+			continue
+		}
+		if b, err = maybeGunzip(filepath.Base(name), b); err != nil {
+			warnings = append(warnings, fmt.Errorf("%s: %w", filepath.Base(name), err))
 			continue
 		}
 		var c SiteCatalog
