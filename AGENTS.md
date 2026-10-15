@@ -148,3 +148,55 @@ lowercase, NFKD, accents dropped, dakuten kept). Design:
   a fixture test, the family name on the sites in `sites.json` with `crawl:
   true` and their `list` URL, and a line in `make catalog/smoke`.
 
+### Suwayomi catalogs (`catalog crawl-suwayomi`, `catalog index`)
+
+Most catalogs come from Tachiyomi sources through a Suwayomi-Server
+(`catalog/suwayomi.go`), run by `.github/workflows/catalog-suwayomi.yaml`
+nightly, four shards. Design:
+`docs/superpowers/specs/2026-10-15-suwayomi-catalog-design.md`.
+
+- **The keiyoushi store is added at runtime through GraphQL**
+  (`addExtensionStore(input:{indexUrl:".../keiyoushi/extensions/repo/index.pb"})`,
+  in `tools/suwayomi/run.sh`); `server.conf`'s `extensionRepos` no longer
+  does it. The REST API is `/api/v1/extension/list|install/{pkg}`,
+  `/source/list`, `/source/{id}/popular|latest/{n}` and
+  `/source/{id}/search?searchTerm=&pageNum={n}`; a series URL is the source's
+  `baseUrl` plus the manga's `url` by plain concatenation (`joinBase`), as
+  Tachiyomi's `HttpSource` does, never URL resolution.
+- **No listing is complete on every source** (MangaPill: popular is its top
+  10, latest is 116 titles on one page, the empty search is empty), so
+  `walkSource` unions popular, latest and the empty search, each until
+  `hasNextPage` is false, a page adds nothing new, the page cap (`--max-pages`,
+  300) or three errors in a row. `SourceInfo.Complete` is false when a cap
+  cut a listing.
+- **The site key is the host of `baseUrl`** without `www.` (`siteOfBase`), so
+  a Suwayomi source for a site a hand-written crawler covers lands in the
+  same file, as a **union** (`mergeSite`: existing entries first, sorted by
+  folded title so the file only changes when the set does). A merged file
+  is never smaller than the one it replaces; an empty crawl writes nothing.
+  Writes to one site are serialised (two sources on one host).
+- **A partial crawl is a failure** for the hand-written crawlers (nothing
+  written) but not here: a source whose walk hit the cap or three errors
+  still merges what it got (a union can't shrink a file) and is marked
+  `complete: false`.
+- **Shards**: `--shard i/n` keeps every source whose index in id order is
+  `i` modulo `n`; each shard writes `sources-<i>.json`, and `catalog index`
+  (the publish job) merges them into `sources.json` and removes them.
+  `--timeout` stops starting sources, so a shard ends inside the job's
+  limit; the sources it skipped are rows with `failed: true`.
+- **Published files are gzipped** (`catalog index --gzip` → `<site>.json.gz`,
+  hash of the gzipped bytes in the index; `sources.json` is listed under the
+  index's `extra`). `Store.Load` reads both forms (a plain file wins over a
+  stale gz twin), `Update` gunzips after the hash check and keeps local files
+  plain. Both catalog workflows run `catalog index --gzip` before committing.
+- **Search only**: `Store.Status` unions the site table with `sources.json`;
+  `SiteStatus.Downloadable` is "in the table" (a grabber exists). The CLI
+  shows a `DL` column, JSON rows carry `downloadable`, the app's picker
+  groups "Can download" / "Search only", a hit carries `downloadable` and
+  `nsfw` (the source's flag, which means "may contain"), and picking a
+  search-only hit shows a note with *Copy link* / *Open in browser* instead
+  of loading.
+- **Local**: `tools/suwayomi/run.sh` (Java 21+, data under
+  `~/.cache/manga-downloader-suwayomi`), `make catalog/smoke-suwayomi`
+  (MangaPill + Weeb Central, two pages, `--no-install`).
+

@@ -775,10 +775,21 @@ manga-downloader catalog update                # download what changed
 
 Pass a printed URL to the download command as usual. The catalogs are fetched
 on first use and refreshed by the app once a day; `catalog update` does it by
-hand. They are rebuilt nightly from the sites by this repository's `Catalog`
-workflow, published on the `catalog-data` branch (`MANGA_DOWNLOADER_CATALOG_URL`
-points a build at another copy). Not every site has a catalog yet: `catalog
-status` says which, and `catalog crawl` builds them locally.
+hand. They are rebuilt nightly by this repository's `Catalog` workflows,
+published on the `catalog-data` branch (`MANGA_DOWNLOADER_CATALOG_URL`
+points a build at another copy). `catalog status` lists every site with its
+catalog's age; `catalog crawl` builds the supported sites' catalogs locally.
+
+**Catalogs from Tachiyomi sources.** Most catalogs come from the English
+Tachiyomi sources (the keiyoushi extensions, adult sources included), listed
+nightly through a Suwayomi-Server the job runs itself
+(`catalog crawl-suwayomi`, see `tools/suwayomi/`). Those sites are **search
+only** unless this downloader has a grabber for them: a hit shows a "search
+only" tag (and "18+" when the source says so), the `DL` column says `-`, and
+picking it in the app offers the link to copy or open in your browser instead
+of loading it. The lists are each source's popular, latest and full listing
+unioned, cut at a page cap on the biggest sites, so a title missing from a
+search may still exist on the site.
 
 ## Troubleshooting
 
