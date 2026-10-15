@@ -4,6 +4,7 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"strconv"
 	"strings"
@@ -137,4 +138,14 @@ func dedupe(entries []Entry) []Entry {
 // {page} is a single page and is returned as is
 func pageURL(list string, page int) string {
 	return strings.ReplaceAll(list, "{page}", strconv.Itoa(page))
+}
+
+// isNotFound reports whether a fetch failed with a 404, the end of a paged list
+func isNotFound(err error) bool {
+	var se *http.StatusError
+	if errors.As(err, &se) {
+		return se.Code == 404
+	}
+
+	return false
 }
