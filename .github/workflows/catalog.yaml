@@ -6,8 +6,9 @@ name: Catalog
 # orphan so generated data never buries real commits on master.
 #
 # `catalog crawl` exits 2 when a site failed or its old file was kept (the
-# half-size guard); what worked is still committed, and the job is then
-# marked failed so the broken site gets noticed.
+# half-size guard); what worked is still committed. The failed sites are
+# listed in the job summary, and the job goes red only when more than half
+# of the sites failed (the sites' markup drifting one by one is normal).
 on:
   schedule:
     - cron: "17 3 * * *"
@@ -52,6 +53,19 @@ jobs:
           bin/manga-downloader catalog crawl --out data/catalog 2>&1 | tee crawl.log
           code=${PIPESTATUS[0]}
           echo "exit=$code" >> "$GITHUB_OUTPUT"
+          written=$(grep -cE '^[a-z0-9.-]+  [0-9]+ entries' crawl.log)
+          failed=$(grep -cE '^[a-z0-9.-]+  (FAIL|kept)' crawl.log)
+          echo "written=$written" >> "$GITHUB_OUTPUT"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          {
+            echo "## $written sites written, $failed failed or kept"
+            echo
+            if [ "$failed" -gt 0 ]; then
+              echo '```'
+              grep -E '^[a-z0-9.-]+  (FAIL|kept)' crawl.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
       - name: Index and gzip
@@ -72,8 +86,11 @@ jobs:
           git commit -qm "Update catalog: $total entries, $sites sites"
           git push origin HEAD:catalog-data
 
-      - name: Fail when a site failed
-        if: steps.crawl.outputs.exit != '0'
+      - name: Fail when most sites failed
         run: |
-          grep -E 'FAIL|kept|Unknown' crawl.log || true
-          exit 1
+          written=${{ steps.crawl.outputs.written }}
+          failed=${{ steps.crawl.outputs.failed }}
+          if [ "$written" -eq 0 ] || [ "$failed" -gt "$written" ]; then
+            echo "::error::$failed sites failed, $written written"
+            exit 1
+          fi

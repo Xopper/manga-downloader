@@ -81,6 +81,20 @@ jobs:
             --out data/catalog 2>&1 | tee crawl.log
           code=${PIPESTATUS[0]}
           echo "exit=$code" >> "$GITHUB_OUTPUT"
+          # the counts from the crawl's last line: "N sources, M written, K failed"
+          read -r sources written failed <<< "$(grep -E '^[0-9]+ sources, [0-9]+ written, [0-9]+ failed$' crawl.log | tail -1 | tr -dc '0-9 ')"
+          echo "sources=${sources:-0}" >> "$GITHUB_OUTPUT"
+          echo "written=${written:-0}" >> "$GITHUB_OUTPUT"
+          echo "failed=${failed:-0}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Shard ${{ matrix.shard }}: ${written:-0} of ${sources:-0} sources written, ${failed:-0} failed"
+            echo
+            if grep -qE 'FAIL|skipped' crawl.log; then
+              echo '```'
+              grep -E 'FAIL|skipped' crawl.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
           # only what this shard wrote travels to the publish job
           mkdir -p shard
           cp "data/catalog/sources-${{ matrix.shard }}.json" shard/ 2>/dev/null || true
@@ -97,11 +111,15 @@ jobs:
           path: shard
           if-no-files-found: warn
 
-      - name: Fail when a source failed
-        if: steps.crawl.outputs.exit != '0'
+      - name: Fail when most sources failed
         run: |
-          grep -E 'FAIL|skipped' crawl.log | head -50 || true
-          exit 1
+          sources=${{ steps.crawl.outputs.sources }}
+          written=${{ steps.crawl.outputs.written }}
+          failed=${{ steps.crawl.outputs.failed }}
+          if [ "$written" -eq 0 ] || [ $((failed * 2)) -gt "$sources" ]; then
+            echo "::error::$failed of $sources sources failed, $written written: the server or the runner is broken"
+            exit 1
+          fi
 
   publish:
     needs: crawl
@@ -156,4 +174,6 @@ jobs:
 
       - name: Fail when a shard failed
         if: needs.crawl.result != 'success'
-        run: exit 1
+        run: |
+          echo "::error::a shard failed (most of its sources, or its runner); what the others wrote was published"
+          exit 1

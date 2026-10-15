@@ -200,7 +200,9 @@ nightly, four shards. Design:
   (the publish job) merges them into `sources.json` and removes them.
   `--timeout` stops starting sources (checked when a slot frees), so a shard
   ends inside the job's limit; the sources it skipped are rows with
-  `failed: true`. Every request to the server has a deadline
+  `failed: true`. A shard goes red only when more than half of its sources
+  failed or none was written; the failed ones are listed in the run summary
+  (about a hundred fail every night: Cloudflare walls, dead sites). Every request to the server has a deadline
   (`RequestTimeout`, 120 s), so a stuck extension can't hold a slot.
 - **Published files are gzipped** (`catalog index --gzip` → `<site>.json.gz`,
   hash of the gzipped bytes in the index; `sources.json` is listed under the
