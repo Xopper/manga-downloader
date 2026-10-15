@@ -15,6 +15,8 @@ export function ActivityDrawer({ state, onOpenFolder, onClose }: Props) {
   return (
     <section
       className="log-drawer drawer activity-drawer"
+      role="dialog"
+      aria-modal="true"
       aria-label="Download details"
       onKeyDown={(e) => {
         if (e.key === 'Escape') {

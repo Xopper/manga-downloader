@@ -141,15 +141,37 @@ func (c *Controller) fetchNumbers(url string, s *grabber.Settings) (title string
 	if site == nil {
 		return "", nil, errors.New("site not recognised")
 	}
-	listing, err := core.Fetch(site)
-	if err != nil {
-		return "", nil, err
+	series, err := fetchSeries(site, s)
+	if err != nil && (s.Language != "" || s.Scanlator != "") && filterEmptiedList(err) {
+		// a filter the series lacks: a load would fall back (see
+		// dropUnmatchedFilters); the check only counts, so it counts them all
+		plain := *s
+		plain.Language, plain.Scanlator = "", ""
+		setSiteSettings(site, &plain)
+		series, err = fetchSeries(site, &plain)
 	}
-	series, err := listing.Series(s)
 	if err != nil {
 		return "", nil, err
 	}
 	return series.Title, chapterNumbers(series.Chapters), nil
+}
+
+// fetchSeries fetches and filters the chapter list of site with s
+func fetchSeries(site grabber.Site, s *grabber.Settings) (*core.Series, error) {
+	listing, err := core.Fetch(site)
+	if err != nil {
+		return nil, err
+	}
+	return listing.Series(s)
+}
+
+// filterEmptiedList reports whether err means "no chapters for this filter"
+// rather than a fetch failure
+func filterEmptiedList(err error) bool {
+	var noChapters *core.NoChaptersError
+	var chaptersErr *core.ChaptersError
+	var unavailable *grabber.UnavailableFilterError
+	return errors.As(err, &noChapters) || errors.As(err, &chaptersErr) || errors.As(err, &unavailable)
 }
 
 // SelectAbove selects the chapters numbered above number, leaving the rest
@@ -180,9 +202,10 @@ func (c *Controller) SelectAbove(number float64) (int, error) {
 // series after the other
 type batchState struct {
 	done, total int
-	// current is the title of the series being downloaded
-	current string
-	cancel  context.CancelFunc
+	// current and currentURL are the series being downloaded
+	current    string
+	currentURL string
+	cancel     context.CancelFunc
 }
 
 // BatchInfo is the batch's standing for the window
@@ -190,6 +213,7 @@ type BatchInfo struct {
 	Active      bool
 	Done, Total int
 	Current     string
+	CurrentURL  string
 }
 
 // Batch returns the batch's standing; Active is false when none runs
@@ -199,7 +223,7 @@ func (c *Controller) Batch() BatchInfo {
 	if c.batch == nil {
 		return BatchInfo{}
 	}
-	return BatchInfo{Active: true, Done: c.batch.done, Total: c.batch.total, Current: c.batch.current}
+	return BatchInfo{Active: true, Done: c.batch.done, Total: c.batch.total, Current: c.batch.current, CurrentURL: c.batch.currentURL}
 }
 
 // beginBatch starts a batch of total series; it's refused while one runs
@@ -215,10 +239,11 @@ func (c *Controller) beginBatch(total int) (context.Context, error) {
 }
 
 // batchStep records the series the batch moves on to
-func (c *Controller) batchStep(current string, done int) {
+func (c *Controller) batchStep(current, url string, done int) {
 	c.mu.Lock()
 	if c.batch != nil {
 		c.batch.current = current
+		c.batch.currentURL = url
 		c.batch.done = done
 	}
 	c.mu.Unlock()
@@ -234,6 +259,13 @@ func (c *Controller) endBatch() {
 	}
 	c.mu.Unlock()
 	c.emit()
+}
+
+// BatchActive reports whether a batch runs
+func (c *Controller) BatchActive() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.batch != nil
 }
 
 // CancelBatch stops the batch after the series being downloaded, whose run

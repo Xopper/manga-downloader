@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elboletaire/manga-downloader/catalog"
 	"github.com/elboletaire/manga-downloader/core"
 	"github.com/elboletaire/manga-downloader/grabber"
 )
@@ -476,17 +477,31 @@ func TestDownloadAllNewRunsEachSeriesInTurn(t *testing.T) {
 
 func TestSearchHitsCarryKnownCounts(t *testing.T) {
 	a, _ := loadedApp(t, 5)
-	url := "https://example.com/manga/test"
-	dto := HitDTO{URL: url}
-	lib := a.ctrl.Library()
-	if seen, ok := lib.SeenOf(url); !ok || seen.Chapters != 5 {
-		t.Fatalf("seen = %+v", seen)
+	store := catalog.NewStore(catalogDir(t, catalog.SiteCatalog{Site: "mangaread.org", Language: "en", Crawled: time.Unix(1000, 0).UTC(), Entries: []catalog.Entry{
+		{Title: "Test Series", URL: "https://example.com/manga/test/"},
+		{Title: "Test Series 2", URL: "https://example.com/manga/test-2"},
+	}}))
+	store.Load()
+	a.ctrl.SetCatalog(store)
+	hits := a.Search("test series", "")
+	if len(hits) != 2 {
+		t.Fatalf("hits = %+v", hits)
 	}
-	if err := a.Follow(FollowedDTO{URL: url}); err != nil {
+	byURL := map[string]HitDTO{}
+	for _, h := range hits {
+		byURL[h.URL] = h
+	}
+	// the loaded series was seen: its count shows, under another spelling of its URL
+	if h := byURL["https://example.com/manga/test/"]; h.Chapters != 5 || h.Followed {
+		t.Errorf("seen hit = %+v", h)
+	}
+	if h := byURL["https://example.com/manga/test-2"]; h.Chapters != 0 || h.Followed {
+		t.Errorf("unseen hit = %+v", h)
+	}
+	if err := a.Follow(FollowedDTO{URL: "https://example.com/manga/test"}); err != nil {
 		t.Fatal(err)
 	}
-	// Search needs a catalog; the DTO filling is exercised through the same helpers
-	if f, ok := lib.Get(dto.URL); !ok || f.Chapters != 5 {
-		t.Errorf("followed = %+v", f)
+	if h := a.Search("test series", "")[0]; !h.Followed || h.Chapters != 5 {
+		t.Errorf("followed hit = %+v", h)
 	}
 }

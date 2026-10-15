@@ -11,7 +11,6 @@ import (
 	"github.com/elboletaire/manga-downloader/grabber"
 )
 
-const libURL = "https://example.com/manga/test"
 
 func TestLoadMarksTheSeriesSeen(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(5, 2)...)
@@ -78,13 +77,60 @@ func TestCancelledRunBeforeAnythingSavedKeepsTheMark(t *testing.T) {
 	<-site.entered
 	c.Cancel()
 	close(gate)
-	waitFinished(t, c)
+	s := waitFinished(t, c)
+	if !s.Cancelled {
+		t.Fatal("the run wasn't cancelled")
+	}
+	// the chapters in flight finish: the mark follows what they saved, no more
 	f, _ := c.Library().Get(testURL)
-	if f.SavedUpTo != 0 && f.SavedUpTo > 3 {
+	if f.SavedUpTo != float64(s.Saved) || f.New != 3-s.Saved {
+		t.Errorf("entry = %+v after %d saved", f, s.Saved)
+	}
+}
+
+func TestCancelledBundleKeepsTheMark(t *testing.T) {
+	gate := make(chan struct{})
+	c, site, _ := newTestController(t, true, gate, chapters(3, 2)...)
+	if err := c.Library().Follow(Followed{URL: testURL, Downloadable: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Load(testURL); err != nil {
+		t.Fatal(err)
+	}
+	c.SetAll(true)
+	if err := c.Start(); err != nil {
+		t.Fatal(err)
+	}
+	<-site.entered
+	c.Cancel()
+	close(gate)
+	s := waitFinished(t, c)
+	if !s.Cancelled || s.Bundle != "" {
+		t.Fatalf("summary = %+v", s)
+	}
+	// nothing reached the disk: the mark stays
+	f, _ := c.Library().Get(testURL)
+	if f.SavedUpTo != 0 || f.New != 3 || !f.LastSaved.IsZero() {
 		t.Errorf("entry = %+v", f)
 	}
-	if f.New != 3-int(f.SavedUpTo) {
-		t.Errorf("New %d doesn't match the mark %v", f.New, f.SavedUpTo)
+}
+
+func TestWrittenBundleMovesTheMark(t *testing.T) {
+	c, _, _ := newTestController(t, true, nil, chapters(3, 1)...)
+	_ = c.Library().Follow(Followed{URL: testURL, Downloadable: true})
+	if err := c.Load(testURL); err != nil {
+		t.Fatal(err)
+	}
+	c.SetAll(true)
+	if err := c.Start(); err != nil {
+		t.Fatal(err)
+	}
+	s := waitFinished(t, c)
+	if s.Bundle == "" {
+		t.Fatalf("no bundle: %+v", s)
+	}
+	if f, _ := c.Library().Get(testURL); f.SavedUpTo != 3 || f.New != 0 {
+		t.Errorf("entry = %+v", f)
 	}
 }
 
@@ -214,5 +260,20 @@ func TestSelectAbove(t *testing.T) {
 	}
 	if c.IsSelected(2) || !c.IsSelected(3) || !c.IsSelected(4) {
 		t.Error("the wrong chapters are selected")
+	}
+}
+
+func TestCheckCountsPastAFilterTheSeriesLacks(t *testing.T) {
+	c, site, _ := newTestController(t, false, nil, chapters(4, 1)...)
+	_ = c.Library().Follow(Followed{URL: testURL, Downloadable: true})
+	// the fake site serves no chapter in "xx": a load would fall back, so the check must count them all
+	c.settings.Language = "xx"
+	site.noLanguage = "xx"
+	if err := c.CheckLibrary(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	f, _ := c.Library().Get(testURL)
+	if f.Error != "" || f.Chapters != 4 {
+		t.Errorf("entry = %+v", f)
 	}
 }

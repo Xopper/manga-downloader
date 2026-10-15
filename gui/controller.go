@@ -118,8 +118,12 @@ type runStats struct {
 	failures []string
 	bundle   string
 	err      error
-	// maxSaved is the highest chapter number saved so far, 0 for none
-	maxSaved float64
+	// savedAny and maxSaved are whether a chapter reached the disk and the
+	// highest number that did; maxDownloaded is the bundle's chapters kept
+	// in memory, which count only once the bundle is written
+	savedAny      bool
+	maxSaved      float64
+	maxDownloaded float64
 }
 
 // Controller holds the state of the app and runs the core flow. It knows
@@ -1299,11 +1303,11 @@ func (c *Controller) run(ctx context.Context, url string, series *core.Series, s
 
 	c.mu.Lock()
 	defer func() {
-		maxSaved := c.stats.maxSaved
+		savedAny, maxSaved := c.stats.savedAny, c.stats.maxSaved
 		numbers := chapterNumbers(series.Chapters)
 		c.mu.Unlock()
 		// a run that saved something moves the library's mark for the series
-		if maxSaved > 0 {
+		if savedAny {
 			if lerr := c.library.MarkSaved(url, maxSaved, numbers); lerr != nil {
 				c.addLog(LogWarn, "could not save the library: "+lerr.Error())
 			}
@@ -1341,6 +1345,11 @@ func (c *Controller) run(ctx context.Context, url string, series *core.Series, s
 		c.appendLogLocked(LogError, "packing bundle: no chapter could be downloaded")
 	default:
 		s.Bundle = file
+		// the bundle's chapters reached the disk with it
+		if c.bundle != nil && c.stats.saved > 0 {
+			c.stats.savedAny = true
+			c.stats.maxSaved = max(c.stats.maxSaved, c.stats.maxDownloaded)
+		}
 	}
 	if c.bundle != nil {
 		if s.Bundle == "" {
@@ -1575,6 +1584,7 @@ func (e events) Packed(ch *grabber.Chapter, name string, err error) {
 		c.appendLogLocked(LogError, msg)
 	} else {
 		c.stats.saved++
+		c.stats.savedAny = true
 		c.stats.maxSaved = max(c.stats.maxSaved, ch.GetNumber())
 		if j != nil {
 			j.State = JobDone
@@ -1592,7 +1602,7 @@ func (e events) Downloaded(ch *grabber.Chapter) {
 	c.mu.Lock()
 	// the pages were counted as they came in; this only tallies the chapter
 	c.stats.saved++
-	c.stats.maxSaved = max(c.stats.maxSaved, ch.GetNumber())
+	c.stats.maxDownloaded = max(c.stats.maxDownloaded, ch.GetNumber())
 	c.mu.Unlock()
 	c.emit()
 }
@@ -1703,6 +1713,7 @@ func (e events) VolumePacked(v *core.Volume, name string, err error) {
 		c.appendLogLocked(LogError, "error packing "+msg)
 	default:
 		c.stats.volumes++
+		c.stats.savedAny = true
 		c.stats.maxSaved = max(c.stats.maxSaved, v.LastNumber())
 		if j != nil {
 			j.State = JobDone

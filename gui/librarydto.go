@@ -43,6 +43,8 @@ type BatchDTO struct {
 	Done    int    `json:"done"`
 	Total   int    `json:"total"`
 	Current string `json:"current"`
+	// CurrentURL is the series being downloaded, as the library keys it
+	CurrentURL string `json:"currentURL"`
 }
 
 func timeDTO(t time.Time) string {
@@ -77,7 +79,7 @@ func libraryDTO(c *Controller) LibraryDTO {
 		Checking:   on,
 		CheckDone:  done,
 		CheckTotal: total,
-		Batch:      BatchDTO{Active: batch.Active, Done: batch.Done, Total: batch.Total, Current: batch.Current},
+		Batch:      BatchDTO{Active: batch.Active, Done: batch.Done, Total: batch.Total, Current: batch.Current, CurrentURL: batch.CurrentURL},
 	}
 	for _, f := range c.Library().List() {
 		dto.Followed = append(dto.Followed, followedDTO(f))
@@ -142,6 +144,9 @@ func (a *App) CheckLibrary() error {
 	if c.Loading() || c.Running() {
 		return errBusy
 	}
+	if c.BatchActive() {
+		return errBatch
+	}
 	if len(c.Library().List()) == 0 {
 		return errors.New("follow a series first")
 	}
@@ -171,21 +176,31 @@ func (a *App) DownloadNew(url string) error {
 	if !entry.Downloadable {
 		return errors.New("the downloader can't read this site yet")
 	}
+	if a.ctrl.BatchActive() {
+		return errBatch
+	}
 	if err := a.ctrl.BeginLoad(url); err != nil {
 		return err
 	}
 	go func() {
-		_ = a.downloadNewLoaded(url)
+		_ = a.downloadNewLoaded(context.Background(), url)
 	}()
 	return nil
 }
 
+// errBatch is returned to an action that would race the batch download
+var errBatch = errors.New("every new chapter is being downloaded: stop that first")
+
 // downloadNewLoaded does the load BeginLoad started, then selects and starts
-// the new chapters of url. It returns once the run has started (or couldn't).
-func (a *App) downloadNewLoaded(url string) error {
+// the new chapters of url, unless ctx ended meanwhile. It returns once the
+// run has started (or couldn't).
+func (a *App) downloadNewLoaded(ctx context.Context, url string) error {
 	c := a.ctrl
 	if err := a.finishLoadNow(url); err != nil {
 		return err
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 	entry, _ := c.Library().Get(url)
 	n, err := c.SelectAbove(entry.SavedUpTo)
@@ -231,6 +246,9 @@ func (a *App) DownloadAllNew() error {
 	if on, _, _ := c.Checking(); on {
 		return errBusy
 	}
+	if c.BatchActive() {
+		return errBatch
+	}
 	var todo []Followed
 	for _, f := range c.Library().List() {
 		if f.Downloadable && f.New > 0 {
@@ -253,17 +271,20 @@ func (a *App) DownloadAllNew() error {
 func (a *App) runBatch(ctx context.Context, todo []Followed) {
 	c := a.ctrl
 	defer c.endBatch()
+	done, skipped := 0, 0
 	for i, f := range todo {
 		if ctx.Err() != nil {
-			c.addLog(LogInfo, "Stopped downloading the new chapters")
+			c.addLog(LogInfo, fmt.Sprintf("Stopped after %d of %d series", done, len(todo)))
 			return
 		}
-		c.batchStep(nonEmpty(f.Title, f.URL), i)
+		c.batchStep(nonEmpty(f.Title, f.URL), f.URL, i)
 		if err := c.BeginLoad(f.URL); err != nil {
 			c.addLog(LogWarn, fmt.Sprintf("%s: %s", f.Title, err))
+			skipped++
 			continue
 		}
-		if err := a.downloadNewLoaded(f.URL); err != nil {
+		if err := a.downloadNewLoaded(ctx, f.URL); err != nil {
+			skipped++
 			continue
 		}
 		// the run ends on its own goroutine; the next series waits for it
@@ -271,9 +292,14 @@ func (a *App) runBatch(ctx context.Context, todo []Followed) {
 			// CancelBatch cancels the run too, which then winds down
 			time.Sleep(50 * time.Millisecond)
 		}
+		done++
 	}
-	c.batchStep("", len(todo))
-	c.addLog(LogInfo, fmt.Sprintf("Downloaded the new chapters of %d series", len(todo)))
+	c.batchStep("", "", len(todo))
+	if skipped > 0 {
+		c.addLog(LogWarn, fmt.Sprintf("Downloaded the new chapters of %d series; %d couldn't be loaded", done, skipped))
+	} else {
+		c.addLog(LogInfo, fmt.Sprintf("Downloaded the new chapters of %d series", done))
+	}
 }
 
 // CancelBatch stops the batch after the series being downloaded, whose run

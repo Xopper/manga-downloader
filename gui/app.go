@@ -407,6 +407,9 @@ func (a *App) Load(url string) error {
 	if url == "" {
 		return errors.New("enter the URL of a series first")
 	}
+	if a.ctrl.BatchActive() {
+		return errBatch
+	}
 	if err := a.ctrl.BeginLoad(url); err != nil {
 		return err
 	}
@@ -421,6 +424,9 @@ func (a *App) SetOptionsAndLoad(o OptionsDTO, url string) error {
 	url = strings.TrimSpace(url)
 	if url == "" {
 		return errors.New("enter the URL of a series first")
+	}
+	if a.ctrl.BatchActive() {
+		return errBatch
 	}
 	if err := a.ctrl.ConfigureLoad(func(s *grabber.Settings) { applyOptions(s, o) }, url); err != nil {
 		return err

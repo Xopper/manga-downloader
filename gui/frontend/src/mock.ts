@@ -349,7 +349,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
   let checking = false;
   let checkDone = 0;
   let checkTotal = 0;
-  let batch = { active: false, done: 0, total: 0, current: '' };
+  let batch = { active: false, done: 0, total: 0, current: '', currentURL: '' };
   let batchStop = false;
   const followedOf = (target: string): Followed | undefined => followed.find((f) => urlKey(f.url) === urlKey(target));
   const libraryInfo = (): LibraryInfo => ({
@@ -1194,7 +1194,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       if (todo.length === 0) {
         throw 'nothing new in the library';
       }
-      batch = { active: true, done: 0, total: todo.length, current: '' };
+      batch = { active: true, done: 0, total: todo.length, current: '', currentURL: '' };
       batchStop = false;
       push();
       void (async () => {
@@ -1202,14 +1202,14 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
           if (batchStop) {
             break;
           }
-          batch = { ...batch, current: f.title, done: i };
+          batch = { ...batch, current: f.title, currentURL: f.url, done: i };
           push();
           await api.downloadNew(f.url);
           while (running) {
             await new Promise((resolve) => setTimeout(resolve, 50));
           }
         }
-        batch = { active: false, done: 0, total: 0, current: '' };
+        batch = { active: false, done: 0, total: 0, current: '', currentURL: '' };
         push();
       })();
     },

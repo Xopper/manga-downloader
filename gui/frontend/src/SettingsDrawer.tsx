@@ -20,6 +20,8 @@ export function SettingsDrawer({ state, onOptions, onError, onUpdateCatalog, onC
   return (
     <section
       className="log-drawer drawer settings-drawer"
+      role="dialog"
+      aria-modal="true"
       aria-label="Settings"
       onKeyDown={(e) => {
         if (e.key === 'Escape') {

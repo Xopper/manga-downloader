@@ -184,6 +184,19 @@ code {
   line-height: 1.4;
 }
 
+/* read by screen readers only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .error-text {
   color: var(--danger);
 }

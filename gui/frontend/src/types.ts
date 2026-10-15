@@ -146,8 +146,9 @@ export interface BatchInfo {
   active: boolean;
   done: number;
   total: number;
-  /** The title of the series being downloaded */
+  /** The title of the series being downloaded, and its URL as the library keys it */
   current: string;
+  currentURL: string;
 }
 
 export interface LibraryInfo {

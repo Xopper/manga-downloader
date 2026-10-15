@@ -160,7 +160,8 @@ export function ResultsPanel(props: ResultsPanelProps) {
                     <span className="hit-chapters num">{hit.chapters.toLocaleString('en-US')}</span>
                   ) : (
                     <span className="hit-chapters muted" title="Open it once to see how many chapters it has">
-                      —
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">unknown until opened</span>
                     </span>
                   )}
                   <button

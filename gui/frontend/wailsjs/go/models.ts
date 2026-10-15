@@ -5,6 +5,7 @@ export namespace main {
 	    done: number;
 	    total: number;
 	    current: string;
+	    currentURL: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new BatchDTO(source);
@@ -16,6 +17,7 @@ export namespace main {
 	        this.done = source["done"];
 	        this.total = source["total"];
 	        this.current = source["current"];
+	        this.currentURL = source["currentURL"];
 	    }
 	}
 	export class CatalogDTO {

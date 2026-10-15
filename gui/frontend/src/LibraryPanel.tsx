@@ -2,7 +2,7 @@
 // and one button, and a button at the top that downloads everything new.
 
 import { DownloadIcon, Spinner, XIcon } from './icons';
-import { cardAction, cardStatus, librarySummary, sortFollowed, totalNew, type Sort } from './library';
+import { cardAction, cardStatus, librarySummary, sortFollowed, totalNew, urlKey, type Sort } from './library';
 import { Mascot } from './Mascot';
 import { BookmarkIcon } from './ResultsPanel';
 import type { Followed, State } from './types';
@@ -80,7 +80,7 @@ export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew,
             key={f.url}
             f={f}
             busy={busy || batch.active}
-            current={batch.active && batch.current === f.title}
+            current={batch.active && urlKey(batch.currentURL) === urlKey(f.url)}
             onOpen={() => onOpen(f)}
             onDownloadNew={() => onDownloadNew(f.url)}
             onUnfollow={() => onUnfollow(f)}

@@ -53,7 +53,7 @@ describe('LibraryPanel', () => {
   });
   it('shows the batch line while every new chapter downloads', async () => {
     const base = await createMockApi({ scenario: 'empty', freeze: true }).state();
-    const state: State = { ...base, library: { ...base.library, batch: { active: true, done: 0, total: 2, current: 'One Piece' } } };
+    const state: State = { ...base, library: { ...base.library, batch: { active: true, done: 0, total: 2, current: 'One Piece', currentURL: 'https://example.com/manga/one-piece' } } };
     const markup = render(state);
     expect(markup).toContain('Downloading 1 of 2');
     expect(markup).toContain('Downloading…</button>');

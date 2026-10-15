@@ -54,6 +54,8 @@ type fakeSite struct {
 	// pageGate, when set, holds the pages of chapter pageGated until closed
 	pageGate  chan struct{}
 	pageGated float64
+	// noLanguage, when set, is a language the site lists nothing for
+	noLanguage string
 }
 
 func (f *fakeSite) Test() (bool, error) { return true, nil }
@@ -63,6 +65,9 @@ func (f *fakeSite) FetchTitle() (string, error) {
 
 func (f *fakeSite) FetchChapters() (grabber.Filterables, []error) {
 	out := grabber.Filterables{}
+	if f.noLanguage != "" && f.Settings.Language == f.noLanguage {
+		return out, nil
+	}
 	for _, c := range f.chapters {
 		out = append(out, listing{number: c.number, title: fmt.Sprintf("Chapter %g", c.number), volume: c.volume})
 	}

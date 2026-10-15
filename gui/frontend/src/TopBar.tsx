@@ -33,10 +33,10 @@ export function TopBar({ state, query, onQuery, onLoad, onHome, onCheck, onCance
   // a pasted link loads once the typing pauses; the timer reads the latest
   // state, since it fires after the render that started it
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const latest = useRef({ url: state.url, busy: state.loading || state.running });
+  const latest = useRef({ url: state.url, busy });
   useEffect(() => {
-    latest.current = { url: state.url, busy: state.loading || state.running };
-  }, [state.url, state.loading, state.running]);
+    latest.current = { url: state.url, busy };
+  }, [state.url, busy]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const change = (value: string) => {
