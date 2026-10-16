@@ -2,7 +2,7 @@
 
 Sources of the brand as the repo uses them. The GUI's mascot (`gui/frontend/src/Mascot.tsx`) and the README header read these files directly; the GUI's colour tokens in `gui/frontend/src/styles.css` follow the mapping below.
 
-Mascot **Neko Book**: an open manga volume that is also a cat's face. One body, two expressions.
+Mascot **Neko**: a white cat peeking over the book it holds up, on a green tile; the book's cover carries the download arrow. The tile is part of the mark, so the cat stays white on every background. One body, two expressions.
 
 ## Files
 
@@ -30,32 +30,28 @@ README usage (this repo's README uses these paths):
 
 ## Expressions
 
-- **Soft** (default): the logo, app icon, favicon, idle/working states. Calm open eyes, ω mouth.
-- **Happy**: success and celebration only. A run where every chapter downloaded, a "done" toast, friendly empty states. Closed ^ ^ eyes and an open smile. The body, ears, book and blush are identical to Soft, so swapping one for the other reads as the same character changing face. Below 48px Happy uses Soft's face (`mark-small` is identical for both), so don't rely on the expression in tray or taskbar icons.
+- **Soft** (default): the logo, app icon, favicon, idle/working states. Calm open eyes, small pink nose.
+- **Happy**: success and celebration only. A run where every chapter downloaded, a "done" toast, friendly empty states. Closed ^ ^ eyes, pink cheeks and a small smile. The tile, ears, paws and book are identical to Soft, so swapping one for the other reads as the same character changing face. Below 48px Happy uses Soft's face (`mark-small` is identical for both: bigger eyes and arrow, no paws or nose), so don't rely on the expression in tray or taskbar icons.
 - Never show a sad or error face. Errors are handled by the UI colours and copy, not the mascot.
 
 ## Palette
 
-| name | hex | role | on white | on Night |
-|---|---|---|---|---|
-| Violet | `#7C5CE0` | Primary brand colour: mark body, buttons, links on light. | 4.7:1 | 3.8:1 |
-| Violet deep | `#5B3FC4` | "downloader" in the wordmark, accent text on light. | 7.1:1 | 2.5:1 |
-| Violet soft | `#A993FF` | "downloader" and accent on dark. | 2.5:1 | 7.2:1 |
-| Violet (dark mark) | `#8B6EF0` | Mark body on dark surfaces. | 3.8:1 | 4.8:1 |
-| Mint | `#4FD8B0` | Success/done, the download cue. Graphics only on light. | 1.8:1 | 10.2:1 |
-| Mint deep | `#1B7A5E` | Success text on light. | 5.3:1 | 3.4:1 |
-| Pink | `#FF8FB3` | Blush, ears, sparkles. Never for errors. | 2.1:1 | 8.5:1 |
-| Lavender | `#E6DEFD` | Page details, soft surfaces. | 1.3:1 | 14.0:1 |
-| Lavender mist | `#F6F2FF` | Brand backgrounds (social, README). | 1.1:1 | 16.4:1 |
-| Ink | `#1E1A33` | "manga" in the wordmark, eyes, body text. | 16.8:1 | 1.1:1 |
-| Night | `#16132A` | Brand dark background. | 18.1:1 | 1.0:1 |
-| Moon | `#F4F1FF` | Text on Night. | 1.1:1 | 16.3:1 |
+| name | hex | role |
+|---|---|---|
+| Green | `#3E9A7E` | The tile: the mark's ground, sparkles. The white cat on it is 3.4:1. |
+| Green deep | `#1B4D40` | The book; the white arrow on it is 9.6:1. |
+| Forest | `#1F5A4C` | "downloader" in the wordmark on light (8.0:1 on white). |
+| Mint | `#7FD3B5` | "downloader" on dark (9.7:1 on Night). |
+| Pink | `#FFB3C1` | Inner ears, nose, cheeks. Never for errors. |
+| Ink | `#1B2A2E` | Eyes, "manga" in the wordmark, body text. |
+| Mint mist | `#EEF7F3` | Brand backgrounds (social, README); Moon on dark. |
+| Night | `#0F1C18` | Brand dark background. |
 
-Text rules: body text uses Ink or Moon. Violet deep (light) and Violet soft (dark) are the only violets for text smaller than 24px. Mint and Pink are for graphics only on light backgrounds.
+The GUI's colour tokens (`gui/frontend/src/styles.css`) still use the violet accent of the earlier Neko Book brand; the mapping below is that earlier proposal.
 
 ## Wordmark
 
-Fredoka SemiBold (600, SIL OFL), lowercase: "manga" in Ink and "downloader" in Violet deep, or Moon / Violet soft on dark. The lockups are pre-outlined, so use them as they are and don't retype them. For UI text next to the brand, use the app's own UI font, not Fredoka.
+Fredoka SemiBold (600, SIL OFL), lowercase: "manga" in Ink and "downloader" in Forest, or Moon / Mint on dark. The lockups are pre-outlined, so use them as they are and don't retype them. For UI text next to the brand, use the app's own UI font, not Fredoka.
 
 ## Clear space & minimum size
 
@@ -66,11 +62,12 @@ Fredoka SemiBold (600, SIL OFL), lowercase: "manga" in Ink and "downloader" in V
 ## Don'ts
 
 - Don't stretch, rotate or skew the mark, or redraw the face.
-- Don't recolour the body outside the palette, or use the light-palette mark on dark surfaces (use `mark-dark`).
+- Don't recolour the tile or the cat outside the palette, or take the cat off its tile: a white cat on a light background disappears.
 - Don't add outlines, glows or heavy drop shadows (the macOS tile shadow is the only one).
-- Don't put the mark on busy photos or on Violet without the white tile (use `mark-mono` in white instead).
+- Don't put the mark on busy photos (use `mark-mono` in white instead).
 - Don't use the large `mark.svg` below 48px. Its details turn to mush; use `mark-small.svg`.
 - Don't use Pink for errors, or swap the wordmark colours.
+- `mark-dark` is the same tile as `mark`: the tile carries its own ground, so it reads on both.
 
 ## GUI colour mapping (proposal)
 

@@ -1,4 +1,4 @@
-// The Neko Book mascot, drawn from the brand's SVGs (assets/brand/mark). The
+// The Neko mascot, drawn from the brand's SVGs (assets/brand/mark). The
 // header shows Soft, and Happy after a run that saved everything; the empty
 // state shows Happy. The decisions live in mascot.ts.
 

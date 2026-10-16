@@ -1,13 +1,3 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <defs><mask id="nb2" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256"><path fill="white" d="M20 104V194Q20 212 38 211C74 208 104 212 128 226C152 212 182 208 218 211Q236 212 236 194V104L232 46Q230 22 210 34L168 62Q146 68 128 82Q110 68 88 62L46 34Q26 22 24 46Z"/>
-  <path fill="black" stroke="black" stroke-width="8" stroke-linejoin="round" d="M217 50L220 80L192 66ZM39 50L36 80L64 66Z"/>
-  <path fill="none" stroke="white" stroke-width="4" stroke-linecap="round" d="M38 202C74 200 104 204 128 218C152 204 182 200 218 202"/>
-  <path fill="black" d="M128 102C148 88 180 82 220 86V194C184 192 152 196 128 210C104 196 72 192 36 194V108L58 84.5C86 82 110 90 128 102Z"/>
-  <path fill="white" d="M36 108L58 84.5V101Q58 108 51 108Z"/>
-  <path stroke="white" stroke-width="5" stroke-linecap="round" d="M128 106V122"/>
-  <path fill="none" stroke="white" stroke-width="12" stroke-linecap="round" d="M78 152Q94 126 110 152M146 152Q162 126 178 152"/>
-  <path fill="white" d="M114 166H142Q142 186 128 186Q114 186 114 166Z"/>
-  <path fill="black" d="M120 179Q128 173 136 179Q134 186 128 186Q122 186 120 179Z"/>
-  <g fill="black"><ellipse cx="65" cy="174" rx="13" ry="8"/><ellipse cx="191" cy="174" rx="13" ry="8"/></g></mask></defs>
-  <rect width="256" height="256" fill="currentColor" mask="url(#nb2)"/>
+  <g transform="scale(2.56)"><defs><mask id="nk-happy" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100"><rect width="100" height="100" rx="22" fill="white"/><path fill="black" d="M23 46L27 17L47 32ZM77 46L73 17L53 32Z"/><ellipse cx="50" cy="50" rx="31" ry="25" fill="black"/><path fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" d="M35.5 48.5Q39.5 43 43.5 48.5M56.5 48.5Q60.5 43 64.5 48.5"/><rect x="21" y="60" width="58" height="27" rx="4" fill="white" stroke="black" stroke-width="3"/><path fill="none" stroke="black" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" d="M50 66V80M44 74.5L50 80.5L56 74.5"/><g fill="black"><ellipse cx="32" cy="61" rx="7" ry="5"/><ellipse cx="68" cy="61" rx="7" ry="5"/></g></mask></defs><rect width="100" height="100" fill="currentColor" mask="url(#nk-happy)"/></g>
 </svg>
