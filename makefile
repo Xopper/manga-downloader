@@ -68,6 +68,18 @@ build/gui/frontend:
 build/gui: build/gui/frontend
 	cd gui && $(GUI_CGO) go build -trimpath -tags $(GUI_GO_TAGS) -ldflags="$(GUI_GO_LDFLAGS)" \
 		-o ../manga-downloader-gui .
+ifeq ($(shell uname -s),Darwin)
+	scripts/macos-app.sh manga-downloader-gui "Manga Downloader.app" gui/build/appicon.png
+endif
+
+# opens the app built by build/gui; on macOS as the app bundle, since a bare
+# binary can't show the folder picker (see scripts/macos-app.sh)
+run/gui:
+ifeq ($(shell uname -s),Darwin)
+	open "Manga Downloader.app"
+else
+	./manga-downloader-gui
+endif
 
 # cross-compiled from any host, without cgo: Wails' Windows webview is pure Go.
 # -H windowsgui keeps the console from opening behind the window. The release

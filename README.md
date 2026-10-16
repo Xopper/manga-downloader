@@ -881,9 +881,13 @@ Node 22, pnpm 10, and on Linux the WebKitGTK 4.1 and GTK 3 development headers
 (`libgtk-3-dev libwebkit2gtk-4.1-dev` on Debian and Ubuntu):
 
 ~~~bash
-make build/gui         # build ./manga-downloader-gui (frontend first)
+make build/gui         # build ./manga-downloader-gui (frontend first); on macOS also "Manga Downloader.app"
+make run/gui           # open it (on macOS the app bundle)
 make build/gui/windows # cross-build manga-downloader-gui.exe, no cgo needed
 ~~~
+
+On macOS, open the app bundle rather than the bare binary: macOS shows its
+folder picker only for an app bundle, so Browse… does nothing in a bare run.
 
 ## Star history
 

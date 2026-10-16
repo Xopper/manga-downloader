@@ -9,5 +9,6 @@ assets/demos/*.yml
 docs/.work/
 manga-downloader-gui
 manga-downloader-gui.exe
+Manga Downloader.app/
 .pnpm-store/
 *.epub
