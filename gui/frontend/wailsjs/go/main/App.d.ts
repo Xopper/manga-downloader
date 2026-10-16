@@ -34,6 +34,8 @@ export function Log():Promise<Array<main.LogDTO>>;
 
 export function OpenFolder():Promise<void>;
 
+export function RevealSaved(arg1:string):Promise<void>;
+
 export function Options():Promise<main.OptionsDTO>;
 
 export function Search(arg1:string,arg2:string):Promise<Array<main.HitDTO>>;

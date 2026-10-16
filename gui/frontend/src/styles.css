@@ -2625,38 +2625,80 @@ a.version:hover {
   text-decoration: underline;
 }
 
-.card-meta {
-  color: var(--text-3);
-  font-size: 12px;
-  white-space: nowrap;
+.card-foot {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding: 8px 12px 12px;
+}
+
+.card-foot .icon-only {
+  flex: none;
+}
+
+/* the card's badges sit in fixed seats: the site on its own row, then Saved
+   and New side by side (or one note across both) */
+.card-site,
+.card-note,
+.card-slots .hit-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card-site {
+  margin-top: 4px;
+  color: var(--text-2);
+}
+
+.card-site span {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.card-status {
-  color: var(--text-3);
-  font-size: 12px;
+.card-note {
+  justify-content: center;
 }
 
-.card-status.tone-new {
+.card-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.card-slots b {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.hit-tag.new {
+  border-color: color-mix(in srgb, var(--success) 55%, var(--border));
   color: var(--success);
-  font-weight: 600;
 }
 
-.card-status.tone-ok {
-  color: var(--text-2);
+.hit-tag.new b {
+  color: var(--success);
 }
 
-.card-status.tone-warn {
+.hit-tag.done {
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+}
+
+.hit-tag.off {
+  opacity: 0.5;
+}
+
+.hit-tag.warn {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
   color: var(--warning);
 }
 
-.card-status.tone-danger {
+.hit-tag.danger {
+  border-color: color-mix(in srgb, var(--danger) 50%, var(--border));
   color: var(--danger);
-}
-
-.card-foot {
-  padding: 8px 12px 12px;
 }
 
 .lib-foot {

@@ -37,45 +37,57 @@ export function isLinkQuery(text: string): boolean {
 
 export type Tone = 'new' | 'ok' | 'muted' | 'warn' | 'danger';
 
-/** The status line of a card */
-export function cardStatus(f: Followed): { text: string; tone: Tone } {
+/** A badge of a card, as the search rows draw them */
+export interface Badge {
+  text: string;
+  tone: 'new' | 'done' | 'off' | 'warn' | 'danger' | '';
+  /** The longer story, as a tooltip */
+  title: string;
+}
+
+/** Where "saved" counts: the Save options' folder and format */
+const SAVED_WHERE = 'in the folder and format chosen in the Save options';
+
+/**
+ * A card's badges, in fixed seats so every card lines up: Saved and New side
+ * by side; or, when there's nothing to count, one note in their place
+ * (search only, check failed, not checked yet)
+ */
+export function cardBadges(f: Followed): { note: Badge } | { saved: Badge; fresh: Badge } {
   if (!f.downloadable) {
-    return { text: "search only · can't download from this site yet", tone: 'warn' };
+    return { note: { text: 'search only', tone: 'warn', title: "The app can't download from this site yet" } };
   }
   if (f.error !== '') {
-    return { text: `Check failed: ${f.error}`, tone: 'danger' };
+    return { note: { text: 'check failed', tone: 'danger', title: f.error } };
   }
   if (f.chapters === 0) {
-    return { text: 'Not checked yet', tone: 'muted' };
+    return { note: { text: 'not checked yet', tone: '', title: 'Check for new chapters, or open it, to count its chapters' } };
   }
-  const saved = ` · ${savedCount(f)}`;
-  if (f.new > 0) {
-    return { text: `${f.new} new${saved}`, tone: 'new' };
-  }
-  return { text: `Nothing new${saved}`, tone: 'ok' };
-}
-
-/** How many chapters are saved in the folder and format chosen now: "12 of 53 saved", "all 42 saved", "none saved" */
-export function savedCount(f: Followed): string {
   const n = Math.min(f.saved.length, f.chapters);
-  if (n === 0) {
-    return 'none saved';
-  }
-  if (n === f.chapters) {
-    return `all ${f.chapters.toLocaleString('en-US')} saved`;
-  }
-  return `${n.toLocaleString('en-US')} of ${f.chapters.toLocaleString('en-US')} saved`;
+  const count = (x: number) => x.toLocaleString('en-US');
+  return {
+    saved: {
+      text: `${count(n)}/${count(f.chapters)}`,
+      tone: n === f.chapters ? 'done' : '',
+      title: `${count(n)} of ${count(f.chapters)} chapters saved ${SAVED_WHERE}`,
+    },
+    fresh: {
+      text: count(f.new),
+      tone: f.new > 0 ? 'new' : 'off',
+      title: f.new > 0 ? 'Came out since you followed it, not saved yet' : 'Nothing came out since you followed it',
+    },
+  };
 }
 
-/** The one button of a card */
-export function cardAction(f: Followed): { label: string; kind: 'new' | 'none' | 'open' } {
+/** The main button of a card: get what's new, else open the series, or the site of a search-only one */
+export function cardAction(f: Followed): { label: string; kind: 'new' | 'series' | 'open' } {
   if (!f.downloadable) {
     return { label: 'Open on the site', kind: 'open' };
   }
   if (f.new > 0) {
     return { label: `Download ${f.new} new`, kind: 'new' };
   }
-  return { label: f.chapters === 0 ? 'Not checked yet' : 'Nothing new', kind: 'none' };
+  return { label: 'Open series', kind: 'series' };
 }
 
 export type Sort = 'new' | 'title' | 'saved';

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cardAction,
-  cardStatus,
+  cardBadges,
   chapterMark,
   followedOf,
   isLinkQuery,
@@ -61,30 +61,31 @@ describe('isLinkQuery', () => {
 });
 
 describe('cards', () => {
-  it('says what is new and offers to download it', () => {
-    expect(cardStatus(followed({}))).toEqual({ text: '2 new · 8 of 10 saved', tone: 'new' });
+  it('counts what is saved and new in two fixed badges, and offers to download what is new', () => {
+    const b = cardBadges(followed({}));
+    expect('saved' in b && b.saved.text).toBe('8/10');
+    expect('fresh' in b && [b.fresh.text, b.fresh.tone]).toEqual(['2', 'new']);
     expect(cardAction(followed({}))).toEqual({ label: 'Download 2 new', kind: 'new' });
   });
   it('offers only what is new for a series never saved', () => {
     const f = followed({ savedUpTo: 0, saved: [], new: 3 });
-    expect(cardStatus(f).text).toBe('3 new · none saved');
+    const b = cardBadges(f);
+    expect('saved' in b && b.saved.text).toBe('0/10');
     expect(cardAction(f)).toEqual({ label: 'Download 3 new', kind: 'new' });
   });
-  it('says nothing is new without claiming everything was saved', () => {
+  it('fades the New badge and opens the series when nothing is new', () => {
     const f = followed({ savedUpTo: 4, saved: [4], new: 0 });
-    expect(cardStatus(f)).toEqual({ text: 'Nothing new · 1 of 10 saved', tone: 'ok' });
-    expect(cardStatus(followed({ new: 0, saved: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] })).text).toBe('Nothing new · all 10 saved');
-    expect(cardAction(f)).toEqual({ label: 'Nothing new', kind: 'none' });
+    const b = cardBadges(f);
+    expect('fresh' in b && [b.fresh.text, b.fresh.tone]).toEqual(['0', 'off']);
+    const all = cardBadges(followed({ new: 0, saved: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }));
+    expect('saved' in all && [all.saved.text, all.saved.tone]).toEqual(['10/10', 'done']);
+    expect(cardAction(f)).toEqual({ label: 'Open series', kind: 'series' });
   });
-  it('says when it was never checked', () => {
-    const f = followed({ chapters: 0, latest: 0, new: 0, savedUpTo: 0, checkedAt: '' });
-    expect(cardStatus(f)).toEqual({ text: 'Not checked yet', tone: 'muted' });
-    expect(cardAction(f).kind).toBe('none');
-  });
-  it('shows a failed check and a search-only series', () => {
-    expect(cardStatus(followed({ error: 'site down' }))).toEqual({ text: 'Check failed: site down', tone: 'danger' });
+  it('puts one note in place of the counts when there is nothing to count', () => {
+    expect(cardBadges(followed({ chapters: 0, latest: 0, new: 0, savedUpTo: 0, checkedAt: '' }))).toMatchObject({ note: { text: 'not checked yet' } });
+    expect(cardBadges(followed({ error: 'site down' }))).toMatchObject({ note: { text: 'check failed', tone: 'danger', title: 'site down' } });
     const only = followed({ downloadable: false });
-    expect(cardStatus(only).tone).toBe('warn');
+    expect(cardBadges(only)).toMatchObject({ note: { text: 'search only', tone: 'warn' } });
     expect(cardAction(only)).toEqual({ label: 'Open on the site', kind: 'open' });
   });
 });

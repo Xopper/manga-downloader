@@ -601,6 +601,35 @@ func (a *App) OpenFolder() error {
 	return openInFileManager(abs)
 }
 
+// RevealSaved shows the latest chapter of url saved in the folder and format
+// chosen now in the system's file manager, selected where the platform can
+func (a *App) RevealSaved(url string) error {
+	path := a.ctrl.LatestSavedHere(url)
+	if path == "" {
+		return errors.New("no chapter of it is saved in this folder")
+	}
+	return revealInFileManager(path)
+}
+
+// revealInFileManager opens the file manager on path's folder with path
+// selected (macOS, Windows), or on its folder (elsewhere)
+func revealInFileManager(path string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", "-R", path)
+	case "windows":
+		cmd = exec.Command("explorer", "/select,"+path)
+	default:
+		return openInFileManager(filepath.Dir(path))
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
+}
+
 // openInFileManager starts the platform's file manager on dir without waiting
 // for it, since some of them (explorer) never exit with a clean status
 func openInFileManager(dir string) error {

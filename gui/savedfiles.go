@@ -198,3 +198,24 @@ func formatName(format string) string {
 		return "CBZ"
 	}
 }
+
+// LatestSavedHere returns the path of url's highest chapter saved in the
+// folder and format chosen now, its file still there; "" when none is
+func (c *Controller) LatestSavedHere(url string) string {
+	f, ok := c.Library().Get(url)
+	if !ok {
+		return ""
+	}
+	s := c.Settings()
+	here := f.SavedIn(s.OutputDir, s.Format, c.onDisk.exists)
+	if len(here) == 0 {
+		return ""
+	}
+	top := here[len(here)-1]
+	for _, sf := range f.Files {
+		if sf.Number == top && sf.Dir == s.OutputDir && sf.Format == s.Format {
+			return filepath.Join(sf.Dir, sf.Name)
+		}
+	}
+	return ""
+}

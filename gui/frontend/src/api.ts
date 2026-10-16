@@ -33,6 +33,8 @@ export interface Api {
   /** Native folder picker; resolves with "" when cancelled */
   chooseFolder(): Promise<string>;
   openFolder(): Promise<void>;
+  /** Shows a followed series' latest chapter saved in the chosen folder, selected in the file manager */
+  revealSaved(url: string): Promise<void>;
   /** Opens the URL in the system's browser, never in the window */
   openURL(url: string): void;
   start(): Promise<void>;
@@ -125,6 +127,7 @@ export function createWailsApi(): Api {
     setVolumes: (text) => app.SetVolumes(text),
     chooseFolder: () => app.ChooseFolder(),
     openFolder: () => app.OpenFolder(),
+    revealSaved: (url) => app.RevealSaved(url),
     openURL: (url) => BrowserOpenURL(url),
     start: () => app.Start(),
     cancel: () => app.Cancel(),

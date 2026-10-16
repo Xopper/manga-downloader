@@ -355,6 +355,10 @@ export function App({ api }: { api: Api }) {
             }}
             onUnfollow={(f) => unfollow(f.url)}
             onOpenURL={(url) => api.openURL(url)}
+            onReveal={(url) => {
+              setActionError('');
+              api.revealSaved(url).catch(fail(setActionError));
+            }}
           />
           {actionError !== '' && (
             <p className="error-text small page-error" role="alert">

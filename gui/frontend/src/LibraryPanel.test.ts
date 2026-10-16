@@ -18,6 +18,7 @@ function render(state: State, over: Partial<Parameters<typeof LibraryPanel>[0]> 
       onCancelBatch: () => undefined,
       onUnfollow: () => undefined,
       onOpenURL: () => undefined,
+      onReveal: () => undefined,
       ...over,
     }),
   );
@@ -28,11 +29,19 @@ describe('LibraryPanel', () => {
     const state = await createMockApi({ scenario: 'empty', freeze: true }).state();
     const markup = render(state);
     expect(markup.match(/<article class="card/g)?.length).toBe(3);
-    expect(markup).toContain('12 new · 585 of 597 saved');
+    expect(markup).toContain('Saved <b class="num">585/597</b>');
+    expect(markup).toContain('New <b class="num">12</b>');
     expect(markup).toContain('Download 12 new');
-    expect(markup).toContain('Nothing new · all 379 saved');
-    expect(markup).toContain('>Nothing new<');
+    expect(markup).toContain('Saved <b class="num">379/379</b>');
+    expect(markup).toContain('>Open series</button>');
+    expect(markup).toContain('search only');
     expect(markup).toContain('Open on the site');
+    // the folder button of each card; the search-only one has nothing saved
+    expect(markup.match(/aria-label="Show in its folder"/g)?.length).toBe(3);
+    expect(markup.match(/disabled="" aria-label="Show in its folder"/g)?.length).toBe(1);
+    // no fact twice: the chapter count only in the Saved badge, no status line
+    expect(markup).not.toContain('card-meta');
+    expect(markup).not.toContain('card-status');
     expect(markup).toContain('Download all new · 12');
     expect(markup).toContain('3 series you follow · 12 new chapters');
     expect(markup).toContain('aria-label="Following One Piece, click to unfollow"');

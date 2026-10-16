@@ -1032,6 +1032,9 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     async openFolder() {
       pushLog('info', `would open ${options.outputDir} (mock)`);
     },
+    async revealSaved(url) {
+      pushLog('info', `would show the latest saved chapter of ${url} in ${options.outputDir} (mock)`);
+    },
     openURL(url) {
       window.open(url, '_blank', 'noopener');
     },

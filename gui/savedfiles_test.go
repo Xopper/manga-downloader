@@ -107,3 +107,29 @@ func TestDropSavedSkipsTheChaptersAlreadyThere(t *testing.T) {
 		t.Errorf("dropped %d in another folder", dropped)
 	}
 }
+
+// The folder button shows the highest chapter saved here
+func TestLatestSavedHereIsTheHighestChapterThere(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"X 2 - Two.cbz", "X 10 - Ten.cbz"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	url := "https://example.com/manga/x"
+	l := NewLibrary("")
+	_ = l.Follow(Followed{URL: url, Title: "X"})
+	_ = l.MarkSavedFiles(url, []float64{2, 10, 11}, []SavedFile{
+		{Number: 10, Dir: dir, Format: "cbz", Name: "X 10 - Ten.cbz"},
+		{Number: 2, Dir: dir, Format: "cbz", Name: "X 2 - Two.cbz"},
+		{Number: 11, Dir: dir, Format: "cbz", Name: "X 11 - Gone.cbz"}, // deleted since
+	}, nil)
+	c := &Controller{library: l, settings: &grabber.Settings{OutputDir: dir, Format: "cbz"}}
+	if got, want := c.LatestSavedHere(url), filepath.Join(dir, "X 10 - Ten.cbz"); got != want {
+		t.Errorf("LatestSavedHere = %q, want %q", got, want)
+	}
+	c.settings.Format = "epub"
+	if got := c.LatestSavedHere(url); got != "" {
+		t.Errorf("as epub = %q, want none", got)
+	}
+}

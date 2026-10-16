@@ -3,8 +3,8 @@
 
 import type { CSSProperties } from 'react';
 import { hueOf } from './format';
-import { DownloadIcon, Spinner, XIcon } from './icons';
-import { cardAction, cardStatus, librarySummary, sortFollowed, totalNew, urlKey, type Sort } from './library';
+import { DownloadIcon, FolderIcon, LinkIcon, Spinner, XIcon } from './icons';
+import { cardAction, cardBadges, librarySummary, sortFollowed, totalNew, urlKey, type Sort } from './library';
 import { Mascot } from './Mascot';
 import { BookmarkIcon } from './ResultsPanel';
 import type { Followed, State } from './types';
@@ -22,9 +22,11 @@ interface Props {
   onCancelBatch: () => void;
   onUnfollow: (f: Followed) => void;
   onOpenURL: (url: string) => void;
+  /** Shows a series' latest chapter saved in the chosen folder, in the file manager */
+  onReveal: (url: string) => void;
 }
 
-export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew, onDownloadAllNew, onCancelBatch, onUnfollow, onOpenURL }: Props) {
+export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew, onDownloadAllNew, onCancelBatch, onUnfollow, onOpenURL, onReveal }: Props) {
   const library = state.library;
   const fresh = totalNew(library);
   const batch = library.batch;
@@ -87,6 +89,7 @@ export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew,
             onDownloadNew={() => onDownloadNew(f.url)}
             onUnfollow={() => onUnfollow(f)}
             onOpenURL={() => onOpenURL(f.url)}
+            onReveal={() => onReveal(f.url)}
           />
         ))}
       </div>
@@ -107,12 +110,15 @@ interface CardProps {
   onDownloadNew: () => void;
   onUnfollow: () => void;
   onOpenURL: () => void;
+  /** Shows its latest chapter saved in the chosen folder, in the file manager */
+  onReveal: () => void;
 }
 
-function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL }: CardProps) {
-  const status = cardStatus(f);
+function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL, onReveal }: CardProps) {
+  const badges = cardBadges(f);
   const action = cardAction(f);
   const letter = (f.title.trim()[0] ?? f.site[0] ?? '?').toUpperCase();
+  const canReveal = f.downloadable && f.saved.length > 0;
 
   return (
     <article className={`card${f.new > 0 && f.downloadable ? ' fresh' : ''}`} aria-label={f.title}>
@@ -145,13 +151,36 @@ function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL }
             {f.title !== '' ? f.title : f.url}
           </button>
         </h3>
-        <p className="card-meta">
-          {f.site}
-          {f.chapters > 0 && <> · {f.chapters.toLocaleString('en-US')} chapters</>}
-        </p>
-        <p className={`card-status tone-${status.tone}`}>{status.text}</p>
+        <span className="hit-tag card-site" title={f.url}>
+          <LinkIcon size={11} />
+          <span>{f.site}</span>
+        </span>
+        {'note' in badges ? (
+          <span className={`hit-tag card-note${badges.note.tone !== '' ? ` ${badges.note.tone}` : ''}`} title={badges.note.title}>
+            {badges.note.text}
+          </span>
+        ) : (
+          <div className="card-slots">
+            <span className={`hit-tag${badges.saved.tone !== '' ? ` ${badges.saved.tone}` : ''}`} title={badges.saved.title}>
+              Saved <b className="num">{badges.saved.text}</b>
+            </span>
+            <span className={`hit-tag${badges.fresh.tone !== '' ? ` ${badges.fresh.tone}` : ''}`} title={badges.fresh.title}>
+              New <b className="num">{badges.fresh.text}</b>
+            </span>
+          </div>
+        )}
       </div>
       <div className="card-foot">
+        <button
+          type="button"
+          className="btn small icon-only"
+          disabled={!canReveal}
+          aria-label="Show in its folder"
+          title={canReveal ? 'Show the latest chapter saved, in its folder' : 'Nothing saved in this folder yet'}
+          onClick={onReveal}
+        >
+          <FolderIcon size={14} />
+        </button>
         {action.kind === 'new' ? (
           <button type="button" className="btn primary small block" disabled={busy} onClick={onDownloadNew}>
             {current ? (
@@ -159,15 +188,17 @@ function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL }
                 <Spinner size={12} /> Downloading…
               </>
             ) : (
-              action.label
+              <>
+                <DownloadIcon size={13} /> {action.label}
+              </>
             )}
           </button>
         ) : action.kind === 'open' ? (
           <button type="button" className="btn small block" onClick={onOpenURL}>
-            {action.label}
+            <LinkIcon size={13} /> {action.label}
           </button>
         ) : (
-          <button type="button" className="btn small block" disabled>
+          <button type="button" className="btn small block" onClick={onOpen}>
             {action.label}
           </button>
         )}
