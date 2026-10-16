@@ -2356,10 +2356,11 @@ a.version:hover {
 }
 
 /* macOS without a title bar (frame.ts): the header drags the window, except
-   from its controls, and its left end stays clear of the window buttons */
+   from its controls, and starts below the window buttons, in the band the
+   title bar used (28px) */
 .mac-frameless .topbar {
   --wails-draggable: drag;
-  padding-left: 80px;
+  padding-top: 28px;
 }
 
 .mac-frameless .topbar :is(button, input, select, textarea, a, form, [role]) {
@@ -2367,7 +2368,7 @@ a.version:hover {
 }
 
 .mac-frameless.fullscreen .topbar {
-  padding-left: 16px;
+  padding-top: 10px;
 }
 
 .topbar-row {

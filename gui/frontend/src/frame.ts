@@ -5,8 +5,8 @@ const OWN_CLICKS = 'button, input, select, textarea, a, form, [role]';
 
 // On macOS the window has no title bar (main.go), so the header stands in
 // for it: html gets .mac-frameless, which makes the header drag the window
-// and keeps its left end clear of the window buttons. Those buttons are gone
-// in full screen, so .fullscreen gives the room back. A double click on an
+// and starts its content below the window buttons. Those buttons are gone in
+// full screen, so .fullscreen gives the room back. A double click on an
 // empty part of the header zooms the window, as on a title bar.
 export function setUpWindowFrame(): void {
   if ((window as { runtime?: unknown }).runtime === undefined) return;
