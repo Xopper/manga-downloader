@@ -32,18 +32,6 @@ func (c *Controller) SetLibrary(l *Library) {
 	c.emit()
 }
 
-// SavedHere returns the numbers of url's chapters saved in the folder and
-// format chosen now whose files are still there, sorted (nil when url
-// isn't followed)
-func (c *Controller) SavedHere(url string) []float64 {
-	f, ok := c.Library().Get(url)
-	if !ok {
-		return nil
-	}
-	s := c.Settings()
-	return f.SavedIn(s.OutputDir, s.Format, c.onDisk.exists)
-}
-
 // Library returns the library
 func (c *Controller) Library() *Library {
 	c.mu.Lock()

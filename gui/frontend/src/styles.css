@@ -321,14 +321,6 @@ code {
   font-size: 12px;
 }
 
-.filter-label {
-  color: var(--text-3);
-  font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 .filter-hint {
   color: var(--text-3);
 }
@@ -442,10 +434,6 @@ code {
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px 10px;
-}
-
-.series-id {
-  min-width: 0;
 }
 
 .series-title {
@@ -2301,10 +2289,6 @@ a.version:hover {
 }
 
 @media (max-width: 720px) {
-  .search-form {
-    flex-wrap: wrap;
-  }
-
   .search-site,
   .site-picker {
     width: 100%;
@@ -2313,11 +2297,6 @@ a.version:hover {
   .site-picker-find input {
     font-size: 16px;
   }
-
-  .search-box .url-input {
-    font-size: 16px;
-  }
-
 }
 
 .hit-tag {

@@ -7,7 +7,6 @@ import {
   overallProgress,
   splitFailure,
   summaryTone,
-  tally,
 } from './run';
 import type { Job, State, Summary } from './types';
 
@@ -103,15 +102,6 @@ describe('overallProgress', () => {
     expect(overallProgress({ run: { chapters: 0, bundle: false, volumes: false, rows: 0 }, jobs: [] }).fraction).toBe(
       0,
     );
-  });
-});
-
-describe('tally', () => {
-  it('counts jobs per state', () => {
-    const t = tally([job({}), job({ state: 'done' }), job({ state: 'done' })]);
-    expect(t.done).toBe(2);
-    expect(t.downloading).toBe(1);
-    expect(t.failed).toBe(0);
   });
 });
 

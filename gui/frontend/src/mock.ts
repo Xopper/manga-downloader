@@ -35,7 +35,7 @@
 
 import type { Api, Unsubscribe } from './api';
 import { newIndices, urlKey } from './library';
-import type { CatalogInfo, Chapter, FilterChoice, Followed, Hit, Job, LibraryInfo, LogLine, Options, SiteInfo, State, Summary, Update } from './types';
+import type { CatalogInfo, Chapter, FilterChoice, Followed, Hit, Job, LibraryInfo, LogLine, Options, SiteInfo, State, Summary } from './types';
 import { groupChapters, parseVolumes, siteVolumes } from './volumes';
 import { OP_CHAPTERS } from './mock-onepiece';
 

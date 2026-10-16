@@ -2,23 +2,12 @@
 // along it is, and how it ended. format.ts has the per-job and summary wording.
 
 import { jobFraction, plural } from './format';
-import type { Chapter, Job, JobState, State, Summary } from './types';
+import type { Chapter, Job, State, Summary } from './types';
 import { groupChapters, parseVolumes, selectedIn, type Grouping } from './volumes';
 
 /** The states a job ends in */
 export function isFinished(j: Job): boolean {
   return j.state === 'done' || j.state === 'failed' || j.state === 'skipped';
-}
-
-export type Tally = Record<JobState, number>;
-
-export function tally(jobs: Job[]): Tally {
-  const t: Tally = { downloading: 0, archiving: 0, done: 0, failed: 0, skipped: 0 };
-  for (const j of jobs) {
-    t[j.state]++;
-  }
-
-  return t;
 }
 
 export interface Overall {

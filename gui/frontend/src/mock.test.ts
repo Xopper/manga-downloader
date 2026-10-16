@@ -390,7 +390,7 @@ describe('mock volumes', () => {
     vi.useFakeTimers();
     try {
       const api = createMockApi({ scenario: 'volumes', chapters: 40 });
-      const state = await api.state();
+      await api.state();
       // Select chapters manually since they are indexed, not numbered
       const allChapters = await api.chapters();
       const indicesToSelect = allChapters.slice(0, 15).map((c) => c.index);

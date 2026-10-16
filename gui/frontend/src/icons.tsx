@@ -127,8 +127,6 @@ export const SlidersIcon = icon(
   </>,
 );
 
-export const ActivityIcon = icon(<path d="M3 12h4l3 7 4-14 3 7h4" />);
-
 /** A spinner that inherits the text colour; it stops under reduced motion */
 export function Spinner({ size = 14 }: { size?: number }) {
   return (

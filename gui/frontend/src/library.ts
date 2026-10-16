@@ -5,7 +5,7 @@
 import { isSeriesUrl } from './autoLoad';
 import { plural } from './format';
 import { ago } from './search';
-import type { Chapter, Followed, LibraryInfo, State } from './types';
+import type { Chapter, Followed, LibraryInfo } from './types';
 
 /** The form two spellings of one series URL share: lower-case scheme and host, no "www.", no trailing slash */
 export function urlKey(raw: string): string {
@@ -161,7 +161,3 @@ export function chapterMark(number: number, f: Followed | null): 'new' | 'saved'
   return isNew(number, f) ? 'new' : '';
 }
 
-/** The followed entry of the loaded series */
-export function loadedFollowed(state: Pick<State, 'url' | 'library'>): Followed | null {
-  return followedOf(state.library, state.url);
-}
