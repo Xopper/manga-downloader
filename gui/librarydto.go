@@ -19,6 +19,10 @@ type FollowedDTO struct {
 	Chapters     int     `json:"chapters"`
 	Latest       float64 `json:"latest"`
 	SavedUpTo    float64 `json:"savedUpTo"`
+	// Known is the numbers listed when the series was followed, never new;
+	// Baselined is false until it was taken (no chapter is new before)
+	Known     []float64 `json:"known"`
+	Baselined bool      `json:"baselined"`
 	// Saved is the numbers of the chapters saved, never null
 	Saved []float64 `json:"saved"`
 	New   int       `json:"new"`
@@ -69,6 +73,8 @@ func followedDTO(f Followed) FollowedDTO {
 		Latest:       f.Latest,
 		SavedUpTo:    f.SavedUpTo,
 		Saved:        append([]float64{}, f.Saved...),
+		Known:        append([]float64{}, f.Known...),
+		Baselined:    f.Baselined,
 		New:          f.New,
 		FollowedAt:   timeDTO(f.FollowedAt),
 		CheckedAt:    timeDTO(f.CheckedAt),
@@ -116,7 +122,8 @@ func (a *App) Follow(f FollowedDTO) error {
 		entry.Title = c.Title()
 		entry.Chapters = len(numbers)
 		entry.Latest = maxNumber(numbers)
-		entry.New = newAbove(numbers, 0)
+		// what's listed now is known: only what comes later is new
+		entry.Known, entry.Baselined, entry.New = mergeNumbers(nil, numbers), true, 0
 		entry.CheckedAt = time.Now()
 		entry.Downloadable = true
 	}
@@ -184,8 +191,8 @@ func (a *App) CancelCheck() {
 	a.ctrl.CancelCheck()
 }
 
-// DownloadNew loads a followed series, selects the chapters above its saved
-// mark and starts the download, in the background. Refusals (busy, not
+// DownloadNew loads a followed series, selects its new chapters (see
+// Followed.NewNumbers) and starts the download, in the background. Refusals (busy, not
 // followed, nothing new once loaded) come back as the load's would: the
 // first two here, the last in the log.
 func (a *App) DownloadNew(url string) error {
@@ -224,7 +231,7 @@ func (a *App) downloadNewLoaded(ctx context.Context, url string) error {
 		return ctx.Err()
 	}
 	entry, _ := c.Library().Get(url)
-	n, err := c.SelectAbove(entry.SavedUpTo)
+	n, err := c.SelectNumbers(entry.NewNumbers(chapterNumbers(c.Chapters())))
 	if err != nil {
 		return err
 	}

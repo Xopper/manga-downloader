@@ -30,7 +30,7 @@ describe('LibraryPanel', () => {
     expect(markup.match(/<article class="card/g)?.length).toBe(3);
     expect(markup).toContain('12 new · saved up to 1182');
     expect(markup).toContain('Download 12 new');
-    expect(markup).toContain('Up to date · all 379 saved');
+    expect(markup).toContain('Nothing new · 379 chapters');
     expect(markup).toContain('>Nothing new<');
     expect(markup).toContain('Open on the site');
     expect(markup).toContain('Download all new · 12');

@@ -401,7 +401,8 @@ func TestFollowTheLoadedSeriesRecordsItsCount(t *testing.T) {
 		t.Fatalf("library = %+v", lib)
 	}
 	f := lib.Followed[0]
-	if f.Title != "Test Series" || f.Chapters != 5 || f.New != 5 || !f.Downloadable || f.Site != "example.com" || f.FollowedAt == "" {
+	// what's listed when it's followed is known: nothing is new yet
+	if f.Title != "Test Series" || f.Chapters != 5 || f.New != 0 || !f.Baselined || len(f.Known) != 5 || !f.Downloadable || f.Site != "example.com" || f.FollowedAt == "" {
 		t.Errorf("entry = %+v", f)
 	}
 	if err := a.Unfollow("https://example.com/manga/test"); err != nil {
@@ -415,7 +416,8 @@ func TestFollowTheLoadedSeriesRecordsItsCount(t *testing.T) {
 func TestDownloadNewSelectsAboveTheMarkAndStarts(t *testing.T) {
 	a, _, _ := newTestApp(t, 5)
 	url := "https://example.com/manga/test"
-	if err := a.ctrl.Library().Follow(Followed{URL: url, SavedUpTo: 2, Downloadable: true}); err != nil {
+	// followed with none known (all five came out since), 1 and 2 saved
+	if err := a.ctrl.Library().Follow(Followed{URL: url, SavedUpTo: 2, Saved: []float64{1, 2}, Baselined: true, Downloadable: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := a.DownloadNew(url); err != nil {
@@ -453,8 +455,8 @@ func TestDownloadAllNewRunsEachSeriesInTurn(t *testing.T) {
 	first := "https://example.com/manga/test"
 	second := "https://example.com/manga/second"
 	lib := a.ctrl.Library()
-	_ = lib.Follow(Followed{URL: first, Title: "First", SavedUpTo: 3, Chapters: 4, Latest: 4, New: 1, Downloadable: true})
-	_ = lib.Follow(Followed{URL: second, Title: "Second", Chapters: 4, Latest: 4, New: 4, Downloadable: true})
+	_ = lib.Follow(Followed{URL: first, Title: "First", SavedUpTo: 3, Saved: []float64{1, 2, 3}, Baselined: true, Chapters: 4, Latest: 4, New: 1, Downloadable: true})
+	_ = lib.Follow(Followed{URL: second, Title: "Second", Baselined: true, Chapters: 4, Latest: 4, New: 4, Downloadable: true})
 	_ = lib.Follow(Followed{URL: "https://example.com/manga/done", Title: "Done", SavedUpTo: 4, Chapters: 4, Latest: 4, New: 0, Downloadable: true})
 	if err := a.DownloadAllNew(); err != nil {
 		t.Fatal(err)

@@ -52,7 +52,7 @@ export function cardStatus(f: Followed): { text: string; tone: Tone } {
     const saved = f.savedUpTo > 0 ? ` · saved up to ${f.savedUpTo}` : ' · nothing saved yet';
     return { text: `${f.new} new${saved}`, tone: 'new' };
   }
-  return { text: `Up to date · all ${f.chapters} saved`, tone: 'ok' };
+  return { text: `Nothing new · ${plural(f.chapters, 'chapter', 'chapters')}`, tone: 'ok' };
 }
 
 /** The one button of a card */
@@ -61,7 +61,7 @@ export function cardAction(f: Followed): { label: string; kind: 'new' | 'none' |
     return { label: 'Open on the site', kind: 'open' };
   }
   if (f.new > 0) {
-    return { label: f.savedUpTo > 0 ? `Download ${f.new} new` : `Download all ${f.new}`, kind: 'new' };
+    return { label: `Download ${f.new} new`, kind: 'new' };
   }
   return { label: f.chapters === 0 ? 'Not checked yet' : 'Nothing new', kind: 'none' };
 }
@@ -107,26 +107,34 @@ export function librarySummary(library: Pick<LibraryInfo, 'followed' | 'checking
   return parts.join(' · ');
 }
 
-/** The indices of the chapters numbered above savedUpTo */
-export function newIndices(chapters: Chapter[], savedUpTo: number): number[] {
-  // nothing saved: every chapter is new, chapter 0 included
-  return chapters.filter((c) => savedUpTo <= 0 || c.number > savedUpTo).map((c) => c.index);
+/** Whether a chapter numbered number is new: listed since the series was followed, and not saved */
+function isNew(number: number, f: Followed): boolean {
+  return f.baselined && !f.known.includes(number) && !f.saved.includes(number);
+}
+
+/** The indices of a followed series' new chapters: listed since it was followed, not saved since */
+export function newIndices(chapters: Chapter[], f: Followed | null): number[] {
+  if (f === null || !f.downloadable || !f.baselined) {
+    return [];
+  }
+  const known = new Set(f.known);
+  const saved = new Set(f.saved);
+  return chapters.filter((c) => !known.has(c.number) && !saved.has(c.number)).map((c) => c.index);
 }
 
 /**
  * The tag a chapter row shows for a followed series: saved on the chapters
- * the app saved, new above the highest of them, none on the others (saving
- * chapter 355 alone says nothing of 1 to 354); none for a series not
- * followed or never saved
+ * the app saved, new on those listed since the series was followed and not
+ * saved, none on the others; none for a series not followed
  */
 export function chapterMark(number: number, f: Followed | null): 'new' | 'saved' | '' {
-  if (f === null || !f.downloadable || f.savedUpTo <= 0) {
+  if (f === null || !f.downloadable) {
     return '';
   }
   if (f.saved.includes(number)) {
     return 'saved';
   }
-  return number > f.savedUpTo ? 'new' : '';
+  return isNew(number, f) ? 'new' : '';
 }
 
 /** The followed entry of the loaded series */

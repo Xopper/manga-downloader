@@ -25,7 +25,7 @@ func TestLoadMarksTheSeriesSeen(t *testing.T) {
 
 func TestLoadUpdatesAFollowedSeries(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(5, 2)...)
-	if err := c.Library().Follow(Followed{URL: testURL, SavedUpTo: 3, Downloadable: true}); err != nil {
+	if err := c.Library().Follow(Followed{URL: testURL, SavedUpTo: 3, Saved: []float64{1, 2, 3}, Baselined: true, Downloadable: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Load(testURL); err != nil {
@@ -39,7 +39,7 @@ func TestLoadUpdatesAFollowedSeries(t *testing.T) {
 
 func TestRunRaisesTheSavedMark(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(5, 2)...)
-	if err := c.Library().Follow(Followed{URL: testURL, Downloadable: true}); err != nil {
+	if err := c.Library().Follow(Followed{URL: testURL, Baselined: true, Downloadable: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Load(testURL); err != nil {
@@ -64,7 +64,7 @@ func TestRunRaisesTheSavedMark(t *testing.T) {
 func TestCancelledRunBeforeAnythingSavedKeepsTheMark(t *testing.T) {
 	gate := make(chan struct{})
 	c, site, _ := newTestController(t, false, gate, chapters(3, 2)...)
-	if err := c.Library().Follow(Followed{URL: testURL, Downloadable: true}); err != nil {
+	if err := c.Library().Follow(Followed{URL: testURL, Baselined: true, Downloadable: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Load(testURL); err != nil {
@@ -91,7 +91,7 @@ func TestCancelledRunBeforeAnythingSavedKeepsTheMark(t *testing.T) {
 func TestCancelledBundleKeepsTheMark(t *testing.T) {
 	gate := make(chan struct{})
 	c, site, _ := newTestController(t, true, gate, chapters(3, 2)...)
-	if err := c.Library().Follow(Followed{URL: testURL, Downloadable: true}); err != nil {
+	if err := c.Library().Follow(Followed{URL: testURL, Baselined: true, Downloadable: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Load(testURL); err != nil {
@@ -138,8 +138,8 @@ func TestCheckLibraryUpdatesEveryFollowedSeries(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(5, 2)...)
 	other := "https://example.com/manga/other"
 	lib := c.Library()
-	_ = lib.Follow(Followed{URL: testURL, SavedUpTo: 4, Downloadable: true})
-	_ = lib.Follow(Followed{URL: other, Downloadable: true})
+	_ = lib.Follow(Followed{URL: testURL, SavedUpTo: 4, Saved: []float64{1, 2, 3, 4}, Baselined: true, Downloadable: true})
+	_ = lib.Follow(Followed{URL: other, Baselined: true, Downloadable: true})
 	_ = lib.Follow(Followed{URL: "https://search.only/x", Downloadable: false})
 	if err := c.Load(testURL); err != nil {
 		t.Fatal(err)
@@ -249,14 +249,14 @@ func TestCheckLibraryWithNothingToCheck(t *testing.T) {
 	}
 }
 
-func TestSelectAbove(t *testing.T) {
+func TestSelectNumbers(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(5, 1)...)
 	if err := c.Load(testURL); err != nil {
 		t.Fatal(err)
 	}
-	n, err := c.SelectAbove(3)
+	n, err := c.SelectNumbers([]float64{4, 5, 9})
 	if err != nil || n != 2 {
-		t.Fatalf("SelectAbove = %d, %v", n, err)
+		t.Fatalf("SelectNumbers = %d, %v", n, err)
 	}
 	if c.IsSelected(2) || !c.IsSelected(3) || !c.IsSelected(4) {
 		t.Error("the wrong chapters are selected")

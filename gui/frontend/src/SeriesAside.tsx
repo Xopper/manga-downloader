@@ -40,8 +40,8 @@ export function SeriesAside(props: Props) {
   const letter = (title.trim()[0] ?? '?').toUpperCase();
   const cover = followed?.cover ?? '';
   const now = new Date();
-  // what the dock offers when nothing is picked: the chapters after the last one saved
-  const fresh = followed !== null && followed.downloadable && followed.savedUpTo > 0 ? newIndices(chapters, followed.savedUpTo) : [];
+  // what the dock offers when nothing is picked: the chapters that came out since it was followed
+  const fresh = newIndices(chapters, followed);
 
   return (
     <aside className="side series-aside" aria-label="This series">
@@ -105,7 +105,6 @@ export function SeriesAside(props: Props) {
         chapters={chapters}
         selected={selected}
         fresh={fresh}
-        savedUpTo={followed?.savedUpTo ?? 0}
         onStart={onStart}
         onStartNew={() => onStartNew(fresh)}
         onCancel={onCancel}
@@ -122,7 +121,7 @@ function Progress({ count, followed, now }: { count: number; followed: Followed;
   const saved = followed.savedUpTo;
   const latest = followed.latest;
   const fraction = saved > 0 && latest > 0 ? Math.min(1, saved / latest) : 0;
-  const fresh = saved > 0 ? followed.new : count;
+  const fresh = followed.new;
   const meta = [`${count.toLocaleString('en-US')} ${count === 1 ? 'chapter' : 'chapters'}`];
   if (latest > 0) {
     meta.push(`latest ${formatNumber(latest)}`);

@@ -33,9 +33,16 @@ type Followed struct {
 	Chapters int     `json:"chapters"`
 	Latest   float64 `json:"latest"`
 	// SavedUpTo is the highest chapter number the app saved for the series,
-	// 0 when it never did; New is how many listed chapters are numbered above it
+	// 0 when it never did
 	SavedUpTo float64 `json:"savedUpTo"`
-	New       int     `json:"new"`
+	// New is how many listed chapters are new: not Known and not Saved
+	New int `json:"new"`
+	// Known is the numbers of the chapters already listed when the series
+	// was followed, or at its first load or check for a library from before
+	// it (Baselined false until then): they're never new. A chapter listed
+	// later is new until it's saved.
+	Known     []float64 `json:"known,omitempty"`
+	Baselined bool      `json:"baselined,omitempty"`
 	// Saved is the numbers of the chapters the app saved, sorted, so a list
 	// shows "saved" on those only: saving chapter 355 alone says nothing of
 	// 1 to 354. A library from before it knows only SavedUpTo, which load
@@ -115,6 +122,11 @@ func (l *Library) Load() error {
 		if len(f.Saved) == 0 && f.SavedUpTo > 0 {
 			f.Saved = []float64{f.SavedUpTo}
 		}
+		// what was new by the old rule (above the highest saved) isn't by
+		// this one; the next load or check takes the list as known
+		if !f.Baselined {
+			f.New = 0
+		}
 	}
 	return nil
 }
@@ -191,8 +203,8 @@ func (l *Library) Follow(f Followed) error {
 			f.Saved = l.followed[i].Saved
 			f.LastSaved = l.followed[i].LastSaved
 		}
-		if f.Chapters > 0 && f.New == 0 {
-			f.New = newAboveCount(f.Chapters, f.Latest, f.SavedUpTo)
+		if !f.Baselined {
+			f.Known, f.Baselined, f.New = l.followed[i].Known, l.followed[i].Baselined, l.followed[i].New
 		}
 		if f.Cover == "" {
 			f.Cover = l.followed[i].Cover
@@ -245,7 +257,10 @@ func (l *Library) MarkSeen(url, title string, numbers []float64) error {
 		}
 		f.Chapters = len(numbers)
 		f.Latest = latest
-		f.New = newAbove(numbers, f.SavedUpTo)
+		if !f.Baselined {
+			f.Known, f.Baselined = mergeNumbers(nil, numbers), true
+		}
+		f.New = len(f.NewNumbers(numbers))
 		f.CheckedAt = now
 		f.Error = ""
 	}
@@ -272,7 +287,7 @@ func (l *Library) MarkSaved(url string, saved []float64, numbers []float64) erro
 		}
 		f.LastSaved = time.Now()
 		if len(numbers) > 0 {
-			f.New = newAbove(numbers, f.SavedUpTo)
+			f.New = len(f.NewNumbers(numbers))
 		}
 	})
 }
@@ -312,36 +327,26 @@ func mergeNumbers(a, b []float64) []float64 {
 	return slices.Compact(out)
 }
 
-// newAbove counts the chapters numbered above savedUpTo; with nothing saved
-// (0) every chapter is new, chapter 0 included
-func newAbove(numbers []float64, savedUpTo float64) int {
-	if savedUpTo <= 0 {
-		return len(numbers)
+// NewNumbers is the numbers among numbers, the listed chapters, that are
+// new: listed after the series was followed and not saved since. Each
+// number once, sorted; none before the entry has its known list.
+func (f *Followed) NewNumbers(numbers []float64) []float64 {
+	if !f.Baselined {
+		return nil
 	}
-	n := 0
-	for _, number := range numbers {
-		if number > savedUpTo {
-			n++
+	var out []float64
+	for _, n := range mergeNumbers(nil, numbers) {
+		if !containsNumber(f.Known, n) && !containsNumber(f.Saved, n) {
+			out = append(out, n)
 		}
 	}
-	return n
+	return out
 }
 
-// newAboveCount estimates what's new from a count and the highest number
-// alone, for an entry whose list isn't at hand: every chapter when nothing
-// was saved, else the numbers past the mark, bounded by the count
-func newAboveCount(chapters int, latest, savedUpTo float64) int {
-	if savedUpTo <= 0 {
-		return chapters
-	}
-	if latest <= savedUpTo {
-		return 0
-	}
-	n := int(latest - savedUpTo)
-	if n > chapters {
-		n = chapters
-	}
-	return n
+// containsNumber reports whether sorted holds n
+func containsNumber(sorted []float64, n float64) bool {
+	_, ok := slices.BinarySearch(sorted, n)
+	return ok
 }
 
 func maxNumber(numbers []float64) float64 {

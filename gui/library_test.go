@@ -70,7 +70,7 @@ func TestFollowUnfollowPersists(t *testing.T) {
 func TestMarkSeenUpdatesCountsAndNew(t *testing.T) {
 	l := NewLibrary("")
 	url := "https://example.com/manga/x"
-	if err := l.Follow(Followed{URL: url, SavedUpTo: 3}); err != nil {
+	if err := l.Follow(Followed{URL: url, SavedUpTo: 3, Saved: []float64{1, 2, 3}, Baselined: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.MarkSeen(url, "X", []float64{1, 2, 3, 4, 5}); err != nil {
@@ -115,7 +115,7 @@ func TestMarkSavedNeverGoesBack(t *testing.T) {
 	l := NewLibrary("")
 	url := "https://example.com/manga/x"
 	numbers := []float64{1, 2, 3, 4, 5, 6}
-	if err := l.Follow(Followed{URL: url}); err != nil {
+	if err := l.Follow(Followed{URL: url, Baselined: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := l.MarkSeen(url, "X", numbers); err != nil {
@@ -131,7 +131,7 @@ func TestMarkSavedNeverGoesBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	f, _ := l.Get(url)
-	if f.SavedUpTo != 5 || f.New != 1 || f.LastSaved.IsZero() {
+	if f.SavedUpTo != 5 || f.New != 4 || f.LastSaved.IsZero() {
 		t.Errorf("entry = %+v", f)
 	}
 	if err := l.MarkSaved("https://not.followed/x", []float64{9}, numbers); err != nil {
@@ -214,13 +214,46 @@ func TestMissingFileIsEmpty(t *testing.T) {
 	}
 }
 
-func TestNewAboveCountsChapterZeroWhenNothingSaved(t *testing.T) {
-	numbers := []float64{0, 1, 2}
-	if got := newAbove(numbers, 0); got != 3 {
-		t.Errorf("newAbove(.., 0) = %d, want 3", got)
+func TestNewIsWhatCameAfterTheFollowUntilSaved(t *testing.T) {
+	l := NewLibrary("")
+	url := "https://example.com/manga/x"
+	_ = l.Follow(Followed{URL: url})
+	// the first list seen is known, whatever was saved
+	_ = l.MarkSeen(url, "X", []float64{0, 1, 2, 3})
+	if f, _ := l.Get(url); f.New != 0 || !f.Baselined || !slices.Equal(f.Known, []float64{0, 1, 2, 3}) {
+		t.Fatalf("after the first list: %+v", f)
 	}
-	if got := newAbove(numbers, 1); got != 1 {
-		t.Errorf("newAbove(.., 1) = %d, want 1", got)
+	// saving one chapter makes nothing else new
+	_ = l.MarkSaved(url, []float64{2}, []float64{0, 1, 2, 3})
+	if f, _ := l.Get(url); f.New != 0 {
+		t.Fatalf("saving 2 made %d new", f.New)
+	}
+	// chapters listed later are new until saved
+	numbers := []float64{0, 1, 2, 3, 4, 5}
+	_ = l.MarkSeen(url, "X", numbers)
+	f, _ := l.Get(url)
+	if f.New != 2 || !slices.Equal(f.NewNumbers(numbers), []float64{4, 5}) {
+		t.Fatalf("after 4 and 5 came out: New %d, %v", f.New, f.NewNumbers(numbers))
+	}
+	_ = l.MarkSaved(url, []float64{4}, numbers)
+	if f, _ := l.Get(url); f.New != 1 || !slices.Equal(f.NewNumbers(numbers), []float64{5}) {
+		t.Errorf("after saving 4: %+v", f)
+	}
+	// an entry without its known list has nothing new yet
+	if got := (&Followed{}).NewNumbers(numbers); got != nil {
+		t.Errorf("unbaselined: %v", got)
+	}
+}
+
+func TestRefollowKeepsTheKnownList(t *testing.T) {
+	l := NewLibrary("")
+	url := "https://example.com/manga/x"
+	_ = l.Follow(Followed{URL: url})
+	_ = l.MarkSeen(url, "X", []float64{1, 2})
+	_ = l.MarkSeen(url, "X", []float64{1, 2, 3})
+	_ = l.Follow(Followed{URL: url, Title: "X again"})
+	if f, _ := l.Get(url); !f.Baselined || f.New != 1 || !slices.Equal(f.Known, []float64{1, 2}) {
+		t.Errorf("after a re-follow: %+v", f)
 	}
 }
 
@@ -229,7 +262,7 @@ func TestMarkSavedKeepsTheChaptersSaved(t *testing.T) {
 	l := NewLibrary("")
 	url := "https://example.com/manga/x"
 	numbers := []float64{353, 354, 355, 356, 357}
-	_ = l.Follow(Followed{URL: url})
+	_ = l.Follow(Followed{URL: url, Known: numbers, Baselined: true})
 	_ = l.MarkSeen(url, "X", numbers)
 	if err := l.MarkSaved(url, []float64{355}, numbers); err != nil {
 		t.Fatal(err)

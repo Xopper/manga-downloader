@@ -34,7 +34,7 @@
 // Typed values match ignoring case, and take the spelling the series lists.
 
 import type { Api, Unsubscribe } from './api';
-import { urlKey } from './library';
+import { newIndices, urlKey } from './library';
 import type { CatalogInfo, Chapter, FilterChoice, Followed, Hit, Job, LibraryInfo, LogLine, Options, SiteInfo, State, Summary, Update } from './types';
 import { groupChapters, parseVolumes, siteVolumes } from './volumes';
 import { OP_CHAPTERS } from './mock-onepiece';
@@ -162,6 +162,14 @@ function mockCover(ground: string, mark: string): string {
 }
 
 /** The mock's library: the mock series (12 chapters past its saved mark), one up to date, one search only; the first two have covers */
+/** A followed entry's first list is known, as the backend's MarkSeen takes it */
+function baseline(f: Followed, chapters: Chapter[]): void {
+  if (!f.baselined) {
+    f.known = [...new Set(chapters.map((c) => c.number))].sort((a, b) => a - b);
+    f.baselined = true;
+  }
+}
+
 function mockLibrary(): Followed[] {
   return [
     {
@@ -173,6 +181,8 @@ function mockLibrary(): Followed[] {
       latest: 1194,
       savedUpTo: 1182,
       saved: OP_CHAPTERS.map(([number]) => number).filter((number) => number <= 1182),
+      known: OP_CHAPTERS.map(([number]) => number).filter((number) => number <= 1182),
+      baselined: true,
       new: 12,
       followedAt: '2026-10-03T10:00:00Z',
       checkedAt: '2026-10-15T08:50:00Z',
@@ -189,6 +199,8 @@ function mockLibrary(): Followed[] {
       latest: 379,
       savedUpTo: 379,
       saved: Array.from({ length: 379 }, (_, i) => i + 1),
+      known: Array.from({ length: 379 }, (_, i) => i + 1),
+      baselined: true,
       new: 0,
       followedAt: '2026-09-20T10:00:00Z',
       checkedAt: '2026-10-15T08:50:00Z',
@@ -205,6 +217,8 @@ function mockLibrary(): Followed[] {
       latest: 0,
       savedUpTo: 0,
       saved: [],
+      known: [],
+      baselined: false,
       new: 0,
       followedAt: '2026-10-12T10:00:00Z',
       checkedAt: '',
@@ -484,7 +498,8 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       f.title = title;
       f.chapters = chapters.length;
       f.latest = Math.max(...chapters.map((c) => c.number));
-      f.new = chapters.filter((c) => c.number > f.savedUpTo).length;
+      baseline(f, chapters);
+      f.new = newIndices(chapters, f).length;
       f.checkedAt = new Date().toISOString();
       f.error = '';
     }
@@ -540,7 +555,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     if (f !== undefined && savedNumbers.length > 0) {
       f.savedUpTo = Math.max(f.savedUpTo, ...savedNumbers);
       f.saved = [...new Set([...f.saved, ...savedNumbers])].sort((a, b) => a - b);
-      f.new = chapters.filter((c) => c.number > f.savedUpTo).length;
+      f.new = newIndices(chapters, f).length;
       f.lastSaved = new Date().toISOString();
     }
     push();
@@ -1133,7 +1148,10 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         entry.title = title;
         entry.chapters = chapters.length;
         entry.latest = Math.max(...chapters.map((c) => c.number));
-        entry.new = chapters.filter((c) => c.number > entry.savedUpTo).length;
+        // what's listed now is known: only what comes later is new
+        entry.known = [...new Set(chapters.map((c) => c.number))].sort((a, b) => a - b);
+        entry.baselined = true;
+        entry.new = 0;
         entry.checkedAt = new Date().toISOString();
         entry.downloadable = true;
       } else if (entry.chapters === 0) {
@@ -1144,6 +1162,11 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         if (entry.savedUpTo === 0) {
           entry.savedUpTo = followed[at].savedUpTo;
           entry.saved = followed[at].saved;
+        }
+        if (!entry.baselined) {
+          entry.known = followed[at].known;
+          entry.baselined = followed[at].baselined;
+          entry.new = followed[at].new;
         }
         followed[at] = entry;
       } else {
@@ -1194,7 +1217,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         if (urlKey(f.url) === urlKey('https://example.com/manga/one-piece')) {
           f.chapters = CHAPTERS;
           f.latest = 1194;
-          f.new = OP_CHAPTERS.filter(([number]) => number > f.savedUpTo).length;
+          f.new = OP_CHAPTERS.filter(([number]) => f.baselined && !f.known.includes(number) && !f.saved.includes(number)).length;
         }
         f.error = '';
         checkDone++;
@@ -1220,7 +1243,8 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       if (!loaded) {
         return;
       }
-      const fresh = chapters.filter((c) => c.number > f.savedUpTo);
+      const freshIdx = new Set(newIndices(chapters, f));
+      const fresh = chapters.filter((c) => freshIdx.has(c.index));
       if (fresh.length === 0) {
         pushLog('info', `${f.title}: nothing new to download`);
         return;

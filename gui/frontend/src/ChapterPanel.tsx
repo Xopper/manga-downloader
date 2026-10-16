@@ -343,8 +343,8 @@ function ChapterList({
   const some = state.selectedCount > 0 && !all;
   const { first, last } = list.span;
   const activeRow = active >= first && active < last ? rows[active] : undefined;
-  // the chapters above the library's saved mark, which the New chip selects
-  const fresh = followed !== null && followed.downloadable ? newIndices(chapters, followed.savedUpTo) : [];
+  // the chapters listed since the series was followed and not saved, which the New chip selects
+  const fresh = newIndices(chapters, followed);
   const freshChosen = fresh.length > 0 && chosen.size === fresh.length && fresh.every((i) => chosen.has(i));
 
   return (
@@ -380,7 +380,7 @@ function ChapterList({
               type="button"
               className={`chip${freshChosen ? ' on' : ''}`}
               disabled={disabled}
-              title={followed !== null && followed.savedUpTo > 0 ? `Above chapter ${followed.savedUpTo}, the last one saved` : 'Nothing saved yet: every chapter'}
+              title="Came out since you followed it, not saved yet"
               onClick={() => {
                 // the selection becomes exactly the new chapters
                 const freshSet = new Set(fresh);

@@ -133,7 +133,11 @@ export interface Followed {
   savedUpTo: number;
   /** The numbers of the chapters the app saved, sorted: only these show "saved" */
   saved: number[];
-  /** How many listed chapters are numbered above savedUpTo */
+  /** The numbers listed when the series was followed (or first loaded since): never new */
+  known: number[];
+  /** Whether known was taken; until then no chapter is new */
+  baselined: boolean;
+  /** How many listed chapters are new: listed since it was followed, not saved */
   new: number;
   /** RFC 3339, "" when unset */
   followedAt: string;

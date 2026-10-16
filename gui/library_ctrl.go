@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/elboletaire/manga-downloader/browser"
 	"github.com/elboletaire/manga-downloader/core"
@@ -181,10 +182,9 @@ func filterEmptiedList(err error) bool {
 	return errors.As(err, &noChapters) || errors.As(err, &chaptersErr) || errors.As(err, &unavailable)
 }
 
-// SelectAbove selects the chapters numbered above number, leaving the rest
-// of the selection as it is, and returns how many it selected. It's refused
-// while busy, as SetAll is.
-func (c *Controller) SelectAbove(number float64) (int, error) {
+// SelectNumbers selects the chapters numbered as one of numbers, leaving the
+// rest as they are, and returns how many it selected
+func (c *Controller) SelectNumbers(numbers []float64) (int, error) {
 	c.mu.Lock()
 	if c.busyLocked() {
 		c.mu.Unlock()
@@ -193,7 +193,7 @@ func (c *Controller) SelectAbove(number float64) (int, error) {
 	n := 0
 	if c.series != nil {
 		for i, chap := range c.series.Chapters {
-			if chap.GetNumber() > number {
+			if slices.Contains(numbers, chap.GetNumber()) {
 				c.selected[i] = true
 				n++
 			}

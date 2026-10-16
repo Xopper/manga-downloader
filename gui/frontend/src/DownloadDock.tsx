@@ -3,7 +3,7 @@
 // progress and Cancel while it runs.
 
 import { useEffect, useMemo, useRef } from 'react';
-import { formatNumber, plural } from './format';
+import { plural } from './format';
 import { DownloadIcon, Spinner, XIcon } from './icons';
 import { downloadBlocker, downloadLabel, overallProgress } from './run';
 import type { Chapter, Options, PackAs, State } from './types';
@@ -17,15 +17,13 @@ interface Props {
   selected: number[];
   /** The followed series' new chapters, which the button offers when nothing is picked */
   fresh: number[];
-  /** The last chapter saved, for the hint under that offer */
-  savedUpTo: number;
   onStart: () => void;
   /** Picks the new chapters and starts */
   onStartNew: () => void;
   onCancel: () => void;
 }
 
-export function DownloadDock({ state, error, chapters, selected, fresh, savedUpTo, onStart, onStartNew, onCancel }: Props) {
+export function DownloadDock({ state, error, chapters, selected, fresh, onStart, onStartNew, onCancel }: Props) {
   // Download and Cancel are different buttons, so the focus moves to the other
   // one when the run starts or ends, rather than falling to the body
   const focused = useRef<'start' | 'cancel' | null>(null);
@@ -118,7 +116,7 @@ export function DownloadDock({ state, error, chapters, selected, fresh, savedUpT
     text = 'Pick chapters to download';
   }
   // the label says it already: no hint repeating it underneath
-  const hint = quick ? `Nothing picked: this gets the chapters after ${formatNumber(savedUpTo)}.` : nothingPicked ? '' : blocker;
+  const hint = quick ? 'Nothing picked: this gets the chapters that came out since you followed it.' : nothingPicked ? '' : blocker;
   return (
     <div className="dock">
       {count > 0 && (

@@ -65,7 +65,7 @@ describe('SeriesAside', () => {
     const chapters = await api.chapters();
     const markup = render(state, followedOf(state.library, state.url), chapters);
     expect(markup).toContain('Download 12 new chapters</button>');
-    expect(markup).toContain('this gets the chapters after 1182');
+    expect(markup).toContain('this gets the chapters that came out since you followed it');
     expect(markup).toContain('>12 CBZ files</p>');
     expect(markup).not.toContain('Select at least one chapter');
   });

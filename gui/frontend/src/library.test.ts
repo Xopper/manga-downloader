@@ -23,6 +23,9 @@ function followed(over: Partial<Followed>): Followed {
     latest: 10,
     savedUpTo: 8,
     saved: [1, 2, 3, 4, 5, 6, 7, 8],
+    // followed at 8: 9 and 10 came out since
+    known: [1, 2, 3, 4, 5, 6, 7, 8],
+    baselined: true,
     new: 2,
     followedAt: '2026-10-01T00:00:00Z',
     checkedAt: '2026-10-15T09:00:00Z',
@@ -61,14 +64,14 @@ describe('cards', () => {
     expect(cardStatus(followed({}))).toEqual({ text: '2 new · saved up to 8', tone: 'new' });
     expect(cardAction(followed({}))).toEqual({ label: 'Download 2 new', kind: 'new' });
   });
-  it('offers everything for a series never saved', () => {
-    const f = followed({ savedUpTo: 0, new: 10 });
-    expect(cardStatus(f).text).toBe('10 new · nothing saved yet');
-    expect(cardAction(f)).toEqual({ label: 'Download all 10', kind: 'new' });
+  it('offers only what is new for a series never saved', () => {
+    const f = followed({ savedUpTo: 0, saved: [], new: 3 });
+    expect(cardStatus(f).text).toBe('3 new · nothing saved yet');
+    expect(cardAction(f)).toEqual({ label: 'Download 3 new', kind: 'new' });
   });
-  it('is up to date when nothing is new', () => {
-    const f = followed({ savedUpTo: 10, new: 0 });
-    expect(cardStatus(f)).toEqual({ text: 'Up to date · all 10 saved', tone: 'ok' });
+  it('says nothing is new without claiming everything was saved', () => {
+    const f = followed({ savedUpTo: 4, saved: [4], new: 0 });
+    expect(cardStatus(f)).toEqual({ text: 'Nothing new · 10 chapters', tone: 'ok' });
     expect(cardAction(f)).toEqual({ label: 'Nothing new', kind: 'none' });
   });
   it('says when it was never checked', () => {
@@ -111,31 +114,31 @@ describe('sortFollowed and totals', () => {
 
 describe('chapters of a followed series', () => {
   const chapters: Chapter[] = [7, 8, 9, 10].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0 }));
-  const fromZero: Chapter[] = [0, 1, 2].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0 }));
-  it('lists the new ones', () => {
-    expect(newIndices(chapters, 8)).toEqual([2, 3]);
-    expect(newIndices(chapters, 0)).toEqual([0, 1, 2, 3]);
+  it('lists as new what came out since the follow and is not saved', () => {
+    expect(newIndices(chapters, followed({}))).toEqual([2, 3]);
+    expect(newIndices(chapters, followed({ saved: [1, 2, 3, 4, 5, 6, 7, 8, 9] }))).toEqual([3]);
+    // followed when 1 to 10 were out: nothing is new, saved or not
+    expect(newIndices(chapters, followed({ known: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], saved: [] }))).toEqual([]);
+    expect(newIndices(chapters, followed({ baselined: false }))).toEqual([]);
+    expect(newIndices(chapters, null)).toEqual([]);
+    expect(newIndices(chapters, followed({ downloadable: false }))).toEqual([]);
   });
-  it('marks saved only the chapters saved, not every one below the highest', () => {
-    // chapter 355 saved alone: 348 to 354 were never saved
-    const f = followed({ savedUpTo: 355, saved: [355], chapters: 20, latest: 361 });
-    expect(chapterMark(355, f)).toBe('saved');
-    expect(chapterMark(354, f)).toBe('');
-    expect(chapterMark(348, f)).toBe('');
-    expect(chapterMark(356, f)).toBe('new');
-    expect(chapterMark(350, followed({ savedUpTo: 355, saved: [350, 355] }))).toBe('saved');
+  it('saving one chapter makes no other one new', () => {
+    // followed when 348 to 420 were out, chapter 378 saved alone
+    const known = Array.from({ length: 73 }, (_, i) => 348 + i);
+    const f = followed({ known, savedUpTo: 378, saved: [378], new: 0 });
+    expect(chapterMark(378, f)).toBe('saved');
+    expect(chapterMark(377, f)).toBe('');
+    expect(chapterMark(379, f)).toBe('');
+    expect(chapterMark(420, f)).toBe('');
+    // a chapter out since is new until it is saved
+    expect(chapterMark(421, f)).toBe('new');
+    expect(chapterMark(421, followed({ known, saved: [378, 421] }))).toBe('saved');
   });
-  it('counts chapter 0 as new when nothing was saved', () => {
-    expect(newIndices(fromZero, 0)).toEqual([0, 1, 2]);
-    expect(newIndices(fromZero, 1)).toEqual([2]);
-    expect(chapterMark(0, followed({ savedUpTo: 0 }))).toBe('');
-    expect(chapterMark(0, followed({ savedUpTo: 1, saved: [0, 1] }))).toBe('saved');
-  });
-  it('marks rows new or saved only for a followed series that saved something', () => {
-    const f = followed({});
-    expect(chapterMark(9, f)).toBe('new');
-    expect(chapterMark(8, f)).toBe('saved');
-    expect(chapterMark(9, followed({ savedUpTo: 0 }))).toBe('');
+  it('tags nothing for a series not followed or not readable', () => {
+    expect(chapterMark(9, followed({}))).toBe('new');
+    expect(chapterMark(8, followed({}))).toBe('saved');
+    expect(chapterMark(9, followed({ baselined: false }))).toBe('');
     expect(chapterMark(9, null)).toBe('');
     expect(chapterMark(9, followed({ downloadable: false }))).toBe('');
   });
