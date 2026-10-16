@@ -1,6 +1,6 @@
 /*
- * Manga Downloader. A quiet desktop tool: warm paper neutrals, one violet
- * accent (the mascot's colour, see assets/brand/brand.md) for what you act on,
+ * Manga Downloader. A quiet desktop tool: warm paper neutrals, one green
+ * accent (the mascot's tile, see assets/brand/brand.md) for what you act on,
  * and mint / amber / rose kept strictly for outcomes. Inter is bundled (no
  * network) so the type looks the same on every OS; system fonts would put
  * Nimbus or Arial on some Linux desktops, whose metrics misalign controls.
@@ -28,11 +28,11 @@
   --text-2: #55514b;
   --text-3: #736e67;
 
-  --accent: #7c5ce0;
-  --accent-hover: #6a4bd3;
-  --accent-soft: #eee9fd;
-  --accent-softer: #f7f4fe;
-  --accent-text: #5b3fc4;
+  --accent: #2a7f66;
+  --accent-hover: #226c56;
+  --accent-soft: #e1f2eb;
+  --accent-softer: #f1f9f5;
+  --accent-text: #1e6b55;
   --on-accent: #ffffff;
 
   --success: #1b7a5e;
@@ -83,12 +83,12 @@
     --text-2: #b4b4bc;
     --text-3: #8e8e98;
 
-    --accent: #a993ff;
-    --accent-hover: #bba9ff;
-    --accent-soft: rgb(169 147 255 / 15%);
-    --accent-softer: rgb(169 147 255 / 7%);
-    --accent-text: #bcaaff;
-    --on-accent: #16132a;
+    --accent: #5cc9a7;
+    --accent-hover: #74d6b7;
+    --accent-soft: rgb(92 201 167 / 15%);
+    --accent-softer: rgb(92 201 167 / 7%);
+    --accent-text: #7fd3b5;
+    --on-accent: #0f1c18;
 
     --success: #5ee0b8;
     --success-solid: #5ee0b8;

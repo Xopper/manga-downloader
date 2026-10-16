@@ -47,7 +47,7 @@ README usage (this repo's README uses these paths):
 | Mint mist | `#EEF7F3` | Brand backgrounds (social, README); Moon on dark. |
 | Night | `#0F1C18` | Brand dark background. |
 
-The GUI's colour tokens (`gui/frontend/src/styles.css`) still use the violet accent of the earlier Neko Book brand; the mapping below is that earlier proposal.
+The GUI's colour tokens (`gui/frontend/src/styles.css`) follow the mapping below: the accent is the tile's green, darkened on light so white text on a button stays above 4.5:1. Success stays the outcome green, so a "done" or "new" mark and the accent are the same family; they're told apart by shape (tags and ticks versus buttons and selections).
 
 ## Wordmark
 
@@ -69,7 +69,7 @@ Fredoka SemiBold (600, SIL OFL), lowercase: "manga" in Ink and "downloader" in F
 - Don't use Pink for errors, or swap the wordmark colours.
 - `mark-dark` is the same tile as `mark`: the tile carries its own ground, so it reads on both.
 
-## GUI colour mapping (proposal)
+## GUI colour mapping
 
 The backgrounds and neutrals stay as they are (`--bg` `#f4f3f0` / `#121214`, surfaces, borders, text). The brand drives the accent, success and danger tokens. The warning tokens stay amber, since the palette has no amber.
 
@@ -77,11 +77,11 @@ The backgrounds and neutrals stay as they are (`--bg` `#f4f3f0` / `#121214`, sur
 
 | token | value | note | contrast |
 |---|---|---|---|
-| `--accent` | `#7C5CE0` | was #3550c2 | white text on it 4.7:1, on --bg 4.2:1 |
-| `--accent-hover` | `#6A4BD3` | was #2b43ab | 5.9:1 on surface, 5.3:1 on --bg |
-| `--accent-text` | `#5B3FC4` | was #2c45ad | 7.1:1 on surface, 6.4:1 on --bg |
-| `--accent-soft` | `#EEE9FD` | was #eaeefb |  |
-| `--accent-softer` | `#F7F4FE` | was #f4f6fd |  |
+| `--accent` | `#2A7F66` | was violet #7C5CE0 | white text on it 4.9:1 |
+| `--accent-hover` | `#226C56` |  | white text on it 6.3:1 |
+| `--accent-text` | `#1E6B55` |  | 6.4:1 on surface, 5.8:1 on --bg |
+| `--accent-soft` | `#E1F2EB` |  |  |
+| `--accent-softer` | `#F1F9F5` |  |  |
 | `--on-accent` | `#FFFFFF` | unchanged |  |
 | `--success` | `#1B7A5E` | was #237245 | 5.3:1 on surface, 4.7:1 on --bg |
 | `--success-solid` | `#1FA27D` | new: mint fills (progress, done ticks) | 3.2:1 on surface (UI graphic, 3:1 target) |
@@ -98,12 +98,12 @@ The backgrounds and neutrals stay as they are (`--bg` `#f4f3f0` / `#121214`, sur
 
 | token | value | note | contrast |
 |---|---|---|---|
-| `--accent` | `#A993FF` | was #7d93f2 | --on-accent on it 7.2:1, on --bg 7.4:1 |
-| `--accent-hover` | `#BBA9FF` | was #93a6f6 | 8.4:1 on surface, 9.1:1 on --bg |
-| `--accent-text` | `#BCAAFF` | was #a9b8fa | 8.5:1 on surface, 9.2:1 on --bg |
-| `--accent-soft` | `rgb(169 147 255 / 15%)` | was rgb(125 147 242 / 15%) |  |
-| `--accent-softer` | `rgb(169 147 255 / 7%)` |  |  |
-| `--on-accent` | `#16132A` | was #0d1233 |  |
+| `--accent` | `#5CC9A7` | was violet #A993FF | --on-accent on it 8.6:1 |
+| `--accent-hover` | `#74D6B7` |  |  |
+| `--accent-text` | `#7FD3B5` | the brand's Mint | 9.7:1 on surface |
+| `--accent-soft` | `rgb(92 201 167 / 15%)` |  |  |
+| `--accent-softer` | `rgb(92 201 167 / 7%)` |  |  |
+| `--on-accent` | `#0F1C18` | Night |  |
 | `--success` | `#5EE0B8` | was #66c58f | 10.5:1 on surface, 11.4:1 on --bg |
 | `--success-solid` | `#5EE0B8` | new | 10.5:1 on surface (UI graphic, 3:1 target) |
 | `--success-soft` | `rgb(94 224 184 / 13%)` |  |  |
