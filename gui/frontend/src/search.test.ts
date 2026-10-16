@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { catalogSummary, debounce, resultRows, siteGroups } from './search';
+import { catalogSummary, debounce, filterSiteGroups, resultRows, siteGroups } from './search';
 import type { CatalogInfo, Hit, SiteInfo } from './types';
 
 const hits: Hit[] = [
@@ -78,5 +78,29 @@ describe('debounce', () => {
     vi.advanceTimersByTime(500);
     expect(fn).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
+  });
+});
+
+describe('filterSiteGroups', () => {
+  const groups = [
+    { label: '', options: [{ value: '', label: 'All sites' }] },
+    {
+      label: 'Can download',
+      options: [
+        { value: 'mangadex.org', label: 'MangaDex (mangadex.org)' },
+        { value: 'asuracomic.net', label: 'asuracomic.net' },
+      ],
+    },
+    { label: 'Search only', options: [{ value: 'mangafire.to', label: 'mangafire.to' }] },
+  ];
+  it('keeps everything for an empty query', () => {
+    expect(filterSiteGroups(groups, '  ')).toBe(groups);
+  });
+  it('matches the name or the domain, spaces and dots aside, and drops empty groups', () => {
+    expect(filterSiteGroups(groups, 'manga dex').flatMap((g) => g.options.map((o) => o.value))).toEqual(['mangadex.org']);
+    expect(filterSiteGroups(groups, 'asura').map((g) => g.label)).toEqual(['Can download']);
+    expect(filterSiteGroups(groups, 'MANGA').flatMap((g) => g.options.map((o) => o.value))).toEqual(['mangadex.org', 'mangafire.to']);
+    expect(filterSiteGroups(groups, 'fire to').flatMap((g) => g.options.map((o) => o.value))).toEqual(['mangafire.to']);
+    expect(filterSiteGroups(groups, 'zzz')).toEqual([]);
   });
 });

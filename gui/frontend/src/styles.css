@@ -2115,6 +2115,134 @@ a.version:hover {
   font-size: 12px;
 }
 
+/* the site picker: a button, and a list of the sites with a box to narrow it */
+.site-picker {
+  position: relative;
+  flex: none;
+}
+
+.site-picker-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.site-picker-button .site-picker-value {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.site-picker-button svg {
+  flex: none;
+  color: var(--text-3);
+  transform: rotate(90deg);
+  transition: transform 0.15s var(--ease);
+}
+
+.site-picker-button[aria-expanded='true'] svg {
+  transform: rotate(-90deg);
+}
+
+.site-picker-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 0.12s var(--ease);
+}
+
+.site-picker-find {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+.site-picker-find input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.site-picker-list {
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+}
+
+.site-picker-group {
+  padding: 10px 8px 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site-picker-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.site-picker-option.active {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.site-picker-option.on {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.site-picker-option svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.site-picker-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.site-picker-empty {
+  padding: 14px 8px;
+  color: var(--text-3);
+  font-size: 13px;
+  text-align: center;
+}
+
 .search-head .spacer {
   flex: 1;
 }
@@ -2177,8 +2305,13 @@ a.version:hover {
     flex-wrap: wrap;
   }
 
-  .search-site {
+  .search-site,
+  .site-picker {
     width: 100%;
+  }
+
+  .site-picker-find input {
+    font-size: 16px;
   }
 
   .search-box .url-input {

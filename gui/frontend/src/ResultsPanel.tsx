@@ -6,6 +6,7 @@
 import { AlertIcon, Spinner } from './icons';
 import { Mascot } from './Mascot';
 import { catalogSummary, resultRows, siteGroups } from './search';
+import { SitePicker } from './SitePicker';
 import type { CatalogInfo, Hit, SiteInfo } from './types';
 
 /** A search-only hit the user picked, and the query and site it was picked under */
@@ -87,25 +88,7 @@ export function ResultsPanel(props: ResultsPanelProps) {
             `${rows.length} ${rows.length === 1 ? 'result' : 'results'} for “${query.trim()}”`
           )}
         </span>
-        <select className="input select-input search-site" aria-label="Site" value={site} onChange={(e) => onSite(e.target.value)}>
-          {siteGroups(sites).map((g) =>
-            g.label === '' ? (
-              g.options.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))
-            ) : (
-              <optgroup key={g.label} label={g.label}>
-                {g.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </optgroup>
-            ),
-          )}
-        </select>
+        <SitePicker groups={siteGroups(sites)} value={site} onChange={onSite} />
         <span className="spacer" />
         <span className="muted">{summary}</span>
         {catalog.error !== '' && <AlertIcon />}

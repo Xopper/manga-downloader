@@ -63,6 +63,29 @@ export function siteGroups(sites: SiteInfo[]): SiteGroup[] {
   return groups.filter((g) => g.options.length > 0);
 }
 
+/** A name or query reduced for matching: lower case, letters and digits only */
+function squash(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/**
+ * The picker's groups narrowed to the sites whose name or domain holds
+ * every word of query ("manga dex" finds MangaDex, "asura" finds
+ * asuracomic.net); empty groups are left out, and an empty query keeps all
+ */
+export function filterSiteGroups(groups: SiteGroup[], query: string): SiteGroup[] {
+  const words = query.split(/\s+/).map(squash).filter((w) => w !== '');
+  if (words.length === 0) {
+    return groups;
+  }
+  const joined = squash(query);
+  const matches = (o: SiteOption) => {
+    const name = squash(`${o.label} ${o.value}`);
+    return name.includes(joined) || words.every((w) => name.includes(w));
+  };
+  return groups.map((g) => ({ ...g, options: g.options.filter(matches) })).filter((g) => g.options.length > 0);
+}
+
 /** "3 h ago", "12 min ago", "just now", "4 days ago" */
 export function ago(iso: string, now: Date): string {
   const ms = now.getTime() - new Date(iso).getTime();

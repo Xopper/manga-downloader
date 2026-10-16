@@ -57,12 +57,12 @@ describe('ResultsPanel', () => {
     expect(markup).toContain('aria-label="Follow One Piece: Ace"');
     expect(markup.match(/class="star on"/g)?.length).toBe(1);
   });
-  it('offers the site picker with its groups', () => {
+  it('offers the site picker, closed, naming the site picked', () => {
     const markup = render({});
-    expect(markup).toContain('All sites');
-    expect(markup).toContain('<optgroup label="Can download">');
-    expect(markup).toContain('<optgroup label="Search only">');
-    expect(markup).not.toContain('MangaDex');
+    expect(markup).toContain('aria-haspopup="listbox"');
+    expect(markup).toContain('aria-expanded="false"');
+    expect(markup).toContain('>All sites</span>');
+    expect(markup).not.toContain('role="listbox"');
   });
   it('tags a hit from a search-only site, and an adult one', () => {
     const markup = render({});
