@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { FilterRow, hasFilterRow } from './FilterField';
 import { chapterTitle, errorMessage, formatNumber, plural } from './format';
-import { AlertIcon, ChevronIcon, LinkIcon, RefreshIcon } from './icons';
+import { AlertIcon, ChevronIcon, LinkIcon, RefreshIcon, Spinner } from './icons';
 import { chapterMark, newIndices } from './library';
 import { Mascot } from './Mascot';
 import { extendsSpan, moveActive, spanIndices } from './listKeys';
@@ -88,6 +88,25 @@ function LoadingState({ url }: { url: string }) {
         ))}
       </div>
     </section>
+  );
+}
+
+/**
+ * The strip over a list that is still loading: a series opened again shows
+ * the list saved last time, grayed and locked, until the site answers. Gray
+ * rows alone didn't say so.
+ */
+function ReloadNote({ url }: { url: string }) {
+  const host = hostOf(url);
+  return (
+    <div className="reload-note" role="status">
+      <Spinner size={15} />
+      <div>
+        <strong>{host !== '' ? `Checking ${host} for new chapters…` : 'Checking the site for new chapters…'}</strong>
+        <span>This is the list you saw last. You can pick chapters once it's up to date.</span>
+      </div>
+      <span className="reload-bar" aria-hidden="true" />
+    </div>
   );
 }
 
@@ -329,7 +348,8 @@ function ChapterList({
   const freshChosen = fresh.length > 0 && chosen.size === fresh.length && fresh.every((i) => chosen.has(i));
 
   return (
-    <section className="panel chapters fit" aria-label="Chapters">
+    <section className="panel chapters fit" aria-label="Chapters" aria-busy={state.loading || undefined}>
+      {state.loading && <ReloadNote url={state.url} />}
       {hasFilterRow(state) && (
         <div className="filters-bar">
           <FilterRow state={state} busy={disabled} onPick={onPick} onOptions={onOptions} onError={onError} onReload={onReload} />
@@ -385,7 +405,6 @@ function ChapterList({
             None
           </button>
         </div>
-        {state.loading && <span className="reloading">Reloading…</span>}
         <form
           className="range-form"
           onSubmit={(e) => {

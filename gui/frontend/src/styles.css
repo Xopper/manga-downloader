@@ -466,9 +466,57 @@ code {
   color: var(--text-2);
 }
 
-.reloading {
-  margin-left: 4px;
+/* a list still loading: the saved one, until the site answers */
+.reload-note {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  padding: 9px 14px 11px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-soft);
   color: var(--accent-text);
+  font-size: 12.5px;
+  animation: pop-in 0.2s var(--ease);
+}
+
+.reload-note strong {
+  display: block;
+  font-weight: 600;
+}
+
+.reload-note span {
+  color: var(--text-2);
+}
+
+.reload-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+}
+
+.reload-bar::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  border-radius: 2px;
+  background: var(--accent);
+  content: '';
+  animation: reload-slide 1.3s var(--ease) infinite;
+}
+
+@keyframes reload-slide {
+  from {
+    left: -30%;
+  }
+  to {
+    left: 100%;
+  }
 }
 
 .list-toolbar {
@@ -1934,6 +1982,12 @@ a.version:hover {
   }
 
   .spinner {
+    animation: none;
+  }
+
+  .reload-bar::before {
+    left: 0;
+    width: 100%;
     animation: none;
   }
 }

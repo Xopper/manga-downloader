@@ -62,6 +62,20 @@ describe('ChapterPanel', () => {
     expect(markup).not.toContain('btn ghost small');
     expect(markup).not.toContain('>Select<');
   });
+  it('says the list is still loading over a saved list, and only then', async () => {
+    const api = createMockApi({ scenario: 'reloading', freeze: true });
+    const state = await api.state();
+    const chapters = await api.chapters();
+    expect(state.loading && state.loaded).toBe(true);
+    const markup = render(state, chapters, null);
+    expect(markup).toContain('class="reload-note" role="status"');
+    expect(markup).toContain('Checking example.com for new chapters…');
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup.indexOf('class="reload-note"')).toBeLessThan(markup.indexOf('class="list-toolbar"'));
+    const done = render({ ...state, loading: false }, chapters, null);
+    expect(done).not.toContain('reload-note');
+    expect(done).not.toContain('aria-busy');
+  });
   it('shows a plain "Chapter N" title once, as the number', async () => {
     const api = createMockApi({ scenario: 'loaded', freeze: true });
     const state = await api.state();

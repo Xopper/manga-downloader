@@ -54,6 +54,7 @@ const SCENARIOS = [
   'loading',
   'error',
   'loaded',
+  'reloading',
   'stale',
   'running',
   'bundle',
@@ -761,6 +762,14 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       selected.add(c.index);
     }
     selectionBus.emit(selectionOf());
+  }
+  if (scenario === 'reloading') {
+    // a series opened again: its saved list up, locked, until the site answers
+    loading = true;
+    push();
+    if (!freeze) {
+      setTimeout(finishLoad, 4000);
+    }
   }
   if (scenario === 'stale') {
     options.language = 'es';

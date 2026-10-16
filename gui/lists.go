@@ -18,8 +18,8 @@ import (
 // The saved lists: the chapter list the app last saw of every series it
 // loaded, one small JSON file per series in lists/ next to library.json. A
 // load of a series with a saved list shows that list at once, locked and
-// marked Reloading…, while the site is asked for the current one, so a
-// series opened from the library is on screen in a moment instead of after
+// under a "Checking <site> for new chapters…" strip, while the site is asked
+// for the current one, so a series opened from the library is on screen in a moment instead of after
 // the site answers. The saved list is display only: a download needs the
 // site's own chapters, which the load brings.
 
