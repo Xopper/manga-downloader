@@ -26,6 +26,8 @@ type fakeChapter struct {
 	number float64
 	pages  int
 	fail   map[int]bool
+	// gone is the pages the site has lost: they answer 404
+	gone map[int]bool
 	// volume is the volume the site lists the chapter under, 0 for none
 	volume int
 }
@@ -90,6 +92,9 @@ func (f *fakeSite) FetchChapter(l grabber.Filterable) (*grabber.Chapter, error) 
 		}
 		for i := 0; i < c.pages; i++ {
 			url := fmt.Sprintf("%s/%g/%d", f.server.URL, c.number, i)
+			if c.gone[i] {
+				url += "/gone"
+			}
 			if c.fail[i] {
 				url += "/fail"
 			}
@@ -122,6 +127,10 @@ func newTestController(t *testing.T, bundle bool, gate chan struct{}, chapters .
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if site.pageGate != nil && strings.HasPrefix(r.URL.Path, fmt.Sprintf("/%g/", site.pageGated)) {
 			<-site.pageGate
+		}
+		if strings.HasSuffix(r.URL.Path, "/gone") {
+			http.NotFound(w, r)
+			return
 		}
 		if strings.HasSuffix(r.URL.Path, "/fail") {
 			http.Error(w, "nope", http.StatusInternalServerError)

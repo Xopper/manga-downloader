@@ -237,6 +237,10 @@ type Controller struct {
 	byChap  map[*grabber.Chapter]*Job
 	bundle  *Job
 	failedC map[*grabber.Chapter]bool
+	// held404 is the raw "error downloading page" lines of a chapter's 404
+	// pages, held back until its failure says whether the site lost them
+	// (see lostpages.go)
+	held404 map[*grabber.Chapter][]string
 	// the rows of the volumes, by volume, by listed chapter (for a failed
 	// fetch) and by fetched chapter
 	byVolume  map[*core.Volume]*Job
@@ -712,7 +716,7 @@ func setSiteSettings(site grabber.Site, s *grabber.Settings) {
 // resetResultsLocked forgets the last run's jobs and summary, so the previous
 // series' results don't show next to a new title. The caller holds c.mu.
 func (c *Controller) resetResultsLocked() {
-	c.jobs, c.bundle, c.byChap, c.failedC = nil, nil, nil, nil
+	c.jobs, c.bundle, c.byChap, c.failedC, c.held404 = nil, nil, nil, nil, nil
 	c.byVolume, c.listedVol, c.chapVol = nil, nil, nil
 	c.summary = nil
 	c.runinfo = RunInfo{}
@@ -1353,6 +1357,7 @@ func (c *Controller) Start() error {
 	c.jobs = nil
 	c.byChap = map[*grabber.Chapter]*Job{}
 	c.failedC = map[*grabber.Chapter]bool{}
+	c.held404 = map[*grabber.Chapter][]string{}
 	c.byVolume = map[*core.Volume]*Job{}
 	c.listedVol = map[grabber.Filterable]*Job{}
 	c.chapVol = map[*grabber.Chapter]*Job{}
@@ -1618,7 +1623,15 @@ func (e events) Page(ch *grabber.Chapter, idx int, err error) {
 	c := e.c
 	c.mu.Lock()
 	if err != nil {
-		c.appendLogLocked(LogError, fmt.Sprintf("error downloading page %d of %s: %s", idx+1, c.releaseLabel(ch), err))
+		line := fmt.Sprintf("error downloading page %d of %s: %s", idx+1, c.releaseLabel(ch), err)
+		switch {
+		case !is404(err) || c.held404 == nil:
+			c.appendLogLocked(LogError, line)
+		case c.failedC[ch]:
+			// its failure was already explained; a late 404 says nothing new
+		default:
+			c.held404[ch] = append(c.held404[ch], line)
+		}
 	} else if j := c.jobFor(ch); j != nil && !j.Volume && c.live(ch) {
 		// a volume's row moves with VolumeProgress instead
 		j.Done += core.DownloadWeight
@@ -1632,7 +1645,31 @@ func (e events) DownloadFailed(ch *grabber.Chapter, err error) {
 	c := e.c
 	c.mu.Lock()
 	c.failedC[ch] = true
-	msg := fmt.Sprintf("%s: %s", c.releaseLabel(ch), err)
+	label := c.releaseLabel(ch)
+	held := c.held404[ch]
+	delete(c.held404, ch)
+	if is404(err) && c.series != nil {
+		// ask the site for each page, outside the lock, and say what it lost
+		referer := c.series.Site.BaseUrl()
+		c.mu.Unlock()
+		missing, others := missingPages(ch, referer)
+		c.mu.Lock()
+		if line, reason, ok := lostMessage(label, len(ch.Pages), missing, others); ok {
+			c.stats.failures = append(c.stats.failures, line)
+			if j := c.byChap[ch]; j != nil && c.bundle == nil {
+				j.State = JobFailed
+				j.Reason = reason
+			}
+			c.appendLogLocked(LogError, line)
+			c.mu.Unlock()
+			c.emit()
+			return
+		}
+	}
+	for _, line := range held {
+		c.appendLogLocked(LogError, line)
+	}
+	msg := fmt.Sprintf("%s: %s", label, err)
 	c.stats.failures = append(c.stats.failures, msg)
 	// a volume goes on with its other chapters
 	if j := c.byChap[ch]; j != nil && c.bundle == nil {
