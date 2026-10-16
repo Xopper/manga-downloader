@@ -797,6 +797,20 @@ func TestLoadShowsTheSavedListUntilTheSiteAnswers(t *testing.T) {
 		t.Error("the first session's list moved")
 	}
 
+	// opened again after its load failed: the saved list shows again
+	c3, _, _ := newTestController(t, false, nil, chapters(4, 1)...)
+	c3.SetLists(lists)
+	c3.mu.Lock()
+	c3.url = "https://example.com/manga/test"
+	c3.mu.Unlock()
+	if err := c3.BeginLoad("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	if !c3.Loaded() || len(c3.Chapters()) != 4 {
+		t.Errorf("after a failed load: loaded %v, %d chapters", c3.Loaded(), len(c3.Chapters()))
+	}
+	_ = c3.FinishLoad("https://example.com/manga/test")
+
 	// a series never loaded has no list to show
 	if err := c2.BeginLoad("https://example.com/manga/other"); err != nil {
 		t.Fatal(err)

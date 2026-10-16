@@ -440,6 +440,10 @@ func (c *Controller) beginLoadLocked(url string) {
 		c.selGen++
 		c.languages, c.scanlators = nil, nil
 		c.showSavedLocked(url)
+	} else if c.series == nil {
+		// the same series with nothing up (its last load failed): its saved
+		// list stands in all the same
+		c.showSavedLocked(url)
 	}
 	c.url = url
 }
