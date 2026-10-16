@@ -131,6 +131,8 @@ export interface Followed {
   latest: number;
   /** The highest chapter number the app saved for it, 0 when it never did */
   savedUpTo: number;
+  /** The numbers of the chapters the app saved, sorted: only these show "saved" */
+  saved: number[];
   /** How many listed chapters are numbered above savedUpTo */
   new: number;
   /** RFC 3339, "" when unset */

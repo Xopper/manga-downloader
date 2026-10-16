@@ -172,6 +172,7 @@ function mockLibrary(): Followed[] {
       chapters: CHAPTERS,
       latest: 1194,
       savedUpTo: 1182,
+      saved: OP_CHAPTERS.map(([number]) => number).filter((number) => number <= 1182),
       new: 12,
       followedAt: '2026-10-03T10:00:00Z',
       checkedAt: '2026-10-15T08:50:00Z',
@@ -187,6 +188,7 @@ function mockLibrary(): Followed[] {
       chapters: 379,
       latest: 379,
       savedUpTo: 379,
+      saved: Array.from({ length: 379 }, (_, i) => i + 1),
       new: 0,
       followedAt: '2026-09-20T10:00:00Z',
       checkedAt: '2026-10-15T08:50:00Z',
@@ -202,6 +204,7 @@ function mockLibrary(): Followed[] {
       chapters: 0,
       latest: 0,
       savedUpTo: 0,
+      saved: [],
       new: 0,
       followedAt: '2026-10-12T10:00:00Z',
       checkedAt: '',
@@ -536,6 +539,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     const savedNumbers = bundled && !cancelling ? runNumbers : jobs.filter((j) => j.state === 'done' && !j.volume).map((j) => j.number);
     if (f !== undefined && savedNumbers.length > 0) {
       f.savedUpTo = Math.max(f.savedUpTo, ...savedNumbers);
+      f.saved = [...new Set([...f.saved, ...savedNumbers])].sort((a, b) => a - b);
       f.new = chapters.filter((c) => c.number > f.savedUpTo).length;
       f.lastSaved = new Date().toISOString();
     }
@@ -1137,7 +1141,10 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       }
       const at = followed.findIndex((g) => urlKey(g.url) === urlKey(target));
       if (at >= 0) {
-        entry.savedUpTo = entry.savedUpTo || followed[at].savedUpTo;
+        if (entry.savedUpTo === 0) {
+          entry.savedUpTo = followed[at].savedUpTo;
+          entry.saved = followed[at].saved;
+        }
         followed[at] = entry;
       } else {
         followed = [...followed, entry];

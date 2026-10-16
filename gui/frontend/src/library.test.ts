@@ -22,6 +22,7 @@ function followed(over: Partial<Followed>): Followed {
     chapters: 10,
     latest: 10,
     savedUpTo: 8,
+    saved: [1, 2, 3, 4, 5, 6, 7, 8],
     new: 2,
     followedAt: '2026-10-01T00:00:00Z',
     checkedAt: '2026-10-15T09:00:00Z',
@@ -115,11 +116,20 @@ describe('chapters of a followed series', () => {
     expect(newIndices(chapters, 8)).toEqual([2, 3]);
     expect(newIndices(chapters, 0)).toEqual([0, 1, 2, 3]);
   });
+  it('marks saved only the chapters saved, not every one below the highest', () => {
+    // chapter 355 saved alone: 348 to 354 were never saved
+    const f = followed({ savedUpTo: 355, saved: [355], chapters: 20, latest: 361 });
+    expect(chapterMark(355, f)).toBe('saved');
+    expect(chapterMark(354, f)).toBe('');
+    expect(chapterMark(348, f)).toBe('');
+    expect(chapterMark(356, f)).toBe('new');
+    expect(chapterMark(350, followed({ savedUpTo: 355, saved: [350, 355] }))).toBe('saved');
+  });
   it('counts chapter 0 as new when nothing was saved', () => {
     expect(newIndices(fromZero, 0)).toEqual([0, 1, 2]);
     expect(newIndices(fromZero, 1)).toEqual([2]);
     expect(chapterMark(0, followed({ savedUpTo: 0 }))).toBe('');
-    expect(chapterMark(0, followed({ savedUpTo: 1 }))).toBe('saved');
+    expect(chapterMark(0, followed({ savedUpTo: 1, saved: [0, 1] }))).toBe('saved');
   });
   it('marks rows new or saved only for a followed series that saved something', () => {
     const f = followed({});

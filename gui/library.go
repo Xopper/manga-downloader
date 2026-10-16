@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -33,8 +34,13 @@ type Followed struct {
 	Latest   float64 `json:"latest"`
 	// SavedUpTo is the highest chapter number the app saved for the series,
 	// 0 when it never did; New is how many listed chapters are numbered above it
-	SavedUpTo  float64   `json:"savedUpTo"`
-	New        int       `json:"new"`
+	SavedUpTo float64 `json:"savedUpTo"`
+	New       int     `json:"new"`
+	// Saved is the numbers of the chapters the app saved, sorted, so a list
+	// shows "saved" on those only: saving chapter 355 alone says nothing of
+	// 1 to 354. A library from before it knows only SavedUpTo, which load
+	// takes as the one chapter known saved.
+	Saved      []float64 `json:"saved,omitempty"`
 	FollowedAt time.Time `json:"followedAt"`
 	CheckedAt  time.Time `json:"checkedAt,omitempty"`
 	LastSaved  time.Time `json:"lastSaved,omitempty"`
@@ -102,8 +108,12 @@ func (l *Library) Load() error {
 		l.seen = map[string]Seen{}
 	}
 	for i := range l.followed {
-		if l.followed[i].Site == "" {
-			l.followed[i].Site = hostOf(l.followed[i].URL)
+		f := &l.followed[i]
+		if f.Site == "" {
+			f.Site = hostOf(f.URL)
+		}
+		if len(f.Saved) == 0 && f.SavedUpTo > 0 {
+			f.Saved = []float64{f.SavedUpTo}
 		}
 	}
 	return nil
@@ -178,6 +188,7 @@ func (l *Library) Follow(f Followed) error {
 		// a re-follow keeps what the app saved for it
 		if f.SavedUpTo == 0 {
 			f.SavedUpTo = l.followed[i].SavedUpTo
+			f.Saved = l.followed[i].Saved
 			f.LastSaved = l.followed[i].LastSaved
 		}
 		if f.Chapters > 0 && f.New == 0 {
@@ -249,12 +260,14 @@ func (l *Library) MarkFailed(url string, err error) error {
 	})
 }
 
-// MarkSaved raises the saved mark of url to upTo (never lowers it) and
-// recounts what's new from numbers, the listed chapters. A URL not followed
-// is a no-op.
-func (l *Library) MarkSaved(url string, upTo float64, numbers []float64) error {
+// MarkSaved adds saved, the numbers of the chapters a run wrote, to what
+// url has saved, raises the saved mark to the highest of them (never lowers
+// it) and recounts what's new from numbers, the listed chapters. A URL not
+// followed is a no-op.
+func (l *Library) MarkSaved(url string, saved []float64, numbers []float64) error {
 	return l.Update(url, func(f *Followed) {
-		if upTo > f.SavedUpTo {
+		f.Saved = mergeNumbers(f.Saved, saved)
+		if upTo := maxNumber(saved); upTo > f.SavedUpTo {
 			f.SavedUpTo = upTo
 		}
 		f.LastSaved = time.Now()
@@ -290,6 +303,13 @@ func (l *Library) trimSeenLocked() {
 	for _, k := range keys[:len(keys)-seenCap] {
 		delete(l.seen, k)
 	}
+}
+
+// mergeNumbers is a and b together, sorted, each number once
+func mergeNumbers(a, b []float64) []float64 {
+	out := append(append([]float64(nil), a...), b...)
+	sort.Float64s(out)
+	return slices.Compact(out)
 }
 
 // newAbove counts the chapters numbered above savedUpTo; with nothing saved

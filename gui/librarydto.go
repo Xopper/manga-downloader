@@ -19,7 +19,9 @@ type FollowedDTO struct {
 	Chapters     int     `json:"chapters"`
 	Latest       float64 `json:"latest"`
 	SavedUpTo    float64 `json:"savedUpTo"`
-	New          int     `json:"new"`
+	// Saved is the numbers of the chapters saved, never null
+	Saved []float64 `json:"saved"`
+	New   int       `json:"new"`
 	// FollowedAt, CheckedAt and LastSaved are RFC 3339, "" when unset
 	FollowedAt string `json:"followedAt"`
 	CheckedAt  string `json:"checkedAt"`
@@ -66,6 +68,7 @@ func followedDTO(f Followed) FollowedDTO {
 		Chapters:     f.Chapters,
 		Latest:       f.Latest,
 		SavedUpTo:    f.SavedUpTo,
+		Saved:        append([]float64{}, f.Saved...),
 		New:          f.New,
 		FollowedAt:   timeDTO(f.FollowedAt),
 		CheckedAt:    timeDTO(f.CheckedAt),

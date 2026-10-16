@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
@@ -123,17 +124,17 @@ func TestMarkSavedNeverGoesBack(t *testing.T) {
 	if f, _ := l.Get(url); f.New != 6 {
 		t.Fatalf("nothing saved yet: New = %d, want 6", f.New)
 	}
-	if err := l.MarkSaved(url, 5, numbers); err != nil {
+	if err := l.MarkSaved(url, []float64{5}, numbers); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.MarkSaved(url, 4, numbers); err != nil {
+	if err := l.MarkSaved(url, []float64{4}, numbers); err != nil {
 		t.Fatal(err)
 	}
 	f, _ := l.Get(url)
 	if f.SavedUpTo != 5 || f.New != 1 || f.LastSaved.IsZero() {
 		t.Errorf("entry = %+v", f)
 	}
-	if err := l.MarkSaved("https://not.followed/x", 9, numbers); err != nil {
+	if err := l.MarkSaved("https://not.followed/x", []float64{9}, numbers); err != nil {
 		t.Errorf("MarkSaved of an unfollowed URL must be a no-op, got %v", err)
 	}
 }
@@ -220,5 +221,49 @@ func TestNewAboveCountsChapterZeroWhenNothingSaved(t *testing.T) {
 	}
 	if got := newAbove(numbers, 1); got != 1 {
 		t.Errorf("newAbove(.., 1) = %d, want 1", got)
+	}
+}
+
+func TestMarkSavedKeepsTheChaptersSaved(t *testing.T) {
+	// saving chapter 355 alone says nothing of the chapters below it
+	l := NewLibrary("")
+	url := "https://example.com/manga/x"
+	numbers := []float64{353, 354, 355, 356, 357}
+	_ = l.Follow(Followed{URL: url})
+	_ = l.MarkSeen(url, "X", numbers)
+	if err := l.MarkSaved(url, []float64{355}, numbers); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.MarkSaved(url, []float64{357, 353, 355}, numbers); err != nil {
+		t.Fatal(err)
+	}
+	f, _ := l.Get(url)
+	if !slices.Equal(f.Saved, []float64{353, 355, 357}) || f.SavedUpTo != 357 || f.New != 0 {
+		t.Errorf("entry = %+v", f)
+	}
+	if dto := followedDTO(f); !slices.Equal(dto.Saved, f.Saved) {
+		t.Errorf("dto saved = %v", dto.Saved)
+	}
+	if dto := followedDTO(Followed{URL: url}); dto.Saved == nil {
+		t.Error("the window gets [] for nothing saved, not null")
+	}
+}
+
+func TestLoadTakesAnOldMarkAsOneChapterSaved(t *testing.T) {
+	// a library from before Saved knows only the highest chapter saved
+	path := filepath.Join(t.TempDir(), "library.json")
+	old := `{"followed":[{"url":"https://example.com/manga/x","savedUpTo":355},{"url":"https://example.com/manga/y"}],"seen":{}}`
+	if err := os.WriteFile(path, []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	l := NewLibrary(path)
+	if err := l.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if f, _ := l.Get("https://example.com/manga/x"); !slices.Equal(f.Saved, []float64{355}) {
+		t.Errorf("x saved = %v", f.Saved)
+	}
+	if f, _ := l.Get("https://example.com/manga/y"); f.Saved != nil {
+		t.Errorf("y saved = %v", f.Saved)
 	}
 }

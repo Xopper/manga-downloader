@@ -113,12 +113,20 @@ export function newIndices(chapters: Chapter[], savedUpTo: number): number[] {
   return chapters.filter((c) => savedUpTo <= 0 || c.number > savedUpTo).map((c) => c.index);
 }
 
-/** The tag a chapter row shows for a followed series: new above the saved mark, saved below it; none for a series not followed or never saved */
+/**
+ * The tag a chapter row shows for a followed series: saved on the chapters
+ * the app saved, new above the highest of them, none on the others (saving
+ * chapter 355 alone says nothing of 1 to 354); none for a series not
+ * followed or never saved
+ */
 export function chapterMark(number: number, f: Followed | null): 'new' | 'saved' | '' {
   if (f === null || !f.downloadable || f.savedUpTo <= 0) {
     return '';
   }
-  return number > f.savedUpTo ? 'new' : 'saved';
+  if (f.saved.includes(number)) {
+    return 'saved';
+  }
+  return number > f.savedUpTo ? 'new' : '';
 }
 
 /** The followed entry of the loaded series */
