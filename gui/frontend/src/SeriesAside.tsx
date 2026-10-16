@@ -1,7 +1,10 @@
 // The right side of the series page: what belongs to this series. Its
 // facts, Follow, how it saves (the Save options), and the Download dock.
 
+import type { CSSProperties } from 'react';
 import { DownloadDock } from './DownloadDock';
+import { formatNumber, hueOf } from './format';
+import { newIndices } from './library';
 import { SaveOptions } from './OptionsPanel';
 import { BookmarkIcon } from './ResultsPanel';
 import { hostOf } from './run';
@@ -23,22 +26,30 @@ interface Props {
   onChooseFolder: () => Promise<void>;
   onError: (message: string) => void;
   onStart: () => void;
+  /** Selects these chapters (the new ones) and starts, from a dock with nothing picked */
+  onStartNew: (indices: number[]) => void;
   onCancel: () => void;
 }
 
 export function SeriesAside(props: Props) {
   const { state, chapters, selected, followed, actionError } = props;
-  const { onFollow, onUnfollow, onOpenURL, onOptions, onChooseFolder, onError, onStart, onCancel } = props;
+  const { onFollow, onUnfollow, onOpenURL, onOptions, onChooseFolder, onError, onStart, onStartNew, onCancel } = props;
   const host = hostOf(state.url);
   const title = state.title !== '' ? state.title : followed?.title ?? host;
   const letter = (title.trim()[0] ?? '?').toUpperCase();
   const cover = followed?.cover ?? '';
   const now = new Date();
+  // what the dock offers when nothing is picked: the chapters after the last one saved
+  const fresh = followed !== null && followed.downloadable && followed.savedUpTo > 0 ? newIndices(chapters, followed.savedUpTo) : [];
 
   return (
     <aside className="side series-aside" aria-label="This series">
       <div className="aside-head">
-        <div className="cover aside-cover" aria-hidden="true">
+        <div
+          className={`cover aside-cover${cover === '' ? ' tinted' : ''}`}
+          style={cover === '' ? ({ '--hue': hueOf(title) } as CSSProperties) : undefined}
+          aria-hidden="true"
+        >
           {cover !== '' ? <img className="cover-img" src={cover} alt="" /> : <span className="cover-letter">{letter}</span>}
         </div>
         <div className="aside-id">
@@ -74,24 +85,7 @@ export function SeriesAside(props: Props) {
       </div>
 
       {followed !== null && followed.downloadable && (state.loaded || followed.chapters > 0) && (
-        <dl className="facts" aria-label="Facts">
-          <div className="fact">
-            <dt>Chapters on the site</dt>
-            <dd className="num">{(state.loaded ? state.chapterCount : followed.chapters).toLocaleString('en-US')}</dd>
-          </div>
-          <div className="fact">
-            <dt>New since your last download</dt>
-            <dd className={`num${followed.new > 0 ? ' fresh' : ''}`}>{followed.savedUpTo > 0 ? followed.new : 'all of them'}</dd>
-          </div>
-          <div className="fact">
-            <dt>Saved up to</dt>
-            <dd className="num">{followed.savedUpTo > 0 ? `chapter ${followed.savedUpTo}` : 'nothing yet'}</dd>
-          </div>
-          <div className="fact">
-            <dt>Last downloaded</dt>
-            <dd>{followed.lastSaved !== '' ? ago(followed.lastSaved, now) : 'never'}</dd>
-          </div>
-        </dl>
+        <Progress count={state.loaded ? state.chapterCount : followed.chapters} followed={followed} now={now} />
       )}
 
       <div className="side-body">
@@ -104,7 +98,66 @@ export function SeriesAside(props: Props) {
         />
       </div>
 
-      <DownloadDock state={state} error={actionError} chapters={chapters} selected={selected} onStart={onStart} onCancel={onCancel} />
+      <DownloadDock
+        state={state}
+        error={actionError}
+        chapters={chapters}
+        selected={selected}
+        fresh={fresh}
+        savedUpTo={followed?.savedUpTo ?? 0}
+        onStart={onStart}
+        onStartNew={() => onStartNew(fresh)}
+        onCancel={onCancel}
+      />
     </aside>
+  );
+}
+
+/**
+ * How far the user is with a followed series, at a glance: the last chapter
+ * saved against the latest one, what's new, and when it was last saved.
+ */
+function Progress({ count, followed, now }: { count: number; followed: Followed; now: Date }) {
+  const saved = followed.savedUpTo;
+  const latest = followed.latest;
+  const fraction = saved > 0 && latest > 0 ? Math.min(1, saved / latest) : 0;
+  const fresh = saved > 0 ? followed.new : count;
+  const meta = [`${count.toLocaleString('en-US')} ${count === 1 ? 'chapter' : 'chapters'}`];
+  if (latest > 0) {
+    meta.push(`latest ${formatNumber(latest)}`);
+  }
+  if (followed.lastSaved !== '') {
+    meta.push(`saved ${ago(followed.lastSaved, now)}`);
+  }
+  return (
+    <section className="progress-card" aria-label="Your progress">
+      <div className="progress-top">
+        <span className="progress-title">
+          {saved > 0 ? (
+            <>
+              Saved up to chapter <strong className="num">{formatNumber(saved)}</strong>
+            </>
+          ) : (
+            'Nothing saved yet'
+          )}
+        </span>
+        {fresh > 0 ? (
+          <span className="pill-new">{fresh.toLocaleString('en-US')} new</span>
+        ) : (
+          <span className="pill-done">Up to date</span>
+        )}
+      </div>
+      <div
+        className="bar progress-bar"
+        role="progressbar"
+        aria-label="Saved so far"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(fraction * 100)}
+      >
+        <span style={{ transform: `scaleX(${fraction})` }} />
+      </div>
+      <p className="progress-meta">{meta.join(' · ')}</p>
+    </section>
   );
 }

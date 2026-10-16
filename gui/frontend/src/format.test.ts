@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  chapterTitle,
-  errorMessage,
-  formatNumber,
-  jobFraction,
-  jobShortStatus,
-  jobStatus,
-  plural,
-  summaryHeadline,
-  summarySentence,
-} from './format';
+import { chapterTitle, errorMessage, formatNumber, hueOf, jobFraction, jobShortStatus, jobStatus, plural, shortPath, summaryHeadline, summarySentence } from './format';
 import type { Job, Summary } from './types';
 
 const base: Summary = {
@@ -144,5 +134,27 @@ describe('chapterTitle', () => {
     expect(chapterTitle('The fight', 4)).toBe('The fight');
     expect(chapterTitle('', 4)).toBe('');
     expect(chapterTitle('Volume 1', 1)).toBe('Volume 1');
+  });
+});
+
+describe('shortPath', () => {
+  it('writes the home folder as ~', () => {
+    expect(shortPath('/Users/ana/Downloads')).toBe('~/Downloads');
+    expect(shortPath('/home/ana/Manga/One Piece')).toBe('~/Manga/One Piece');
+    expect(shortPath('/Users/ana')).toBe('~');
+    expect(shortPath('C:\\Users\\ana\\Downloads')).toBe('~\\Downloads');
+    expect(shortPath('/Volumes/Disk/Manga')).toBe('/Volumes/Disk/Manga');
+    expect(shortPath('/Users/ana2x/x')).toBe('~/x');
+  });
+});
+
+describe('hueOf', () => {
+  it('gives a title the same hue every time, in range', () => {
+    expect(hueOf('Dragon Ball Super')).toBe(hueOf('Dragon Ball Super'));
+    expect(hueOf('Kingdom')).not.toBe(hueOf('Berserk'));
+    for (const t of ['', 'A', '東京喰種', 'One Piece']) {
+      expect(hueOf(t)).toBeGreaterThanOrEqual(0);
+      expect(hueOf(t)).toBeLessThan(360);
+    }
   });
 });

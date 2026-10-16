@@ -145,3 +145,20 @@ export function formatNumber(n: number): string {
 
   return String(Math.round(n * 100) / 100);
 }
+
+/**
+ * A folder as the side panel shows it: the home folder as ~, so the part
+ * that tells folders apart fits. The full path goes in the tooltip.
+ */
+export function shortPath(path: string): string {
+  return path.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/, '~').replace(/^[A-Za-z]:\\Users\\[^\\]+(?=\\|$)/, '~');
+}
+
+/** A hue from a title, so a series without a cover gets the same color every time */
+export function hueOf(title: string): number {
+  let h = 0;
+  for (const ch of title) {
+    h = (h * 31 + ch.codePointAt(0)!) % 360;
+  }
+  return h;
+}

@@ -51,6 +51,9 @@
 
   --radius: 12px;
   --radius-sm: 8px;
+  /* saturation and lightness of a tinted cover, with its --hue */
+  --tint-bg: 42% 90%;
+  --tint-fg: 38% 34%;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   font-family: var(--font);
@@ -66,6 +69,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --tint-bg: 24% 21%;
+    --tint-fg: 50% 76%;
     --bg: #121214;
     --surface: #1b1b1e;
     --surface-2: #1f1f23;
@@ -1705,9 +1710,9 @@ fieldset:disabled .check {
 
 .btn.primary:disabled {
   opacity: 1;
-  background: var(--sunken);
+  background: transparent;
   color: var(--text-3);
-  border-color: var(--border);
+  border: 1px dashed var(--border-strong);
   box-shadow: none;
 }
 
@@ -2374,6 +2379,12 @@ a.version:hover {
   object-fit: cover;
 }
 
+/* a series without a cover: a solid color from its title, the same every time */
+.cover.tinted {
+  background: hsl(var(--hue) var(--tint-bg));
+  color: hsl(var(--hue) var(--tint-fg));
+}
+
 .cover-letter {
   font-size: 34px;
   font-weight: 700;
@@ -2722,36 +2733,88 @@ a.version:hover {
   color: var(--accent-text);
 }
 
-.facts {
-  margin: 0;
-  padding: 0 16px 10px;
+.progress-card {
+  display: grid;
+  gap: 7px;
+  margin: 0 16px 12px;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
 }
 
-.fact {
+.progress-top {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 5px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  gap: 8px;
+}
+
+.progress-title {
+  color: var(--text-2);
   font-size: 12.5px;
 }
 
-.fact dt {
+.progress-title strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.pill-new,
+.pill-done {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.pill-new {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.pill-done {
+  background: var(--sunken);
   color: var(--text-3);
 }
 
-.fact dd {
-  margin: 0;
-  font-weight: 600;
-  text-align: right;
+.progress-bar {
+  background: var(--border);
 }
 
-.fact dd.fresh {
-  color: var(--success);
+.progress-bar > span {
+  background: var(--success-solid);
+}
+
+.progress-meta {
+  color: var(--text-3);
+  font-size: 11.5px;
 }
 
 .series-aside .side-body {
   border-top: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.series-aside .opt-group {
+  gap: 11px;
+  padding: 11px 16px 12px;
+}
+
+.series-aside .field,
+.series-aside .field-stack {
+  gap: 5px;
+}
+
+.series-aside .field > .label,
+.series-aside .field > legend {
+  font-size: 12.5px;
+}
+
+.series-aside .field > legend {
+  margin-bottom: 5px;
 }
 
 /* ---------- the strip: what's happening now ---------- */

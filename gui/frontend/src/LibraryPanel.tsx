@@ -1,6 +1,8 @@
 // The home page: the library. One card per followed series with what's new
 // and one button, and a button at the top that downloads everything new.
 
+import type { CSSProperties } from 'react';
+import { hueOf } from './format';
 import { DownloadIcon, Spinner, XIcon } from './icons';
 import { cardAction, cardStatus, librarySummary, sortFollowed, totalNew, urlKey, type Sort } from './library';
 import { Mascot } from './Mascot';
@@ -114,7 +116,11 @@ function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL }
 
   return (
     <article className={`card${f.new > 0 && f.downloadable ? ' fresh' : ''}`} aria-label={f.title}>
-      <div className="cover" aria-hidden="true">
+      <div
+        className={`cover${f.cover === '' ? ' tinted' : ''}`}
+        style={f.cover === '' ? ({ '--hue': hueOf(f.title) } as CSSProperties) : undefined}
+        aria-hidden="true"
+      >
         {f.cover !== '' ? <img className="cover-img" src={f.cover} alt="" /> : <span className="cover-letter">{letter}</span>}
       </div>
       <button

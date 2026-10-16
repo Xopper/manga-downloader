@@ -7,7 +7,7 @@
 import { browserSwitchOf } from './browserVisible';
 import { AVIF_EPUB_HINT, avifSwitchOf, convertFlagsOf, convertValueOf } from './convertImages';
 import { Check, Segmented, Switch, TextField } from './fields';
-import { errorMessage } from './format';
+import { errorMessage, shortPath } from './format';
 import { FolderIcon } from './icons';
 import type { Options, PackAs, State } from './types';
 
@@ -71,7 +71,7 @@ export function SaveOptions({ state, onOptions, onChooseFolder, onError, heading
               <FolderIcon size={14} />
               {/* bdi + rtl keeps the end of a long path, the part that tells folders apart */}
               <span className="folder-text">
-                <bdi>{o.outputDir || 'Not set'}</bdi>
+                <bdi>{o.outputDir !== '' ? shortPath(o.outputDir) : 'Not set'}</bdi>
               </span>
             </span>
             <button

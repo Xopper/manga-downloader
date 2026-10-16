@@ -409,6 +409,13 @@ export function App({ api }: { api: Api }) {
               setActionError('');
               api.start().catch(fail(setActionError));
             }}
+            onStartNew={(indices) => {
+              setActionError('');
+              api
+                .setSelectedMany(indices, true)
+                .then(() => api.start())
+                .catch(fail(setActionError));
+            }}
             onCancel={() => {
               api.cancel().catch(fail(setActionError));
             }}

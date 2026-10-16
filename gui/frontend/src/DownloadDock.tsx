@@ -3,6 +3,7 @@
 // progress and Cancel while it runs.
 
 import { useEffect, useMemo, useRef } from 'react';
+import { formatNumber, plural } from './format';
 import { DownloadIcon, Spinner, XIcon } from './icons';
 import { downloadBlocker, downloadLabel, overallProgress } from './run';
 import type { Chapter, Options, PackAs, State } from './types';
@@ -14,11 +15,17 @@ interface Props {
   /** The loaded chapters and the selected indices, for the Download label's volumes */
   chapters: Chapter[];
   selected: number[];
+  /** The followed series' new chapters, which the button offers when nothing is picked */
+  fresh: number[];
+  /** The last chapter saved, for the hint under that offer */
+  savedUpTo: number;
   onStart: () => void;
+  /** Picks the new chapters and starts */
+  onStartNew: () => void;
   onCancel: () => void;
 }
 
-export function DownloadDock({ state, error, chapters, selected, onStart, onCancel }: Props) {
+export function DownloadDock({ state, error, chapters, selected, fresh, savedUpTo, onStart, onStartNew, onCancel }: Props) {
   // Download and Cancel are different buttons, so the focus moves to the other
   // one when the run starts or ends, rather than falling to the body
   const focused = useRef<'start' | 'cancel' | null>(null);
@@ -97,36 +104,48 @@ export function DownloadDock({ state, error, chapters, selected, onStart, onCanc
     );
   }
 
-  const blocker = downloadBlocker(state);
+  // nothing picked but new chapters waiting: the button gets them, rather
+  // than sitting there dead
+  const nothingPicked = state.loaded && !state.loading && !state.stale && state.selectedCount === 0;
+  const quick = nothingPicked && fresh.length > 0 && downloadBlocker({ ...state, selectedCount: fresh.length }) === '';
+  const blocker = quick ? '' : downloadBlocker(state);
+  const count = quick ? fresh.length : state.selectedCount;
   const o = state.options;
+  let text = label;
+  if (quick) {
+    text = `Download ${plural(fresh.length, 'new chapter', 'new chapters')}`;
+  } else if (nothingPicked) {
+    text = 'Pick chapters to download';
+  }
+  // the label says it already: no hint repeating it underneath
+  const hint = quick ? `Nothing picked: this gets the chapters after ${formatNumber(savedUpTo)}.` : nothingPicked ? '' : blocker;
   return (
     <div className="dock">
-      <p className="dock-dest" title={o.outputDir}>
-        {destination(o)} in{' '}
-        <span className="mono">
-          <bdi>{o.outputDir || '…'}</bdi>
-        </span>
-      </p>
+      {count > 0 && (
+        <p className="dock-dest" title={`Saved in ${o.outputDir}`}>
+          {destination(o, count)}
+        </p>
+      )}
       <button
         type="button"
         ref={startButton}
         className="btn primary block big"
         disabled={blocker !== ''}
-        aria-describedby={blocker !== '' ? 'dock-blocker' : undefined}
+        aria-describedby={hint !== '' ? 'dock-blocker' : undefined}
         onFocus={() => (focused.current = 'start')}
         onBlur={() => (focused.current = null)}
-        onClick={onStart}
+        onClick={quick ? onStartNew : onStart}
       >
-        <DownloadIcon /> {label}
+        {!nothingPicked || quick ? <DownloadIcon /> : null} {text}
       </button>
       {error !== '' ? (
         <p className="error-text small" role="alert">
           Can't download: {error}
         </p>
       ) : (
-        blocker !== '' && (
+        hint !== '' && (
           <p className="hint center" id="dock-blocker">
-            {blocker}
+            {hint}
           </p>
         )
       )}
@@ -134,15 +153,22 @@ export function DownloadDock({ state, error, chapters, selected, onStart, onCanc
   );
 }
 
-/** What the run writes, by format and Pack as, as the dock's first words */
-const DESTINATIONS: Record<Options['format'], Record<PackAs, string>> = {
-  cbz: { chapters: 'CBZ files', volumes: 'A CBZ per volume', bundle: 'One CBZ' },
-  epub: { chapters: 'EPUB files', volumes: 'An EPUB per volume', bundle: 'One EPUB' },
-  raw: { chapters: 'Image folders', volumes: 'A folder per volume', bundle: 'One image folder' },
+/** What the run writes, by format: one file of a chapter, several, a volume's, the bundle */
+const DESTINATIONS: Record<Options['format'], { one: string; many: string; volume: string; bundle: string }> = {
+  cbz: { one: 'CBZ file', many: 'CBZ files', volume: 'A CBZ per volume', bundle: 'One CBZ' },
+  epub: { one: 'EPUB file', many: 'EPUB files', volume: 'An EPUB per volume', bundle: 'One EPUB' },
+  raw: { one: 'image folder', many: 'image folders', volume: 'A folder per volume', bundle: 'One image folder' },
 };
 
-/** What the run writes, as the dock's first words */
-function destination(o: Options): string {
-  const byPack = DESTINATIONS[o.format];
-  return byPack?.[o.packAs] ?? byPack?.chapters ?? 'Files';
+/** What the run of n chapters writes, over the button; the folder is in the Save options above */
+function destination(o: Options, n: number): string {
+  const d = DESTINATIONS[o.format] ?? DESTINATIONS.cbz;
+  const packAs: PackAs = o.packAs;
+  if (packAs === 'volumes') {
+    return d.volume;
+  }
+  if (packAs === 'bundle' && n > 1) {
+    return `${d.bundle}, ${n} chapters`;
+  }
+  return plural(n, d.one, d.many);
 }
