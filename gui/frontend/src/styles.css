@@ -2356,11 +2356,11 @@ a.version:hover {
 }
 
 /* macOS without a title bar (frame.ts): the header drags the window, except
-   from its controls, and starts below the window buttons, with room to
-   spare under them (they end about 20px down) */
+   from its controls, and its content sits where it did under the title bar:
+   the title bar's 32px plus the header's own 10px */
 .mac-frameless .topbar {
   --wails-draggable: drag;
-  padding-top: 38px;
+  padding-top: 42px;
 }
 
 .mac-frameless .topbar :is(button, input, select, textarea, a, form, [role]) {
