@@ -44,10 +44,16 @@ type RequestParams struct {
 	// some image hosts answer a document-first Accept with an HTML page
 	Accept string
 	// Timeout bounds one attempt, the body's reading included; zero means
-	// no limit. A background fetch (the app's covers) sets it so a stalled
-	// server can't hold a goroutine for good.
+	// DefaultTimeout. A background fetch (the app's covers) sets a shorter
+	// one.
 	Timeout time.Duration
 }
+
+// DefaultTimeout bounds an attempt that sets no Timeout: a page or an image
+// that hasn't fully arrived by then fails (and is retried, see request)
+// instead of holding a chapter list or a download for good on a stalled
+// connection. It's a var so a test can shrink it.
+var DefaultTimeout = 2 * time.Minute
 
 // GetURL returns the request URL
 func (r RequestParams) GetURL() string {
@@ -200,7 +206,11 @@ func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Dur
 		DisableCompression: true,
 	}
 	rp, _ := params.(RequestParams)
-	client := &http.Client{Transport: tr, Timeout: rp.Timeout}
+	timeout := rp.Timeout
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+	client := &http.Client{Transport: tr, Timeout: timeout}
 
 	var reqBody io.Reader
 	if rp.Form != nil {

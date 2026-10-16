@@ -484,7 +484,8 @@ func TestRequestDefaultAccept(t *testing.T) {
 	}
 }
 
-// a Timeout ends a stalled attempt instead of waiting on the server for good
+// a Timeout ends a stalled attempt instead of waiting on the server for
+// good, and a request that sets none gets DefaultTimeout
 func TestRequestTimeoutEndsAStalledAttempt(t *testing.T) {
 	release := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -500,5 +501,16 @@ func TestRequestTimeoutEndsAStalledAttempt(t *testing.T) {
 	}
 	if took := time.Since(start); took > 2*time.Second {
 		t.Errorf("the timeout took %v", took)
+	}
+
+	saved := DefaultTimeout
+	DefaultTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { DefaultTimeout = saved })
+	start = time.Now()
+	if _, err := Get(RequestParams{URL: srv.URL, DisableRetry: true}); err == nil {
+		t.Fatal("a stalled request with no Timeout returned no error")
+	}
+	if took := time.Since(start); took > 2*time.Second {
+		t.Errorf("the default timeout took %v", took)
 	}
 }
