@@ -116,13 +116,19 @@ function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL }
 
   return (
     <article className={`card${f.new > 0 && f.downloadable ? ' fresh' : ''}`} aria-label={f.title}>
-      <div
-        className={`cover${f.cover === '' ? ' tinted' : ''}`}
+      {/* the cover opens the series too, a bigger target than the title; the
+          title stays the one keyboard and screen reader stop */}
+      <button
+        type="button"
+        className={`cover cover-open${f.cover === '' ? ' tinted' : ''}`}
         style={f.cover === '' ? ({ '--hue': hueOf(f.title) } as CSSProperties) : undefined}
+        tabIndex={-1}
         aria-hidden="true"
+        title={f.url}
+        onClick={onOpen}
       >
         {f.cover !== '' ? <img className="cover-img" src={f.cover} alt="" /> : <span className="cover-letter">{letter}</span>}
-      </div>
+      </button>
       <button
         type="button"
         className="pin on"

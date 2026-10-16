@@ -43,6 +43,16 @@ describe('LibraryPanel', () => {
     expect(markup.match(/<img class="cover-img" src="data:image\/svg\+xml,[^"]+" alt=""\/>/g)?.length).toBe(2);
     expect(markup.match(/<span class="cover-letter">K<\/span>/g)?.length).toBe(1);
   });
+  it('makes the cover a button that opens the series, out of the tab order', async () => {
+    const state = await createMockApi({ scenario: 'empty', freeze: true }).state();
+    const markup = render(state);
+    const covers = markup.match(/<button type="button" class="cover cover-open[^"]*"[^>]*>/g) ?? [];
+    expect(covers.length).toBe(3);
+    for (const c of covers) {
+      expect(c).toContain('tabindex="-1"');
+      expect(c).toContain('aria-hidden="true"');
+    }
+  });
   it('puts the series with new chapters first', async () => {
     const state = await createMockApi({ scenario: 'empty', freeze: true }).state();
     const markup = render(state);

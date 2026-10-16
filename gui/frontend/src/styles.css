@@ -2379,6 +2379,28 @@ a.version:hover {
   object-fit: cover;
 }
 
+/* a library card's cover opens its series, like the title */
+.cover-open {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cover-open .cover-img {
+  transition: transform 0.25s var(--ease);
+}
+
+.cover-open:hover .cover-img {
+  transform: scale(1.04);
+}
+
+.card:has(.cover-open:hover) .card-link {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
 /* a series without a cover: a solid color from its title, the same every time */
 .cover.tinted {
   background: hsl(var(--hue) var(--tint-bg));
