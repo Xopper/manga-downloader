@@ -11,8 +11,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/elboletaire/manga-downloader/browser"
+	mdhttp "github.com/elboletaire/manga-downloader/http"
 	"github.com/elboletaire/manga-downloader/notice"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -48,6 +50,10 @@ func main() {
 	// notify is called from the download goroutines too, so it reads app
 	// through the pointer set before the window opens. Warnings raised while
 	// the options load come before that, hence the nil check.
+	// a load asks a site for its series page several times (identifying
+	// it, then its title and chapters): within a load, the page is fetched
+	// once. Each load starts by forgetting the last one's pages.
+	mdhttp.PageMemory = 30 * time.Second
 	ctrl, prefsPath := newSession(func() {
 		if app != nil {
 			app.notify()
@@ -57,6 +63,9 @@ func main() {
 	covers := coversDir()
 	if covers != "" {
 		ctrl.SetCovers(newCoverStore(covers))
+	}
+	if lists := dataDir("lists"); lists != "" {
+		ctrl.SetLists(newListStore(lists))
 	}
 	app = newApp(ctrl, rt, prefsPath, Tag, versionString())
 
@@ -123,11 +132,17 @@ func openLibrary() *Library {
 // coversDir is where the followed series' covers are kept, next to
 // library.json; "" without a config dir (then no cover is fetched)
 func coversDir() string {
+	return dataDir("covers")
+}
+
+// dataDir is the folder of one kind of the app's data (covers, lists) next
+// to library.json; "" without a config dir
+func dataDir(name string) string {
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(dir, "manga-downloader", "covers")
+	return filepath.Join(dir, "manga-downloader", name)
 }
 
 // versionString is what the window's About text shows: the tag when there is

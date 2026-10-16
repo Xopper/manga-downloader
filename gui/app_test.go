@@ -511,3 +511,43 @@ func TestSearchHitsCarryKnownCounts(t *testing.T) {
 		t.Errorf("followed hit = %+v", h)
 	}
 }
+
+// a load of a series with a saved list sends that list to the window at its
+// start, so the page shows it while the site answers; the site's list follows
+func TestLoadSendsTheSavedListAtItsStart(t *testing.T) {
+	a, sink, _ := newTestApp(t, 3)
+	a.ctrl.SetLists(newListStore(filepath.Join(t.TempDir(), "lists")))
+	if err := a.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	// the first load had nothing to show at its start: one list, at the end
+	waitUntil(t, "the site's list", func() bool { return len(sink.named("chapters")) == 1 })
+	waitUntil(t, "the load", func() bool { return !a.State().Loading })
+
+	// the same series again, from a window that forgot it
+	if err := a.ctrl.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	sink.events = nil
+	if err := a.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	// sent before Load returns, not by the load's goroutine
+	first := sink.named("chapters")
+	if len(first) != 1 || len(first[0].([]ChapterDTO)) != 3 {
+		t.Fatalf("at the load's start: %d lists sent, want the saved one with 3 chapters", len(first))
+	}
+	waitUntil(t, "the site's list", func() bool { return len(sink.named("chapters")) == 2 })
+	waitUntil(t, "the load", func() bool { return !a.State().Loading })
+
+	// a reload keeps its list: nothing is sent at the start
+	sink.events = nil
+	if err := a.Load("https://example.com/manga/test/"); err != nil {
+		t.Fatal(err)
+	}
+	if got := sink.named("chapters"); len(got) != 0 {
+		t.Errorf("a reload sent %d lists at its start, want none", len(got))
+	}
+	waitUntil(t, "the reload's list", func() bool { return len(sink.named("chapters")) == 1 })
+	waitUntil(t, "the reload", func() bool { return !a.State().Loading })
+}

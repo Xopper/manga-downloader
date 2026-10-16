@@ -15,6 +15,7 @@ import (
 	"github.com/elboletaire/manga-downloader/browser"
 	"github.com/elboletaire/manga-downloader/core"
 	"github.com/elboletaire/manga-downloader/grabber"
+	mdhttp "github.com/elboletaire/manga-downloader/http"
 	"github.com/elboletaire/manga-downloader/notice"
 	"github.com/elboletaire/manga-downloader/ranges"
 )
@@ -198,6 +199,8 @@ type Controller struct {
 	catalogUpdating bool
 	catalogErr      string
 	catalogGen      uint64
+	// catalogInfo is CatalogInfo's answer for catalogGen, nil until asked
+	catalogInfo *CatalogInfo
 	// attention is the browser window waiting for the user (a check to pass
 	// there), nil when none is or the user dismissed it
 	attention *browser.Attention
@@ -207,6 +210,13 @@ type Controller struct {
 	// covers keeps the followed series' covers (see covers.go); nil until
 	// SetCovers, and no cover is fetched meanwhile
 	covers *coverStore
+	// lists keeps the chapter list last seen of every series loaded (see
+	// lists.go), what a load shows until the site answers; nil until
+	// SetLists, and nothing is saved or shown meanwhile
+	lists *listStore
+	// listGen counts the times the loaded list changed (a load's result, a
+	// saved list shown, a clear), so the view knows when to send it again
+	listGen uint64
 	// checking is set while CheckLibrary fetches the followed series, with
 	// checkDone of checkTotal done; checkCancel ends it early
 	checking    bool
@@ -411,12 +421,69 @@ func (c *Controller) beginLoadLocked(url string) {
 	c.filterChange = url == c.url && (s.Language != c.loadedLanguage || s.Scanlator != c.loadedScanlator)
 	if urlKey(url) != urlKey(c.url) {
 		// another series: the loaded one goes now, so the window shows the
-		// new one loading rather than the old one with the new name
+		// new one loading rather than the old one with the new name; its
+		// filters go with it. The list saved from the last time the new
+		// one loaded, when there's one, stands in until the site answers.
+		if c.series != nil {
+			c.listGen++
+		}
 		c.series = nil
 		c.selected = nil
 		c.selGen++
+		c.languages, c.scanlators = nil, nil
+		c.showSavedLocked(url)
 	}
 	c.url = url
+}
+
+// showSavedLocked puts the saved list of url up as the loaded series (title
+// and chapters only: no site, nothing to download from), locked behind the
+// load that fetches the real one. The caller holds mu.
+func (c *Controller) showSavedLocked(url string) {
+	if c.lists == nil {
+		return
+	}
+	saved, ok := c.lists.Get(url)
+	if !ok {
+		return
+	}
+	chapters := saved.filterables()
+	c.series = &core.Series{Title: saved.Title, Chapters: chapters}
+	c.listGen++
+	c.selected = make([]bool, len(chapters))
+	c.hasDuplicates = core.HasDuplicateChapterNumbers(chapters)
+	c.hasGroupDuplicates = core.HasGroupDuplicates(chapters)
+	c.siteVolumes = core.SiteVolumes(chapters)
+	c.volumesText = c.siteVolumes
+	c.resetResultsLocked()
+}
+
+// SetLists gives the controller the store of saved lists (see lists.go)
+func (c *Controller) SetLists(s *listStore) {
+	c.mu.Lock()
+	c.lists = s
+	c.mu.Unlock()
+}
+
+// ListGen counts the changes of the loaded list
+func (c *Controller) ListGen() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.listGen
+}
+
+// saveList keeps the list of a series the site answered for, so the next
+// load of it shows the list at once; a failure to write is logged
+func (c *Controller) saveList(url, title string, chapters grabber.Filterables) {
+	c.mu.Lock()
+	lists := c.lists
+	c.mu.Unlock()
+	if lists == nil || len(chapters) == 0 {
+		return
+	}
+	if err := lists.Put(url, title, chapters); err != nil {
+		c.addLog(LogWarn, "could not save the chapter list: "+err.Error())
+	}
 }
 
 // abortLoad ends a load that panicked, so the window isn't left locked
@@ -428,6 +495,7 @@ func (c *Controller) abortLoad(err error) {
 	c.series = nil
 	c.selected = nil
 	c.selGen++
+	c.listGen++
 	c.mu.Unlock()
 	c.emit()
 }
@@ -453,14 +521,17 @@ func (c *Controller) FinishLoad(url string) error {
 	c.loadErr = err
 	var title string
 	var numbers []float64
+	var chapters grabber.Filterables
 	if err != nil {
 		c.series = nil
 		c.selected = nil
 		c.selGen++
 	} else {
 		title = c.series.Title
-		numbers = chapterNumbers(c.series.Chapters)
+		chapters = c.series.Chapters
+		numbers = chapterNumbers(chapters)
 	}
+	c.listGen++
 	c.mu.Unlock()
 	if err == nil {
 		// the library remembers every series loaded: its count feeds the
@@ -468,6 +539,7 @@ func (c *Controller) FinishLoad(url string) error {
 		if lerr := c.library.MarkSeen(url, title, numbers); lerr != nil {
 			c.addLog(LogWarn, "could not save the library: "+lerr.Error())
 		}
+		c.saveList(url, title, chapters)
 		c.ensureCover(url, false)
 	}
 	c.emit()
@@ -490,6 +562,9 @@ func (c *Controller) busyLocked() bool {
 }
 
 func (c *Controller) load(url string, s *grabber.Settings) error {
+	// a load fetches: a page remembered from the last one (see
+	// mdhttp.PageMemory) must not stand in for what the site says now
+	mdhttp.ResetPageMemory()
 	// the filter change BeginLoad recorded is taken here, so it never bleeds
 	// into a later load. A Refilterable site of the loaded series is reused on a
 	// filter change that isn't cached, as it filters what it already fetched.
@@ -866,6 +941,7 @@ func (c *Controller) Clear() error {
 	c.series = nil
 	c.selected = nil
 	c.selGen++
+	c.listGen++
 	c.hasDuplicates = false
 	c.hasGroupDuplicates = false
 	c.volumesText, c.siteVolumes = "", ""

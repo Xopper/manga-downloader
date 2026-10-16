@@ -748,3 +748,76 @@ func TestBeginLoadOfAnotherSeriesDropsTheLoadedOne(t *testing.T) {
 	}
 	_ = c.FinishLoad("https://example.com/manga/other")
 }
+
+// a series loaded before shows its saved list at once when loaded again, even
+// in a new session, locked behind the load; the site's answer replaces it
+func TestLoadShowsTheSavedListUntilTheSiteAnswers(t *testing.T) {
+	lists := newListStore(filepath.Join(t.TempDir(), "lists"))
+	c, _, _ := newTestController(t, false, nil, chapters(3, 1)...)
+	c.SetLists(lists)
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lists.Get("https://example.com/manga/test"); !ok {
+		t.Fatal("the load didn't save its list")
+	}
+	gen := c.ListGen()
+
+	// a new session, as after a restart
+	c2, _, _ := newTestController(t, false, nil, chapters(4, 1)...)
+	c2.SetLists(lists)
+	if err := c2.BeginLoad("https://www.example.com/manga/test/"); err != nil {
+		t.Fatal(err)
+	}
+	if !c2.Loading() || !c2.Loaded() || c2.Title() != "Test Series" || len(c2.Chapters()) != 3 {
+		t.Fatalf("at the load's start: loading %v, loaded %v, title %q, %d chapters", c2.Loading(), c2.Loaded(), c2.Title(), len(c2.Chapters()))
+	}
+	if _, err := c2.SelectRange("1-3"); err == nil {
+		t.Error("the saved list could be selected from while the load runs")
+	}
+	if err := c2.FinishLoad("https://www.example.com/manga/test/"); err != nil {
+		t.Fatal(err)
+	}
+	if c2.Loading() || len(c2.Chapters()) != 4 {
+		t.Errorf("after the load: loading %v, %d chapters", c2.Loading(), len(c2.Chapters()))
+	}
+	if l, _ := lists.Get("https://example.com/manga/test"); len(l.Chapters) != 4 {
+		t.Errorf("the saved list has %d chapters after the load, want 4", len(l.Chapters))
+	}
+	if c.ListGen() != gen {
+		t.Error("the first session's list moved")
+	}
+
+	// a series never loaded has no list to show
+	if err := c2.BeginLoad("https://example.com/manga/other"); err != nil {
+		t.Fatal(err)
+	}
+	if c2.Loaded() {
+		t.Error("a series never loaded showed a list")
+	}
+	_ = c2.FinishLoad("https://example.com/manga/other")
+}
+
+// a load of another series takes the last one's filter selectors away: they
+// described that series' site
+func TestLoadOfAnotherSeriesDropsTheFilters(t *testing.T) {
+	c, base, _ := newTestController(t, false, nil, chapters(2, 1)...)
+	site := &languageSite{fakeSite: base, options: grabber.FilterOptions{Values: []string{"en", "es"}}}
+	c.identify = func(_ string, s *grabber.Settings) (grabber.Site, []error) {
+		site.Settings = s
+		return site, nil
+	}
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := c.Filters(); l == nil {
+		t.Fatal("the site's languages weren't listed")
+	}
+	if err := c.BeginLoad("https://example.com/manga/other"); err != nil {
+		t.Fatal(err)
+	}
+	if l, _ := c.Filters(); l != nil {
+		t.Error("the last series' languages are still listed")
+	}
+	_ = c.FinishLoad("https://example.com/manga/other")
+}

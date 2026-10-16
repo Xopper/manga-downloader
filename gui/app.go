@@ -67,6 +67,9 @@ type App struct {
 	dirty    chan struct{}
 	stop     chan struct{}
 	stopOnce sync.Once
+	// shown is closed the first time the window asks for the state: it's up
+	shown     chan struct{}
+	shownOnce sync.Once
 }
 
 // newApp wires an App to its controller and sink. The controller's notify
@@ -85,6 +88,7 @@ func newApp(ctrl *Controller, s sink, prefsPath, tag, version string) *App {
 		interval:     refreshInterval,
 		dirty:        make(chan struct{}, 1),
 		stop:         make(chan struct{}),
+		shown:        make(chan struct{}),
 	}
 }
 
@@ -114,7 +118,7 @@ func (a *App) pump() {
 			return
 		}
 
-		a.sink.Emit("state", a.State())
+		a.sink.Emit("state", a.state())
 		// read each generation before its content, so a change that lands in
 		// between is sent again on the next push rather than lost
 		if g := a.ctrl.SelectionGen(); g != sentSel {
@@ -145,9 +149,18 @@ func (a *App) startup(ctx context.Context, rt *wailsRuntime) {
 		go a.ctrl.CheckUpdate(a.updateCtx, a.tag, latestReleaseAPI, updateClient)
 	}
 	// the catalogs are read from disk behind the window (parsing and folding
-	// a few hundred thousand titles takes a moment), then refreshed when the
-	// local index is a day old; cancelled at shutdown like the update check
+	// over a million titles takes a moment on every core), then refreshed
+	// when the local index is a day old; cancelled at shutdown like the
+	// update check. The read waits for the window to have asked for its
+	// first state (or a few seconds), so the window is up before the cores
+	// and the memory go to the catalogs.
 	go func() {
+		select {
+		case <-a.shown:
+		case <-time.After(3 * time.Second):
+		case <-a.stop:
+			return
+		}
 		a.ctrl.SetCatalog(openCatalog())
 		a.ctrl.RefreshCatalog(a.updateCtx, false)
 	}()
@@ -299,8 +312,15 @@ type LogDTO struct {
 	Text  string `json:"text"`
 }
 
-// State returns the window's state
+// State returns the window's state. The window asks once it's up (see
+// useWindow.ts), which is what shown signals; the pushes use state.
 func (a *App) State() State {
+	a.shownOnce.Do(func() { close(a.shown) })
+	return a.state()
+}
+
+// state is the window's state
+func (a *App) state() State {
 	c := a.ctrl
 	st := State{
 		URL:                c.URL(),
@@ -413,12 +433,24 @@ func (a *App) Load(url string) error {
 	if a.ctrl.BatchActive() {
 		return errBatch
 	}
+	gen := a.ctrl.ListGen()
 	if err := a.ctrl.BeginLoad(url); err != nil {
 		return err
 	}
+	a.sendListIfChanged(gen)
 	a.finishLoad(url)
 
 	return nil
+}
+
+// sendListIfChanged sends the chapter list when the load's start changed it:
+// a saved list shown for the series asked for, or the last series' list
+// dropped (see Controller.ListGen). A reload keeps its list, and sending it
+// again would scroll the window's list back to the top.
+func (a *App) sendListIfChanged(before uint64) {
+	if a.ctrl.ListGen() != before {
+		a.sink.Emit("chapters", a.Chapters())
+	}
 }
 
 // SetOptionsAndLoad applies the options and reloads url in one step, so a filter picked
@@ -431,9 +463,11 @@ func (a *App) SetOptionsAndLoad(o OptionsDTO, url string) error {
 	if a.ctrl.BatchActive() {
 		return errBatch
 	}
+	gen := a.ctrl.ListGen()
 	if err := a.ctrl.ConfigureLoad(func(s *grabber.Settings) { applyOptions(s, o) }, url); err != nil {
 		return err
 	}
+	a.sendListIfChanged(gen)
 	a.save()
 	a.finishLoad(url)
 

@@ -10,6 +10,7 @@ import (
 	"github.com/elboletaire/manga-downloader/browser"
 	"github.com/elboletaire/manga-downloader/core"
 	"github.com/elboletaire/manga-downloader/grabber"
+	mdhttp "github.com/elboletaire/manga-downloader/http"
 )
 
 // The controller's side of the library: recording loads and runs happens in
@@ -135,6 +136,8 @@ func (c *Controller) fetchNumbers(url string, s *grabber.Settings) (title string
 	release := browser.Hold()
 	defer release()
 
+	// a check fetches, as a load does
+	mdhttp.ResetPageMemory()
 	site, siteErrs := c.identify(url, s)
 	for _, serr := range siteErrs {
 		c.addLog(LogWarn, "site check: "+serr.Error())
@@ -154,6 +157,9 @@ func (c *Controller) fetchNumbers(url string, s *grabber.Settings) (title string
 	if err != nil {
 		return "", nil, err
 	}
+	// the list a check fetched is as good as a load's: the next open of
+	// the series shows it at once
+	c.saveList(url, series.Title, series.Chapters)
 	return series.Title, chapterNumbers(series.Chapters), nil
 }
 
