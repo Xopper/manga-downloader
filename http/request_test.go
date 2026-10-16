@@ -557,6 +557,11 @@ func TestPageMemoryAnswersARepeatedGet(t *testing.T) {
 			w.WriteHeader(404)
 			return
 		}
+		if r.URL.Path == "/file.gz" {
+			w.Header().Set("Content-Type", "application/gzip")
+		} else {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		}
 		fmt.Fprintf(w, "%s call %d", r.Method, n)
 	}))
 	defer srv.Close()
@@ -610,9 +615,15 @@ func TestPageMemoryAnswersARepeatedGet(t *testing.T) {
 	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 8" {
 		t.Errorf("fetch after the reset: %q", got)
 	}
+	// a file isn't a page
+	for i := 9; i <= 10; i++ {
+		if got := text(RequestParams{URL: srv.URL + "/file.gz"}, false); got != fmt.Sprintf("GET call %d", i) {
+			t.Errorf("a file was remembered: %q", got)
+		}
+	}
 	PageMemory = time.Nanosecond
 	time.Sleep(time.Millisecond)
-	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 9" {
+	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 11" {
 		t.Errorf("fetch of a page past its age: %q", got)
 	}
 }
@@ -623,6 +634,7 @@ func TestPageMemorySkipsABigPage(t *testing.T) {
 	var calls int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&calls, 1)
+		w.Header().Set("Content-Type", "text/html")
 		w.Write(big)
 	}))
 	defer srv.Close()

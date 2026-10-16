@@ -195,9 +195,9 @@ func request(t string, params Params) (io.ReadCloser, error) {
 			}
 		}
 
-		body, retryAfterDelay, retryable, err := doRequest(t, params)
+		body, ctype, retryAfterDelay, retryable, err := doRequest(t, params)
 		if err == nil {
-			if remembered {
+			if remembered && memorableType(ctype) {
 				body = rememberPage(key, body)
 			}
 			return body, nil
@@ -224,7 +224,7 @@ func request(t string, params Params) (io.ReadCloser, error) {
 // doRequest performs a single attempt and reports whether to retry, plus any
 // server-requested delay (Retry-After). The request is built fresh on every
 // call so the body reader is never exhausted across retries.
-func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Duration, retryable bool, err error) {
+func doRequest(t string, params Params) (body io.ReadCloser, contentType string, retryAfter time.Duration, retryable bool, err error) {
 	rp, _ := params.(RequestParams)
 	timeout := rp.Timeout
 	if timeout <= 0 {
@@ -242,7 +242,7 @@ func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Dur
 	req, err := http.NewRequest(t, params.GetURL(), reqBody)
 	if err != nil {
 		// malformed URL: never going to succeed
-		return nil, 0, false, err
+		return nil, "", 0, false, err
 	}
 	req.Header.Set("User-Agent", sessionUserAgent(userAgent))
 	if cookies := sessionCookies(req.URL.Hostname()); cookies != "" {
@@ -277,7 +277,7 @@ func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Dur
 	if err != nil {
 		// transport-level failures (connection reset, timeout, DNS hiccup)
 		// are transient enough to be worth another attempt
-		return nil, 0, true, err
+		return nil, "", 0, true, err
 	}
 
 	// harvest any session cookies the server sets (e.g. a PHPSESSID tied to
@@ -298,8 +298,8 @@ func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Dur
 		resp.Body.Close()
 
 		ra := ParseRetryAfter(resp.Header.Get("Retry-After"))
-		return nil, ra, isRetryableStatus(resp.StatusCode), &StatusError{Code: resp.StatusCode, RetryAfter: ra}
+		return nil, "", ra, isRetryableStatus(resp.StatusCode), &StatusError{Code: resp.StatusCode, RetryAfter: ra}
 	}
 
-	return resp.Body, 0, false, nil
+	return resp.Body, resp.Header.Get("Content-Type"), 0, false, nil
 }

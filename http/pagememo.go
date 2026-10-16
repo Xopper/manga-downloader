@@ -53,6 +53,13 @@ func ResetPageMemory() {
 	pageMemo.Unlock()
 }
 
+// memorableType reports whether a response is a page: what's remembered. A
+// file (an image, a gzipped catalog) streams through as it did.
+func memorableType(contentType string) bool {
+	t := strings.ToLower(contentType)
+	return strings.Contains(t, "html") || strings.Contains(t, "xml") || strings.Contains(t, "json")
+}
+
 // memoKey returns the key a request is remembered under, and whether it's
 // one that is
 func memoKey(method string, rp RequestParams) (pageMemoKey, bool) {
