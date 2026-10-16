@@ -83,7 +83,10 @@ func main() {
 		OnShutdown: app.shutdown,
 		Bind:       []interface{}{app},
 		Linux:      &linux.Options{Icon: appIcon},
-		Mac:        &mac.Options{}, // without it Wails disables the zoom button
+		// without Mac options Wails disables the zoom button. The title bar
+		// is hidden: the app's header is the window's top edge, and the
+		// window buttons stay where macOS puts them (see frame.ts)
+		Mac: &mac.Options{TitleBar: mac.TitleBarHidden()},
 	})
 	// OnShutdown already closed it; this covers a Run that failed or returned
 	// without calling it

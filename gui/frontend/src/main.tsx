@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createWailsApi, type Api } from './api';
 import { App } from './App';
+import { setUpWindowFrame } from './frame';
 import '@fontsource-variable/inter/wght.css';
 import './styles.css';
 
@@ -32,6 +33,7 @@ function render(api: Api): void {
 // If the mock fails to load (or the Wails bindings throw), fall back to the
 // real backend rather than leaving the window blank; if that throws too, show
 // the error instead.
+setUpWindowFrame();
 chooseApi()
   .catch((err: unknown) => {
     console.error('could not set up the API, falling back to the Go backend:', err);
