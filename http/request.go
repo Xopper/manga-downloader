@@ -151,12 +151,32 @@ func ParseRetryAfter(header string) time.Duration {
 	return min(d, MaxRetryAfter)
 }
 
+// transport is shared by every request, so a connection to a site is kept
+// and reused: the series page, the chapter list and the pages of a chapter
+// come over one connection instead of each paying for a new one (a TLS
+// handshake is most of a small page's time). A new transport per request,
+// as before, also leaked each one's idle connections.
+var transport = &http.Transport{
+	DisableCompression:  true,
+	MaxIdleConns:        64,
+	MaxIdleConnsPerHost: 16,
+	IdleConnTimeout:     90 * time.Second,
+	TLSHandshakeTimeout: 20 * time.Second,
+}
+
 // request sends a request to the given URL, retrying transient failures with
 // exponential backoff. Both GET and POST are retried safely: POST bodies are
 // rebuilt from params on each attempt so the body reader is never exhausted.
 // Retrying is skipped when RequestParams.DisableRetry is true.
 func request(t string, params Params) (io.ReadCloser, error) {
 	rp, _ := params.(RequestParams)
+	// a page fetched moments ago is answered from memory (see PageMemory)
+	key, remembered := memoKey(t, rp)
+	if remembered {
+		if body, ok := rememberedPage(key); ok {
+			return body, nil
+		}
+	}
 	attempts := maxAttempts
 	if rp.DisableRetry {
 		attempts = 1
@@ -177,6 +197,9 @@ func request(t string, params Params) (io.ReadCloser, error) {
 
 		body, retryAfterDelay, retryable, err := doRequest(t, params)
 		if err == nil {
+			if remembered {
+				body = rememberPage(key, body)
+			}
 			return body, nil
 		}
 		lastErr = err
@@ -202,15 +225,12 @@ func request(t string, params Params) (io.ReadCloser, error) {
 // server-requested delay (Retry-After). The request is built fresh on every
 // call so the body reader is never exhausted across retries.
 func doRequest(t string, params Params) (body io.ReadCloser, retryAfter time.Duration, retryable bool, err error) {
-	tr := &http.Transport{
-		DisableCompression: true,
-	}
 	rp, _ := params.(RequestParams)
 	timeout := rp.Timeout
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
-	client := &http.Client{Transport: tr, Timeout: timeout}
+	client := &http.Client{Transport: transport, Timeout: timeout}
 
 	var reqBody io.Reader
 	if rp.Form != nil {

@@ -3,6 +3,7 @@
 package http
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -512,5 +514,132 @@ func TestRequestTimeoutEndsAStalledAttempt(t *testing.T) {
 	}
 	if took := time.Since(start); took > 2*time.Second {
 		t.Errorf("the default timeout took %v", took)
+	}
+}
+
+// a connection is kept between requests to one host, so the second request
+// doesn't open (and handshake) a new one
+func TestRequestsReuseTheConnection(t *testing.T) {
+	var mu sync.Mutex
+	addrs := map[string]bool{}
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		addrs[r.RemoteAddr] = true
+		mu.Unlock()
+		w.Write([]byte("ok"))
+	}))
+	defer srv.Close()
+	saved := transport.TLSClientConfig
+	transport.TLSClientConfig = srv.Client().Transport.(*http.Transport).TLSClientConfig
+	t.Cleanup(func() { transport.CloseIdleConnections(); transport.TLSClientConfig = saved })
+
+	for i := 0; i < 3; i++ {
+		body, err := Get(RequestParams{URL: srv.URL})
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.Copy(io.Discard, body)
+		body.Close()
+	}
+	if len(addrs) != 1 {
+		t.Errorf("the server saw %d client connections, want 1", len(addrs))
+	}
+}
+
+// with PageMemory on, a page asked for again is answered from memory: the
+// site is asked once. A POST, an image and a page past the memory's age are
+// fetched; ResetPageMemory forgets what's remembered.
+func TestPageMemoryAnswersARepeatedGet(t *testing.T) {
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&calls, 1)
+		if r.URL.Path == "/fail" {
+			w.WriteHeader(404)
+			return
+		}
+		fmt.Fprintf(w, "%s call %d", r.Method, n)
+	}))
+	defer srv.Close()
+	PageMemory = time.Hour
+	t.Cleanup(func() { PageMemory = 0; ResetPageMemory() })
+	ResetPageMemory()
+
+	text := func(p RequestParams, post bool) string {
+		t.Helper()
+		var body io.ReadCloser
+		var err error
+		if post {
+			body, err = Post(p)
+		} else {
+			body, err = Get(p)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer body.Close()
+		b, _ := io.ReadAll(body)
+		return string(b)
+	}
+	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 1" {
+		t.Fatalf("first fetch: %q", got)
+	}
+	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 1" {
+		t.Errorf("second fetch wasn't remembered: %q", got)
+	}
+	// another referer is another request
+	if got := text(RequestParams{URL: srv.URL + "/page", Referer: srv.URL}, false); got != "GET call 2" {
+		t.Errorf("fetch with a referer: %q", got)
+	}
+	if got := text(RequestParams{URL: srv.URL + "/page", Accept: ImageAccept}, false); got != "GET call 3" {
+		t.Errorf("an image fetch was remembered: %q", got)
+	}
+	if got := text(RequestParams{URL: srv.URL + "/page", Body: "a=1"}, true); got != "POST call 4" {
+		t.Errorf("a post was remembered: %q", got)
+	}
+	if got := text(RequestParams{URL: srv.URL + "/page", Body: "a=1"}, true); got != "POST call 5" {
+		t.Errorf("a post was remembered: %q", got)
+	}
+	// a failure isn't remembered
+	if _, err := Get(RequestParams{URL: srv.URL + "/fail"}); err == nil {
+		t.Fatal("expected a 404")
+	}
+	if _, err := Get(RequestParams{URL: srv.URL + "/fail"}); err == nil {
+		t.Fatal("expected a 404 again")
+	}
+	ResetPageMemory()
+	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 8" {
+		t.Errorf("fetch after the reset: %q", got)
+	}
+	PageMemory = time.Nanosecond
+	time.Sleep(time.Millisecond)
+	if got := text(RequestParams{URL: srv.URL + "/page"}, false); got != "GET call 9" {
+		t.Errorf("fetch of a page past its age: %q", got)
+	}
+}
+
+// a page too big to remember streams through whole
+func TestPageMemorySkipsABigPage(t *testing.T) {
+	big := bytes.Repeat([]byte("x"), pageMemoMaxEntry+10)
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		w.Write(big)
+	}))
+	defer srv.Close()
+	PageMemory = time.Hour
+	t.Cleanup(func() { PageMemory = 0; ResetPageMemory() })
+	for i := 0; i < 2; i++ {
+		body, err := Get(RequestParams{URL: srv.URL})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := io.ReadAll(body)
+		body.Close()
+		if len(b) != len(big) {
+			t.Fatalf("fetch %d: got %d bytes, want %d", i+1, len(b), len(big))
+		}
+	}
+	if calls != 2 {
+		t.Errorf("server saw %d calls, want 2", calls)
 	}
 }

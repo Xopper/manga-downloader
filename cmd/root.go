@@ -9,11 +9,13 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/elboletaire/manga-downloader/browser"
 	"github.com/elboletaire/manga-downloader/core"
 	"github.com/elboletaire/manga-downloader/grabber"
+	mdhttp "github.com/elboletaire/manga-downloader/http"
 	"github.com/elboletaire/manga-downloader/notice"
 	"github.com/elboletaire/manga-downloader/packer"
 	"github.com/elboletaire/manga-downloader/ranges"
@@ -104,6 +106,9 @@ func Run(cmd *cobra.Command, args []string) {
 
 	// load the series (identify and open), then close the browser after
 	releaseLd := browser.Hold()
+	// identifying the site and fetching its title and chapters ask for the
+	// series page several times: it's fetched once
+	mdhttp.PageMemory = 30 * time.Second
 	s, errs := core.Identify(getUrlArg(args), &settings)
 	if len(errs) > 0 {
 		red("Errors testing site (a site may be down):")
