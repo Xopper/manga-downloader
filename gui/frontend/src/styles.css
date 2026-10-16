@@ -274,6 +274,14 @@ code {
   color: var(--text-3);
 }
 
+/* the search box has its own clear button: WebKit's round one goes */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
 .url-input {
   flex: 1;
   min-width: 0;
