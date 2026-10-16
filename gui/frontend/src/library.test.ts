@@ -62,17 +62,18 @@ describe('isLinkQuery', () => {
 
 describe('cards', () => {
   it('says what is new and offers to download it', () => {
-    expect(cardStatus(followed({}))).toEqual({ text: '2 new · saved up to 8', tone: 'new' });
+    expect(cardStatus(followed({}))).toEqual({ text: '2 new · 8 of 10 saved', tone: 'new' });
     expect(cardAction(followed({}))).toEqual({ label: 'Download 2 new', kind: 'new' });
   });
   it('offers only what is new for a series never saved', () => {
     const f = followed({ savedUpTo: 0, saved: [], new: 3 });
-    expect(cardStatus(f).text).toBe('3 new · nothing saved yet');
+    expect(cardStatus(f).text).toBe('3 new · none saved');
     expect(cardAction(f)).toEqual({ label: 'Download 3 new', kind: 'new' });
   });
   it('says nothing is new without claiming everything was saved', () => {
     const f = followed({ savedUpTo: 4, saved: [4], new: 0 });
-    expect(cardStatus(f)).toEqual({ text: 'Nothing new · 10 chapters', tone: 'ok' });
+    expect(cardStatus(f)).toEqual({ text: 'Nothing new · 1 of 10 saved', tone: 'ok' });
+    expect(cardStatus(followed({ new: 0, saved: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] })).text).toBe('Nothing new · all 10 saved');
     expect(cardAction(f)).toEqual({ label: 'Nothing new', kind: 'none' });
   });
   it('says when it was never checked', () => {

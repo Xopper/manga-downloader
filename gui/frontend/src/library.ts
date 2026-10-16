@@ -48,11 +48,23 @@ export function cardStatus(f: Followed): { text: string; tone: Tone } {
   if (f.chapters === 0) {
     return { text: 'Not checked yet', tone: 'muted' };
   }
+  const saved = ` · ${savedCount(f)}`;
   if (f.new > 0) {
-    const saved = f.savedUpTo > 0 ? ` · saved up to ${f.savedUpTo}` : ' · nothing saved yet';
     return { text: `${f.new} new${saved}`, tone: 'new' };
   }
-  return { text: `Nothing new · ${plural(f.chapters, 'chapter', 'chapters')}`, tone: 'ok' };
+  return { text: `Nothing new${saved}`, tone: 'ok' };
+}
+
+/** How many chapters are saved in the folder and format chosen now: "12 of 53 saved", "all 42 saved", "none saved" */
+export function savedCount(f: Followed): string {
+  const n = Math.min(f.saved.length, f.chapters);
+  if (n === 0) {
+    return 'none saved';
+  }
+  if (n === f.chapters) {
+    return `all ${f.chapters.toLocaleString('en-US')} saved`;
+  }
+  return `${n.toLocaleString('en-US')} of ${f.chapters.toLocaleString('en-US')} saved`;
 }
 
 /** The one button of a card */
