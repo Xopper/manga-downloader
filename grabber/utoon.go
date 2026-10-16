@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/elboletaire/manga-downloader/http"
@@ -29,6 +30,20 @@ type Utoon struct {
 // Query strings and fragments after .html are tolerated.
 var utoonChapterRe = regexp.MustCompile(`^https?://[^/]+/en/([^/]+)/[^/]+-chapter-\d[^/]*\.html(?:[?#].*)?$`)
 
+// utoonPagesPerSecond keeps page downloads under the image cdn's rate limit:
+// a burst of ~250 requests in a few seconds gets every request refused with
+// 429 (Retry-After: 10) for a while, which failed a whole series download.
+// 10 a second held for 500+ pages in a row.
+const utoonPagesPerSecond = 10
+
+// utoonMaxConcurrency caps the user's concurrency: the pacer keeps the pace,
+// so more parallel downloads only queue bursts on it.
+var utoonMaxConcurrency = MaxConcurrency{Chapters: 2, Pages: 5}
+
+// utoonPagePacer spaces page requests evenly. It's shared by every Utoon
+// instance because the limit is per IP, not per download.
+var utoonPagePacer = &pacer{interval: time.Second / utoonPagesPerSecond}
+
 func NewUtoon(g *Grabber) *Utoon {
 	return &Utoon{Grabber: g}
 }
@@ -43,6 +58,20 @@ type UtoonChapter struct {
 func (u *Utoon) Test() (bool, error) {
 	re := regexp.MustCompile(`utoon\.us`)
 	return re.MatchString(u.URL), nil
+}
+
+// GetMaxConcurrency caps the configured concurrency at what the image cdn
+// tolerates. Lower settings are kept.
+func (u *Utoon) GetMaxConcurrency() MaxConcurrency {
+	mc := u.Grabber.GetMaxConcurrency()
+	mc.Chapters = min(mc.Chapters, utoonMaxConcurrency.Chapters)
+	mc.Pages = min(mc.Pages, utoonMaxConcurrency.Pages)
+	return mc
+}
+
+// WaitPage paces page downloads to the image cdn's rate limit (PagePacer)
+func (u *Utoon) WaitPage() {
+	utoonPagePacer.wait()
 }
 
 // utoonChapterURL checks if the URL is a chapter URL.

@@ -66,3 +66,27 @@ var mangaverse_ajax = {"ajax_url":"https://www.utoon.us/wp-admin/admin-ajax.php"
 		t.Errorf("nonce = %q, want %q", m[2], want)
 	}
 }
+
+// The image cdn refuses bursts, so the configured concurrency is capped
+func TestUtoonGetMaxConcurrency(t *testing.T) {
+	cases := []struct {
+		set, want MaxConcurrency
+	}{
+		{MaxConcurrency{Chapters: 5, Pages: 10}, utoonMaxConcurrency},
+		{MaxConcurrency{Chapters: 1, Pages: 2}, MaxConcurrency{Chapters: 1, Pages: 2}},
+	}
+	for _, c := range cases {
+		u := NewUtoon(&Grabber{Settings: &Settings{MaxConcurrency: c.set}})
+		if got := u.GetMaxConcurrency(); got != c.want {
+			t.Errorf("GetMaxConcurrency() with %+v = %+v, want %+v", c.set, got, c.want)
+		}
+	}
+}
+
+// Utoon paces its pages, through the interface the downloader looks for
+func TestUtoonIsPagePacer(t *testing.T) {
+	var site Site = NewUtoon(&Grabber{Settings: &Settings{}})
+	if _, ok := site.(PagePacer); !ok {
+		t.Fatal("*Utoon doesn't implement PagePacer")
+	}
+}
