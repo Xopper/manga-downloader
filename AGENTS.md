@@ -36,6 +36,14 @@ Releases: the version lives only in the git tag (the makefile injects the short 
 
 ## Architecture
 
+- **One HTTP transport** (`http/request.go`): every request goes through the
+  shared `transport`, so a site's connection is kept and reused (the TLS
+  handshake was most of a small page's time; a transport per request also
+  leaked idle connections). `PageMemory` (off by default and in tests; the CLI
+  and the app set 30 s) remembers plain document GETs, so identifying a site
+  and then fetching its title and chapters asks for the series page once; a
+  load and a library check start with `ResetPageMemory`, so they fetch.
+
 The download flow lives in `core` (`core/download.go`, `Series.Download`), UI-agnostic so the CLI and the GUI share it. `cmd/root.go` (`Run`) is the CLI shell around it: it parses flags and renders the `core.Events` through `cmd/progress.go`.
 
 The steps:
@@ -104,7 +112,11 @@ A catalog is one JSON per site (title, series URL, other names, and for
 the Madara family the latest chapter number its list page showed, `latest`)
 in `catalog/`; `Store.Search` scans them in memory after folding (`Fold`:
 lowercase, NFKD, accents dropped, dakuten kept). Design:
-`docs/superpowers/specs/2026-10-15-catalog-design.md`.
+`docs/superpowers/specs/2026-10-15-catalog-design.md`. The store is big (a
+million and a half entries, ~400 MB in memory), so `Load`, `reindex` and
+`Search` work on every core at once (`inParallel`) and the index points into
+the catalogs' entries instead of copying them; measure before touching them
+(a load went from 2.5 s to 0.8 s and a search from 250 ms to 70 ms that way).
 
 - **The site table is `catalog/sites.json`** (embedded): every README site
   with its crawler `family`, list page, language, former domains (`aliases`)
@@ -138,8 +150,10 @@ lowercase, NFKD, accents dropped, dakuten kept). Design:
 - **Files are written atomically** (temp + rename, 0600) under
   `os.UserConfigDir()/manga-downloader/catalog/`, next to `gui.json`
   (`catalog.DefaultDir`).
-- **The app** (`gui/catalog.go`): the controller owns the store, loads it at
-  startup and refreshes in the background when the index is a day old
+- **The app** (`gui/catalog.go`): the controller owns the store, loads it
+  once the window has asked for its first state (`App.shown`, or 3 s), so the
+  window is up before the cores and the memory go to the catalogs, and
+  refreshes in the background when the index is a day old
   (`RefreshCatalog`, cancelled at shutdown like the update check; a failure
   stays in `State.catalog.error`, never the window's log). `Search`, `Sites`,
   `CatalogStatus` and `UpdateCatalog` are bound; the window's results page is

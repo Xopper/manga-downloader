@@ -125,10 +125,25 @@ func (c *Controller) CatalogInfo() CatalogInfo {
 	c.mu.Lock()
 	store := c.catalog
 	info := CatalogInfo{Updating: c.catalogUpdating, Error: c.catalogErr, Generation: c.catalogGen}
+	// the counts only move with the generation: every state push asks, and
+	// counting stats each catalog file
+	if cached := c.catalogInfo; cached != nil && cached.Generation == info.Generation {
+		cached.Updating, cached.Error = info.Updating, info.Error
+		c.mu.Unlock()
+		return *cached
+	}
 	c.mu.Unlock()
 	if store == nil {
 		return info
 	}
+	defer func() {
+		c.mu.Lock()
+		if c.catalogGen == info.Generation {
+			kept := info
+			c.catalogInfo = &kept
+		}
+		c.mu.Unlock()
+	}()
 	for _, st := range store.Status() {
 		if st.HasCatalog {
 			info.Sites++

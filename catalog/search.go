@@ -3,6 +3,7 @@
 package catalog
 
 import (
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -46,22 +47,35 @@ func (s *Store) Search(query string, sites []string, limit int) []Hit {
 		s.reindex()
 		s.dirty = false
 	}
-	var hits []Hit
-	for _, ix := range s.entries {
-		if only != nil && !only[ix.site] {
-			continue
-		}
-		score := match(ix.title, folded, words)
-		for _, alt := range ix.alts {
-			if alt := match(alt, folded, words) - 10; alt > score {
-				score = alt
+	// the entries are scanned on every core at once, a slice of them each,
+	// and the hits put back in entry order
+	chunks := min(runtime.NumCPU(), 8)
+	size := (len(s.entries) + chunks - 1) / chunks
+	found := make([][]Hit, chunks)
+	inParallel(chunks, func(i int) {
+		from, to := i*size, min((i+1)*size, len(s.entries))
+		for from < to {
+			ix := &s.entries[from]
+			from++
+			if only != nil && !only[ix.site] {
+				continue
+			}
+			score := match(ix.title, folded, words)
+			for _, alt := range ix.alts {
+				if alt := match(alt, folded, words) - 10; alt > score {
+					score = alt
+				}
+			}
+			if score > 0 {
+				found[i] = append(found[i], Hit{Site: ix.site, Entry: *ix.entry, Score: score})
 			}
 		}
-		if score > 0 {
-			hits = append(hits, Hit{Site: ix.site, Entry: ix.entry, Score: score})
-		}
-	}
+	})
 	s.mu.Unlock()
+	var hits []Hit
+	for _, f := range found {
+		hits = append(hits, f...)
+	}
 
 	sort.SliceStable(hits, func(i, j int) bool {
 		a, b := hits[i], hits[j]

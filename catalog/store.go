@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -31,10 +32,12 @@ type Store struct {
 	dirty   bool
 }
 
-// indexed is an entry ready to match
+// indexed is an entry ready to match. It points into its catalog's
+// entries rather than copying one: a million and a half copies were a
+// hundred megabytes of memory for nothing.
 type indexed struct {
 	site  string
-	entry Entry
+	entry *Entry
 	title string
 	alts  []string
 }
@@ -51,24 +54,39 @@ func (s *Store) Load() []error {
 	if err != nil {
 		return []error{err}
 	}
-	catalogs := make(map[string]*SiteCatalog, len(names))
-	var warnings []error
-	for _, name := range names {
+	// the files are read and parsed on every core at once: a few hundred
+	// of them hold over a million entries, and one core took seconds
+	type parsed struct {
+		catalog *SiteCatalog
+		err     error
+	}
+	results := make([]parsed, len(names))
+	inParallel(len(names), func(i int) {
+		name := names[i]
 		b, err := os.ReadFile(name)
 		if err != nil {
-			warnings = append(warnings, err)
-			continue
+			results[i].err = err
+			return
 		}
 		if b, err = maybeGunzip(filepath.Base(name), b); err != nil {
-			warnings = append(warnings, fmt.Errorf("%s: %w", filepath.Base(name), err))
-			continue
+			results[i].err = fmt.Errorf("%s: %w", filepath.Base(name), err)
+			return
 		}
 		var c SiteCatalog
 		if err := json.Unmarshal(b, &c); err != nil || c.Site == "" {
-			warnings = append(warnings, fmt.Errorf("%s: not a catalog file: %v", filepath.Base(name), err))
+			results[i].err = fmt.Errorf("%s: not a catalog file: %v", filepath.Base(name), err)
+			return
+		}
+		results[i].catalog = &c
+	})
+	catalogs := make(map[string]*SiteCatalog, len(names))
+	var warnings []error
+	for _, r := range results {
+		if r.err != nil {
+			warnings = append(warnings, r.err)
 			continue
 		}
-		catalogs[c.Site] = &c
+		catalogs[r.catalog.Site] = r.catalog
 	}
 
 	sources, err := readRows(filepath.Join(s.Dir, sourcesFile))
@@ -86,25 +104,71 @@ func (s *Store) Load() []error {
 	return warnings
 }
 
-// reindex rebuilds entries from catalogs; the caller holds mu
+// reindex rebuilds entries from catalogs; the caller holds mu. The titles
+// are folded on every core at once, a site per task, and the sites' entries
+// then follow each other in site order.
 func (s *Store) reindex() {
 	sites := make([]string, 0, len(s.catalogs))
 	for site := range s.catalogs {
 		sites = append(sites, site)
 	}
 	sort.Strings(sites)
-	s.entries = s.entries[:0]
-	for _, site := range sites {
-		for _, e := range s.catalogs[site].Entries {
-			ix := indexed{site: site, entry: e, title: Fold(e.Title)}
-			for _, alt := range e.AltNames {
-				if f := Fold(alt); f != "" {
-					ix.alts = append(ix.alts, f)
-				}
-			}
-			s.entries = append(s.entries, ix)
-		}
+	bySite := make([][]indexed, len(sites))
+	inParallel(len(sites), func(i int) {
+		bySite[i] = indexSite(sites[i], s.catalogs[sites[i]])
+	})
+	n := 0
+	for _, ix := range bySite {
+		n += len(ix)
 	}
+	s.entries = make([]indexed, 0, n)
+	for _, ix := range bySite {
+		s.entries = append(s.entries, ix...)
+	}
+}
+
+// indexSite folds a site's entries
+func indexSite(site string, c *SiteCatalog) []indexed {
+	out := make([]indexed, 0, len(c.Entries))
+	for i := range c.Entries {
+		e := &c.Entries[i]
+		ix := indexed{site: site, entry: e, title: Fold(e.Title)}
+		for _, alt := range e.AltNames {
+			if f := Fold(alt); f != "" {
+				ix.alts = append(ix.alts, f)
+			}
+		}
+		out = append(out, ix)
+	}
+	return out
+}
+
+// inParallel runs fn(i) for every i below n, as many at a time as there are
+// cores, and returns once they're all done
+func inParallel(n int, fn func(i int)) {
+	workers := min(runtime.NumCPU(), n)
+	if workers <= 1 {
+		for i := 0; i < n; i++ {
+			fn(i)
+		}
+		return
+	}
+	var wg sync.WaitGroup
+	next := make(chan int)
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range next {
+				fn(i)
+			}
+		}()
+	}
+	for i := 0; i < n; i++ {
+		next <- i
+	}
+	close(next)
+	wg.Wait()
 }
 
 // Catalog returns a site's loaded catalog
