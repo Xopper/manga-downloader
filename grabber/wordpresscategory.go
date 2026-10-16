@@ -56,6 +56,13 @@ const wpPerPage = 100
 var (
 	wpCategoryLinkRe = regexp.MustCompile(`/wp-json/wp/v2/categories/(\d+)/?$`)
 	wpPostLinkRe     = regexp.MustCompile(`/wp-json/wp/v2/posts/(\d+)/?$`)
+	// wpPageLinkRe is the REST link of a page: a site's front page, whose
+	// chapter list is a loop of posts of one category (dragonballmangaa.com)
+	wpPageLinkRe = regexp.MustCompile(`/wp-json/wp/v2/pages/(\d+)/?$`)
+	// wpCategoryHrefRe is a link to a category archive, and
+	// wpCategoryClassRe the class WordPress gives a post for its category
+	wpCategoryHrefRe  = regexp.MustCompile(`/category/([^/?#]+)/?`)
+	wpCategoryClassRe = regexp.MustCompile(`^category-([a-z0-9-]+)$`)
 )
 
 // Test returns true if the URL is a WordPress category archive, or a post in
@@ -87,10 +94,12 @@ func (w *WordPressCategory) Test() (bool, error) {
 }
 
 // categoryFromPage returns the category whose chapters a page belongs to, or
-// 0 when it's neither a category archive nor a post. A post doesn't name its
-// category in the markup, so its REST resource gives the first one.
+// 0 when it's neither a category archive, a post, nor a front page listing
+// the posts of one category. A post doesn't name its category in the
+// markup, so its REST resource gives the first one; a front page names the
+// category by the slug its posts and links mention most.
 func (w *WordPressCategory) categoryFromPage(doc *goquery.Document) (int, error) {
-	var categoryID, postID int
+	var categoryID, postID, pageID int
 	doc.Find("link[href]").Each(func(_ int, s *goquery.Selection) {
 		href := s.AttrOr("href", "")
 		if m := wpCategoryLinkRe.FindStringSubmatch(href); m != nil {
@@ -99,13 +108,23 @@ func (w *WordPressCategory) categoryFromPage(doc *goquery.Document) (int, error)
 		if m := wpPostLinkRe.FindStringSubmatch(href); m != nil {
 			postID, _ = strconv.Atoi(m[1])
 		}
+		if m := wpPageLinkRe.FindStringSubmatch(href); m != nil {
+			pageID, _ = strconv.Atoi(m[1])
+		}
 	})
 
 	if categoryID != 0 && doc.Find("body").HasClass("category") {
 		return categoryID, nil
 	}
 	if postID == 0 {
-		return 0, nil
+		if pageID == 0 || !doc.Find("body").HasClass("home") {
+			return 0, nil
+		}
+		slug := wpHomeCategorySlug(doc)
+		if slug == "" {
+			return 0, nil
+		}
+		return w.categoryBySlug(slug)
 	}
 
 	body, err := http.GetText(http.RequestParams{
@@ -133,6 +152,56 @@ func (w *WordPressCategory) categoryFromPage(doc *goquery.Document) (int, error)
 	}
 
 	return post.Categories[0], nil
+}
+
+// wpHomeCategorySlug is the category a front page lists: the slug its post
+// classes ("category-all-chapters") and archive links mention most, when
+// mentioned more than once. "" when the page names none.
+func wpHomeCategorySlug(doc *goquery.Document) string {
+	counts := map[string]int{}
+	doc.Find("[class]").Each(func(_ int, s *goquery.Selection) {
+		for _, class := range strings.Fields(s.AttrOr("class", "")) {
+			if m := wpCategoryClassRe.FindStringSubmatch(class); m != nil {
+				counts[m[1]]++
+			}
+		}
+	})
+	doc.Find("a[href]").Each(func(_ int, s *goquery.Selection) {
+		if m := wpCategoryHrefRe.FindStringSubmatch(s.AttrOr("href", "")); m != nil {
+			counts[m[1]]++
+		}
+	})
+	best, n := "", 1
+	for slug, count := range counts {
+		if count > n || (count == n && best != "" && slug < best) {
+			best, n = slug, count
+		}
+	}
+	return best
+}
+
+// categoryBySlug asks the REST API for the category of slug; 0 when the
+// route doesn't answer or lists none (another site)
+func (w *WordPressCategory) categoryBySlug(slug string) (int, error) {
+	body, err := http.GetText(http.RequestParams{
+		URL:          w.apiURL("categories?slug=" + slug + "&_fields=id"),
+		Referer:      w.URL,
+		DisableRetry: true,
+	})
+	var statusErr *http.StatusError
+	if errors.As(err, &statusErr) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	var categories []struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(body), &categories); err != nil || len(categories) == 0 {
+		return 0, nil
+	}
+	return categories[0].ID, nil
 }
 
 // apiURL returns the WordPress REST URL for path (i.e. "posts?categories=3") on

@@ -73,7 +73,7 @@ export function SeriesAside(props: Props) {
         </div>
       </div>
 
-      {followed !== null && followed.downloadable && (
+      {followed !== null && followed.downloadable && (state.loaded || followed.chapters > 0) && (
         <dl className="facts" aria-label="Facts">
           <div className="fact">
             <dt>Chapters on the site</dt>

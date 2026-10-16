@@ -409,6 +409,13 @@ func (c *Controller) beginLoadLocked(url string) {
 	// it's served from the listings it can be (see listingFor). Any other load
 	// is an explicit reload, which fetches.
 	c.filterChange = url == c.url && (s.Language != c.loadedLanguage || s.Scanlator != c.loadedScanlator)
+	if urlKey(url) != urlKey(c.url) {
+		// another series: the loaded one goes now, so the window shows the
+		// new one loading rather than the old one with the new name
+		c.series = nil
+		c.selected = nil
+		c.selGen++
+	}
 	c.url = url
 }
 

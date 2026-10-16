@@ -827,6 +827,16 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     if (loading || running) {
       throw 'a series is loading or a download is running';
     }
+    if (urlKey(trimmed) !== urlKey(url)) {
+      // another series: the loaded one goes now, as the backend does, so
+      // the window shows the new one loading
+      loaded = false;
+      title = '';
+      chapters = [];
+      selected = new Set<number>();
+      chaptersBus.emit([]);
+      selectionBus.emit([]);
+    }
     url = trimmed;
     loadError = '';
     loading = true;

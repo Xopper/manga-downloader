@@ -194,6 +194,45 @@ func TestWordPressCategoryFromPage(t *testing.T) {
 	}
 }
 
+// a site's front page (a WordPress page, not a post) whose chapter list is
+// a loop of posts of one category: the category comes from the slug the
+// posts mention most, resolved through the REST API (dragonballmangaa.com)
+func TestWordPressCategoryFromFrontPage(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/wp-json/wp/v2/categories" && r.URL.Query().Get("slug") == "all-chapters" {
+			fmt.Fprint(w, `[{"id":3}]`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	page := `<html><head><link rel="alternate" type="application/json" href="` + srv.URL + `/wp-json/wp/v2/pages/243" /></head>
+	<body class="home page page-id-243">
+	<a href="/category/blogs/">Blog</a>
+	<div class="post-376 post category-all-chapters"><a href="/chapter-92/">Chapter 92</a></div>
+	<div class="post-371 post category-all-chapters"><a href="/chapter-93/">Chapter 93</a></div>
+	<div class="post-370 post category-blogs"><a href="/news/">News</a></div>
+	</body></html>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(page))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := NewWordPressCategory(&Grabber{URL: srv.URL + "/"})
+	got, err := w.categoryFromPage(doc)
+	if err != nil || got != 3 {
+		t.Errorf("categoryFromPage() = %d, %v; want 3, nil", got, err)
+	}
+
+	// a front page that names no category twice is not a series
+	plain := `<html><head><link rel="alternate" href="` + srv.URL + `/wp-json/wp/v2/pages/1" /></head>
+	<body class="home"><a href="/category/x/">x</a></body></html>`
+	doc, _ = goquery.NewDocumentFromReader(strings.NewReader(plain))
+	if got, err := w.categoryFromPage(doc); err != nil || got != 0 {
+		t.Errorf("plain front page: categoryFromPage() = %d, %v; want 0, nil", got, err)
+	}
+}
+
 func TestWordPressCategoryRESTFailureIsNotThisSite(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/wp-json/wp/v2/posts/404") {

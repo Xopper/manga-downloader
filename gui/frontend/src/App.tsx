@@ -27,7 +27,7 @@ import { type BlockedHit, ResultsPanel } from './ResultsPanel';
 import { SeriesAside } from './SeriesAside';
 import { SettingsDrawer } from './SettingsDrawer';
 import { TopBar } from './TopBar';
-import type { Followed, Hit, Options } from './types';
+import type { Followed, Hit, Options, State } from './types';
 import { useSearch } from './useSearch';
 import { useWindow } from './useWindow';
 
@@ -55,6 +55,9 @@ export function App({ api }: { api: Api }) {
   // the finished run's strip, until dismissed; a new run shows it again
   const [stripDismissed, setStripDismissed] = useState(false);
   const [loadRefusal, setLoadRefusal] = useState('');
+  // the series asked for, until the backend's state names it: the page
+  // shows it loading from the click, not the previous series
+  const [pending, setPending] = useState('');
   const [actionError, setActionError] = useState('');
   const [optionError, setOptionError] = useState('');
   // options are written one at a time, each patch over the last set sent
@@ -69,6 +72,14 @@ export function App({ api }: { api: Api }) {
       optionsWriter.pushed(state.options);
     }
   }, [state, optionsWriter]);
+
+  // the backend named the series asked for: its state speaks from here on
+  const stateURL = state?.url ?? '';
+  useEffect(() => {
+    if (pending !== '' && urlKey(stateURL) === urlKey(pending)) {
+      setPending('');
+    }
+  }, [stateURL, pending]);
 
   // a run that starts brings its strip back
   const running = state?.running ?? false;
@@ -98,7 +109,14 @@ export function App({ api }: { api: Api }) {
   const busy = state.loading || state.running;
   const library = state.library;
   const libraryBusy = busy || library.checking || library.batch.active;
-  const followed = followedOf(library, state.url);
+  // until the backend's state names the series asked for, the series page
+  // shows that one loading, never the previous series under its name
+  const target = pending !== '' && urlKey(pending) !== urlKey(state.url) ? pending : '';
+  const view: State =
+    target === ''
+      ? state
+      : { ...state, url: target, loading: true, loaded: false, loadError: '', title: '', chapterCount: 0, selectedCount: 0 };
+  const followed = followedOf(library, view.url);
   const fail = (set: (m: string) => void) => (e: unknown) => set(errorMessage(e));
 
   const load = (target: string) => {
@@ -106,7 +124,11 @@ export function App({ api }: { api: Api }) {
     setActionError('');
     setPage('series');
     search.setQuery('');
-    api.load(target).catch(fail(setLoadRefusal));
+    setPending(target);
+    api.load(target).catch((e: unknown) => {
+      setPending('');
+      fail(setLoadRefusal)(e);
+    });
   };
   // the series page of url: loaded unless it's the loaded one already
   const openSeries = (url: string) => {
@@ -288,19 +310,19 @@ export function App({ api }: { api: Api }) {
             >
               ← Library
             </button>
-            {state.title !== '' && (
+            {view.title !== '' && (
               <>
                 <span className="muted" aria-hidden="true">
                   /
                 </span>
-                <span className="muted crumb-title">{state.title}</span>
+                <span className="muted crumb-title">{view.title}</span>
               </>
             )}
           </nav>
           <ChapterPanel
-            state={state}
-            chapters={chapters}
-            selected={selected}
+            state={view}
+            chapters={target === '' ? chapters : []}
+            selected={target === '' ? selected : []}
             disabled={busy}
             followed={followed}
             onToggle={(index, on) => api.setSelected(index, on)}
@@ -308,19 +330,19 @@ export function App({ api }: { api: Api }) {
             onSetAll={(on) => api.setAll(on)}
             onRange={(text) => api.selectRange(text)}
             onVolumes={(text) => api.setVolumes(text)}
-            onReload={() => load(state.url)}
+            onReload={() => load(view.url)}
             onError={setActionError}
             onPick={pickFilter}
             onOptions={setOptions}
           />
           <SeriesAside
-            state={state}
-            chapters={chapters}
-            selected={selected}
+            state={view}
+            chapters={target === '' ? chapters : []}
+            selected={target === '' ? selected : []}
             followed={followed}
             actionError={actionError}
             onFollow={followLoaded}
-            onUnfollow={() => unfollow(state.url)}
+            onUnfollow={() => unfollow(view.url)}
             onOpenURL={(url) => api.openURL(url)}
             onOptions={setOptions}
             onChooseFolder={async () => {

@@ -550,7 +550,9 @@ func TestSelectionRefusedWhileBusy(t *testing.T) {
 	close(gate)
 	waitFinished(t, c)
 
-	if err := c.BeginLoad("https://example.com/manga/other"); err != nil {
+	// a reload of the loaded series keeps its list while it loads (a load of
+	// another series drops it, see TestBeginLoadOfAnotherSeriesDropsTheLoadedOne)
+	if err := c.BeginLoad("https://example.com/manga/test"); err != nil {
 		t.Fatal(err)
 	}
 	check("loading")
@@ -719,4 +721,30 @@ func TestEventsNameTheReleaseWhenCopiesNeedAGroup(t *testing.T) {
 			}
 		})
 	}
+}
+
+// a load of another series drops the loaded one at once, so the window shows
+// the new series loading rather than the old list under the new name; a
+// reload of the same series keeps its list meanwhile
+func TestBeginLoadOfAnotherSeriesDropsTheLoadedOne(t *testing.T) {
+	c, _, _ := newTestController(t, false, nil, chapters(3, 1)...)
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.BeginLoad("https://example.com/manga/test/"); err != nil {
+		t.Fatal(err)
+	}
+	if !c.Loaded() || c.Title() != "Test Series" {
+		t.Error("a reload of the same series dropped its list")
+	}
+	if err := c.FinishLoad("https://example.com/manga/test/"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.BeginLoad("https://example.com/manga/other"); err != nil {
+		t.Fatal(err)
+	}
+	if c.Loaded() || c.Title() != "" || len(c.Chapters()) != 0 || c.URL() != "https://example.com/manga/other" {
+		t.Errorf("after a load of another series: loaded %v, title %q, %d chapters, url %s", c.Loaded(), c.Title(), len(c.Chapters()), c.URL())
+	}
+	_ = c.FinishLoad("https://example.com/manga/other")
 }
