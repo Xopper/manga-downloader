@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -162,6 +163,9 @@ func (a *App) startup(ctx context.Context, rt *wailsRuntime) {
 			return
 		}
 		a.ctrl.SetCatalog(openCatalog())
+		// the read's garbage (the files' bytes, twice the catalogs' size) goes
+		// back to the system now rather than at the next collection
+		debug.FreeOSMemory()
 		a.ctrl.RefreshCatalog(a.updateCtx, false)
 	}()
 	// followed series that have no cover yet (followed before covers
