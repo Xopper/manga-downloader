@@ -5,11 +5,12 @@ import { createMockApi } from './mock';
 import { ProgressStrip } from './ProgressStrip';
 import type { State } from './types';
 
-function render(state: State, dismissed = false): string {
+function render(state: State, dismissed = false, runShownElsewhere = false): string {
   return renderToStaticMarkup(
     createElement(ProgressStrip, {
       state,
       dismissed,
+      runShownElsewhere,
       onDetails: () => undefined,
       onCancel: () => undefined,
       onOpenFolder: () => undefined,
@@ -31,6 +32,12 @@ describe('ProgressStrip', () => {
     expect(markup).toContain('role="progressbar"');
     expect(markup).toContain('>Details<');
     expect(markup).toContain('Cancel');
+  });
+  it('leaves the running download out when the page shows it already, but not how it ended', async () => {
+    const running = await createMockApi({ scenario: 'running', freeze: true }).state();
+    expect(render(running, false, true)).toBe('');
+    const done = await createMockApi({ scenario: 'done', freeze: true }).state();
+    expect(render(done, false, true)).toContain('Open folder');
   });
   it('says the run is cancelling', async () => {
     const state = await createMockApi({ scenario: 'cancelling', freeze: true }).state();

@@ -11,13 +11,18 @@ interface Props {
   state: State;
   /** The finished run's line was dismissed */
   dismissed: boolean;
+  /** The page shows the running download already (the series page's dock): the strip leaves it out */
+  runShownElsewhere?: boolean;
   onDetails: () => void;
   onCancel: () => void;
   onOpenFolder: () => void;
   onDismiss: () => void;
 }
 
-export function ProgressStrip({ state, dismissed, onDetails, onCancel, onOpenFolder, onDismiss }: Props) {
+export function ProgressStrip({ state, dismissed, runShownElsewhere = false, onDetails, onCancel, onOpenFolder, onDismiss }: Props) {
+  if (state.running && runShownElsewhere) {
+    return null;
+  }
   if (state.running) {
     const overall = overallProgress(state);
     const pct = Math.round(overall.fraction * 100);

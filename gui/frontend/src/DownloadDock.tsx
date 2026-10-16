@@ -21,9 +21,11 @@ interface Props {
   /** Picks the new chapters and starts */
   onStartNew: () => void;
   onCancel: () => void;
+  /** Opens the per-chapter activity of the running download */
+  onDetails?: () => void;
 }
 
-export function DownloadDock({ state, error, chapters, selected, fresh, onStart, onStartNew, onCancel }: Props) {
+export function DownloadDock({ state, error, chapters, selected, fresh, onStart, onStartNew, onCancel, onDetails }: Props) {
   // Download and Cancel are different buttons, so the focus moves to the other
   // one when the run starts or ends, rather than falling to the body
   const focused = useRef<'start' | 'cancel' | null>(null);
@@ -77,6 +79,12 @@ export function DownloadDock({ state, error, chapters, selected, fresh, onStart,
           </div>
           {state.cancelling && <p className="hint">Chapters already downloading will finish; no new ones start.</p>}
         </div>
+        <div className="dock-actions">
+        {onDetails && (
+          <button type="button" className="btn ghost" onClick={onDetails}>
+            Details
+          </button>
+        )}
         {/* aria-disabled, not disabled: a disabled button drops its focus, and Cancel's focus must survive to the run's end */}
         <button
           type="button"
@@ -93,6 +101,7 @@ export function DownloadDock({ state, error, chapters, selected, fresh, onStart,
         >
           <XIcon /> {state.cancelling ? 'Cancelling…' : 'Cancel'}
         </button>
+        </div>
         {error !== '' && (
           <p className="error-text small" role="alert">
             {error}

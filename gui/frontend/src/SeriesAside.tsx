@@ -30,11 +30,13 @@ interface Props {
   /** Selects these chapters (the new ones) and starts, from a dock with nothing picked */
   onStartNew: (indices: number[]) => void;
   onCancel: () => void;
+  /** Opens the per-chapter activity of the running download */
+  onDetails: () => void;
 }
 
 export function SeriesAside(props: Props) {
   const { state, chapters, selected, followed, actionError } = props;
-  const { onFollow, onUnfollow, onOpenURL, onOptions, onChooseFolder, onError, onStart, onStartNew, onCancel } = props;
+  const { onFollow, onUnfollow, onOpenURL, onOptions, onChooseFolder, onError, onStart, onStartNew, onCancel, onDetails } = props;
   const host = hostOf(state.url);
   const title = state.title !== '' ? state.title : followed?.title ?? host;
   const letter = (title.trim()[0] ?? '?').toUpperCase();
@@ -108,6 +110,7 @@ export function SeriesAside(props: Props) {
         onStart={onStart}
         onStartNew={() => onStartNew(fresh)}
         onCancel={onCancel}
+        onDetails={onDetails}
       />
     </aside>
   );

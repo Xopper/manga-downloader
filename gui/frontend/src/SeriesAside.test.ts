@@ -23,6 +23,7 @@ function render(state: State, followed: Followed | null, chapters: Chapter[] = [
       onStart: () => undefined,
       onStartNew: () => undefined,
       onCancel: () => undefined,
+      onDetails: () => undefined,
     }),
   );
 }

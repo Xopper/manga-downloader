@@ -422,6 +422,7 @@ export function App({ api }: { api: Api }) {
                 .then(() => api.start())
                 .catch(fail(setActionError));
             }}
+            onDetails={() => setActivityOpen(true)}
             onCancel={() => {
               api.cancel().catch(fail(setActionError));
             }}
@@ -432,6 +433,8 @@ export function App({ api }: { api: Api }) {
       <ProgressStrip
         state={state}
         dismissed={stripDismissed}
+        // the series page's dock shows the run itself: one progress bar, not two
+        runShownElsewhere={!results && page !== 'home' && target === ''}
         onDetails={() => setActivityOpen(true)}
         onCancel={() => {
           api.cancel().catch(fail(setActionError));

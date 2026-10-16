@@ -1608,6 +1608,15 @@ fieldset:disabled .check {
   color: var(--text-2);
 }
 
+.dock-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.dock-actions .btn.danger-outline {
+  flex: 1;
+}
+
 .dock-progress {
   display: grid;
   gap: 7px;
