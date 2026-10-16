@@ -124,6 +124,9 @@ type runStats struct {
 	// once the bundle is written
 	savedNumbers []float64
 	downloaded   []float64
+	// savedFiles is the file each saved chapter went to, Dir and Format
+	// filled in when the run ends
+	savedFiles []SavedFile
 }
 
 // Controller holds the state of the app and runs the core flow. It knows
@@ -135,6 +138,8 @@ type runStats struct {
 // shares memory with the event goroutines.
 type Controller struct {
 	notify func()
+	// onDisk answers whether a saved chapter's file is still there
+	onDisk presence
 	// identify finds the site for a URL; core.Identify, replaced in tests
 	identify func(url string, s *grabber.Settings) (grabber.Site, []error)
 	// closeBrowser is browser.Close, replaced in tests
@@ -1332,6 +1337,16 @@ func (c *Controller) Start() error {
 		c.mu.Unlock()
 		return errors.New("select at least one chapter")
 	}
+	// a chapter whose file is already in this folder, in this format, isn't
+	// saved again (a bundle or volumes pack every chosen chapter)
+	already := 0
+	if !c.settings.Bundle && !volumes {
+		chapters, already = c.dropSavedLocked(chapters)
+		if len(chapters) == 0 {
+			c.mu.Unlock()
+			return fmt.Errorf("the %s chosen already in this folder, as %s", plural(already, "chapter is", "chapters are"), formatName(c.settings.Format))
+		}
+	}
 	rows := len(chapters)
 	if c.settings.Bundle {
 		rows = 1
@@ -1373,6 +1388,9 @@ func (c *Controller) Start() error {
 	rng := c.rng
 	url := c.url
 	c.appendLogLocked(LogInfo, fmt.Sprintf("Downloading %d chapter(s) of %s", len(chapters), series.Title))
+	if already > 0 {
+		c.appendLogLocked(LogInfo, fmt.Sprintf("Skipping %s already in %s", plural(already, "chapter", "chapters"), settings.OutputDir))
+	}
 	c.mu.Unlock()
 	c.emit()
 
@@ -1395,11 +1413,16 @@ func (c *Controller) run(ctx context.Context, url string, series *core.Series, s
 	c.mu.Lock()
 	defer func() {
 		saved := c.stats.savedNumbers
+		files := c.stats.savedFiles
+		for i := range files {
+			files[i].Dir, files[i].Format = settings.OutputDir, settings.Format
+		}
 		numbers := chapterNumbers(series.Chapters)
 		c.mu.Unlock()
 		// a run that saved something adds its chapters to the library's entry
 		if len(saved) > 0 {
-			if lerr := c.library.MarkSaved(url, saved, numbers); lerr != nil {
+			c.onDisk.forget()
+			if lerr := c.library.MarkSavedFiles(url, saved, files, numbers); lerr != nil {
 				c.addLog(LogWarn, "could not save the library: "+lerr.Error())
 			}
 		}
@@ -1439,6 +1462,9 @@ func (c *Controller) run(ctx context.Context, url string, series *core.Series, s
 		// the bundle's chapters reached the disk with it
 		if c.bundle != nil && c.stats.saved > 0 {
 			c.stats.savedNumbers = append(c.stats.savedNumbers, c.stats.downloaded...)
+			for _, n := range c.stats.downloaded {
+				c.stats.savedFiles = append(c.stats.savedFiles, SavedFile{Number: n, Name: file})
+			}
 		}
 	}
 	if c.bundle != nil {
@@ -1707,6 +1733,7 @@ func (e events) Packed(ch *grabber.Chapter, name string, err error) {
 	} else {
 		c.stats.saved++
 		c.stats.savedNumbers = append(c.stats.savedNumbers, ch.GetNumber())
+		c.stats.savedFiles = append(c.stats.savedFiles, SavedFile{Number: ch.GetNumber(), Name: name})
 		if j != nil {
 			j.State = JobDone
 			// the skipped pages were never counted, so the bar is exact only now
@@ -1836,6 +1863,7 @@ func (e events) VolumePacked(v *core.Volume, name string, err error) {
 		c.stats.volumes++
 		for _, ch := range v.Chapters {
 			c.stats.savedNumbers = append(c.stats.savedNumbers, ch.GetNumber())
+			c.stats.savedFiles = append(c.stats.savedFiles, SavedFile{Number: ch.GetNumber(), Name: name})
 		}
 		if j != nil {
 			j.State = JobDone

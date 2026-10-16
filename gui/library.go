@@ -47,10 +47,16 @@ type Followed struct {
 	// shows "saved" on those only: saving chapter 355 alone says nothing of
 	// 1 to 354. A library from before it knows only SavedUpTo, which load
 	// takes as the one chapter known saved.
-	Saved      []float64 `json:"saved,omitempty"`
-	FollowedAt time.Time `json:"followedAt"`
-	CheckedAt  time.Time `json:"checkedAt,omitempty"`
-	LastSaved  time.Time `json:"lastSaved,omitempty"`
+	Saved []float64 `json:"saved,omitempty"`
+	// Files is where each saved chapter went (savedfiles.go): the window
+	// shows a chapter saved only while its file is in the folder and format
+	// chosen now. FilesChecked is set once the chapters saved before Files
+	// existed were looked for on disk (AdoptFiles).
+	Files        []SavedFile `json:"files,omitempty"`
+	FilesChecked bool        `json:"filesChecked,omitempty"`
+	FollowedAt   time.Time   `json:"followedAt"`
+	CheckedAt    time.Time   `json:"checkedAt,omitempty"`
+	LastSaved    time.Time   `json:"lastSaved,omitempty"`
 	// Error is the last check's failure, "" once one succeeds
 	Error string `json:"error,omitempty"`
 	// Cover is the file name of the series' cover in the covers dir (see
@@ -203,6 +209,9 @@ func (l *Library) Follow(f Followed) error {
 			f.Saved = l.followed[i].Saved
 			f.LastSaved = l.followed[i].LastSaved
 		}
+		if len(f.Files) == 0 {
+			f.Files, f.FilesChecked = l.followed[i].Files, l.followed[i].FilesChecked
+		}
 		if !f.Baselined {
 			f.Known, f.Baselined, f.New = l.followed[i].Known, l.followed[i].Baselined, l.followed[i].New
 		}
@@ -280,7 +289,14 @@ func (l *Library) MarkFailed(url string, err error) error {
 // it) and recounts what's new from numbers, the listed chapters. A URL not
 // followed is a no-op.
 func (l *Library) MarkSaved(url string, saved []float64, numbers []float64) error {
+	return l.MarkSavedFiles(url, saved, nil, numbers)
+}
+
+// MarkSavedFiles is MarkSaved that also records the files the chapters went
+// to; an entry for the same chapter, folder and format is replaced
+func (l *Library) MarkSavedFiles(url string, saved []float64, files []SavedFile, numbers []float64) error {
 	return l.Update(url, func(f *Followed) {
+		f.Files = addFiles(f.Files, files)
 		f.Saved = mergeNumbers(f.Saved, saved)
 		if upTo := maxNumber(saved); upTo > f.SavedUpTo {
 			f.SavedUpTo = upTo

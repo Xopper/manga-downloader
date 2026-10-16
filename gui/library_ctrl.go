@@ -24,8 +24,24 @@ import (
 func (c *Controller) SetLibrary(l *Library) {
 	c.mu.Lock()
 	c.library = l
+	dir, format := c.settings.OutputDir, c.settings.Format
 	c.mu.Unlock()
+	if err := l.AdoptFiles(dir, format); err != nil {
+		c.addLog(LogWarn, "could not save the library: "+err.Error())
+	}
 	c.emit()
+}
+
+// SavedHere returns the numbers of url's chapters saved in the folder and
+// format chosen now whose files are still there, sorted (nil when url
+// isn't followed)
+func (c *Controller) SavedHere(url string) []float64 {
+	f, ok := c.Library().Get(url)
+	if !ok {
+		return nil
+	}
+	s := c.Settings()
+	return f.SavedIn(s.OutputDir, s.Format, c.onDisk.exists)
 }
 
 // Library returns the library

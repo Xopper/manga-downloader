@@ -109,7 +109,7 @@ export function librarySummary(library: Pick<LibraryInfo, 'followed' | 'checking
 
 /** Whether a chapter numbered number is new: listed since the series was followed, and not saved */
 function isNew(number: number, f: Followed): boolean {
-  return f.baselined && !f.known.includes(number) && !f.saved.includes(number);
+  return f.baselined && !f.known.includes(number) && !f.everSaved.includes(number);
 }
 
 /** The indices of a followed series' new chapters: listed since it was followed, not saved since */
@@ -118,7 +118,7 @@ export function newIndices(chapters: Chapter[], f: Followed | null): number[] {
     return [];
   }
   const known = new Set(f.known);
-  const saved = new Set(f.saved);
+  const saved = new Set(f.everSaved);
   return chapters.filter((c) => !known.has(c.number) && !saved.has(c.number)).map((c) => c.index);
 }
 

@@ -129,10 +129,15 @@ export interface Followed {
   /** The listed chapter count and the highest number, as of the last load or check */
   chapters: number;
   latest: number;
-  /** The highest chapter number the app saved for it, 0 when it never did */
+  /** The highest chapter number saved in the folder and format chosen now, 0 when none is */
   savedUpTo: number;
-  /** The numbers of the chapters the app saved, sorted: only these show "saved" */
+  /**
+   * The numbers of the chapters saved in the folder and format chosen now,
+   * their files still there, sorted: only these show "saved"
+   */
   saved: number[];
+  /** Every chapter the app saved for it, in any folder: never new */
+  everSaved: number[];
   /** The numbers listed when the series was followed (or first loaded since): never new */
   known: number[];
   /** Whether known was taken; until then no chapter is new */

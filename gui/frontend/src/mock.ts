@@ -181,6 +181,7 @@ function mockLibrary(): Followed[] {
       latest: 1194,
       savedUpTo: 1182,
       saved: OP_CHAPTERS.map(([number]) => number).filter((number) => number <= 1182),
+      everSaved: OP_CHAPTERS.map(([number]) => number).filter((number) => number <= 1182),
       known: OP_CHAPTERS.map(([number]) => number).filter((number) => number <= 1182),
       baselined: true,
       new: 12,
@@ -199,6 +200,7 @@ function mockLibrary(): Followed[] {
       latest: 379,
       savedUpTo: 379,
       saved: Array.from({ length: 379 }, (_, i) => i + 1),
+      everSaved: Array.from({ length: 379 }, (_, i) => i + 1),
       known: Array.from({ length: 379 }, (_, i) => i + 1),
       baselined: true,
       new: 0,
@@ -217,6 +219,7 @@ function mockLibrary(): Followed[] {
       latest: 0,
       savedUpTo: 0,
       saved: [],
+      everSaved: [],
       known: [],
       baselined: false,
       new: 0,
@@ -555,6 +558,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     if (f !== undefined && savedNumbers.length > 0) {
       f.savedUpTo = Math.max(f.savedUpTo, ...savedNumbers);
       f.saved = [...new Set([...f.saved, ...savedNumbers])].sort((a, b) => a - b);
+      f.everSaved = [...new Set([...f.everSaved, ...savedNumbers])].sort((a, b) => a - b);
       f.new = newIndices(chapters, f).length;
       f.lastSaved = new Date().toISOString();
     }

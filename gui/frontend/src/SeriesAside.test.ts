@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { followedOf } from './library';
 import { createMockApi } from './mock';
-import { SeriesAside } from './SeriesAside';
+import { alreadyHere, chapterMarks, MAP_PAGE, SeriesAside, startPage } from './SeriesAside';
 import type { Chapter, Followed, State } from './types';
 
 function render(state: State, followed: Followed | null, chapters: Chapter[] = []): string {
@@ -37,9 +37,11 @@ describe('SeriesAside', () => {
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain(' Following</button>');
     expect(markup).toContain('class="progress-card"');
-    expect(markup).toContain('Saved up to chapter <strong class="num">1182</strong>');
+    expect(markup).toMatch(/<strong class="num">[\d,]+<\/strong> of 597 saved/);
     expect(markup).toContain('597 chapters · latest 1194');
+    // without the chapter list there are no squares, only the bar
     expect(markup).toContain('role="progressbar"');
+    expect(markup).not.toContain('map-grid');
     expect(markup).toContain('Save as');
     expect(markup).toContain('Browse…');
     expect(markup).toContain('Download');
@@ -83,5 +85,72 @@ describe('SeriesAside', () => {
     const markup = render({ ...state, options: { ...state.options, outputDir: '/Users/reader/Downloads' } }, null);
     expect(markup).toContain('<bdi>~/Downloads</bdi>');
     expect(markup.match(/Users\/reader\/Downloads/g)?.length).toBe(2); // the two tooltips
+  });
+});
+
+/** chapters 1..n, listed newest first as sites list them */
+function listOf(n: number): Chapter[] {
+  return Array.from({ length: n }, (_, i) => ({ index: i, number: n - i }) as Chapter);
+}
+
+function entry(over: Partial<Followed>): Followed {
+  return {
+    url: 'https://example.com/manga/x',
+    title: 'X',
+    site: 'example.com',
+    downloadable: true,
+    chapters: 50,
+    latest: 50,
+    savedUpTo: 0,
+    saved: [],
+    everSaved: [],
+    known: Array.from({ length: 50 }, (_, i) => i + 1),
+    baselined: true,
+    new: 0,
+    followedAt: '',
+    checkedAt: '',
+    lastSaved: '',
+    error: '',
+    cover: '',
+    ...over,
+  };
+}
+
+describe('the chapter map', () => {
+  it('marks only the chapter saved, in chapter order', () => {
+    const marks = chapterMarks(listOf(50), entry({ saved: [20], everSaved: [20] }));
+    expect(marks.map((m) => m.number).slice(0, 3)).toEqual([1, 2, 3]);
+    expect(marks.filter((m) => m.mark === 'saved').map((m) => m.number)).toEqual([20]);
+    expect(marks.filter((m) => m.mark === 'new')).toEqual([]);
+  });
+  it('marks what came out since the follow as new', () => {
+    const f = entry({ known: Array.from({ length: 50 }, (_, i) => i + 1), new: 3 });
+    const marks = chapterMarks(listOf(53), f);
+    expect(marks.filter((m) => m.mark === 'new').map((m) => m.number)).toEqual([51, 52, 53]);
+  });
+  it('opens on the page with the first new chapter, else the first not saved, else the last', () => {
+    const all = Array.from({ length: 1000 }, (_, i) => i + 1);
+    const known = all.slice(0, 990);
+    expect(startPage(chapterMarks(listOf(1000), entry({ known, saved: all.slice(0, 500) })))).toBe(9);
+    expect(startPage(chapterMarks(listOf(1000), entry({ known: all, saved: all.slice(0, 250) })))).toBe(2);
+    expect(startPage(chapterMarks(listOf(1000), entry({ known: all, saved: all })))).toBe(9);
+    expect(MAP_PAGE).toBe(100);
+  });
+  it('draws a page of squares with a pager for a long series', async () => {
+    const state = await createMockApi({ scenario: 'loaded', freeze: true }).state();
+    const f = entry({ url: state.url, saved: [20], everSaved: [20] });
+    const markup = render(state, f, listOf(250));
+    expect(markup).toContain('<strong class="num">1</strong> of');
+    expect((markup.match(/class="map-sq/g) ?? []).length).toBe(100 + 3);
+    expect(markup).toContain('Chapters 1–100');
+    expect(markup).toContain('1 of 3');
+    expect(markup).toContain('title="Chapter 20 · saved"');
+    expect(markup).not.toContain('role="progressbar"');
+  });
+  it('counts the picked chapters already saved here', () => {
+    const f = entry({ saved: [1, 2, 3] });
+    const list = listOf(10); // index 0 is chapter 10, index 9 chapter 1
+    expect(alreadyHere(list, [9, 8, 0], f)).toBe(2);
+    expect(alreadyHere(list, [9], null)).toBe(0);
   });
 });

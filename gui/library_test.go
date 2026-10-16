@@ -274,10 +274,11 @@ func TestMarkSavedKeepsTheChaptersSaved(t *testing.T) {
 	if !slices.Equal(f.Saved, []float64{353, 355, 357}) || f.SavedUpTo != 357 || f.New != 0 {
 		t.Errorf("entry = %+v", f)
 	}
-	if dto := followedDTO(f); !slices.Equal(dto.Saved, f.Saved) {
+	// with no file recorded, no folder holds them
+	if dto := followedDTO(f, "/out", "cbz", func(string) bool { return true }); len(dto.Saved) != 0 {
 		t.Errorf("dto saved = %v", dto.Saved)
 	}
-	if dto := followedDTO(Followed{URL: url}); dto.Saved == nil {
+	if dto := followedDTO(Followed{URL: url}, "/out", "cbz", nil); dto.Saved == nil {
 		t.Error("the window gets [] for nothing saved, not null")
 	}
 }

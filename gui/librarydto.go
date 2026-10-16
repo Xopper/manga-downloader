@@ -23,9 +23,13 @@ type FollowedDTO struct {
 	// Baselined is false until it was taken (no chapter is new before)
 	Known     []float64 `json:"known"`
 	Baselined bool      `json:"baselined"`
-	// Saved is the numbers of the chapters saved, never null
+	// Saved is the numbers of the chapters saved in the folder and format
+	// chosen now, their files still there; never null
 	Saved []float64 `json:"saved"`
-	New   int       `json:"new"`
+	// EverSaved is every chapter the app saved for it, wherever: those are
+	// never new (see Followed.NewNumbers)
+	EverSaved []float64 `json:"everSaved"`
+	New       int       `json:"new"`
 	// FollowedAt, CheckedAt and LastSaved are RFC 3339, "" when unset
 	FollowedAt string `json:"followedAt"`
 	CheckedAt  string `json:"checkedAt"`
@@ -63,7 +67,10 @@ func timeDTO(t time.Time) string {
 	return t.UTC().Format(time.RFC3339)
 }
 
-func followedDTO(f Followed) FollowedDTO {
+// followedDTO is f as the window shows it: saved is what's in the folder
+// and format chosen now (dir, format), and savedUpTo the highest of it
+func followedDTO(f Followed, dir, format string, onDisk func(string) bool) FollowedDTO {
+	here := f.SavedIn(dir, format, onDisk)
 	return FollowedDTO{
 		URL:          f.URL,
 		Title:        f.Title,
@@ -71,8 +78,9 @@ func followedDTO(f Followed) FollowedDTO {
 		Downloadable: f.Downloadable,
 		Chapters:     f.Chapters,
 		Latest:       f.Latest,
-		SavedUpTo:    f.SavedUpTo,
-		Saved:        append([]float64{}, f.Saved...),
+		SavedUpTo:    maxNumber(here),
+		Saved:        append([]float64{}, here...),
+		EverSaved:    append([]float64{}, f.Saved...),
 		Known:        append([]float64{}, f.Known...),
 		Baselined:    f.Baselined,
 		New:          f.New,
@@ -102,8 +110,9 @@ func libraryDTO(c *Controller) LibraryDTO {
 		CheckTotal: total,
 		Batch:      BatchDTO{Active: batch.Active, Done: batch.Done, Total: batch.Total, Current: batch.Current, CurrentURL: batch.CurrentURL},
 	}
+	s := c.Settings()
 	for _, f := range c.Library().List() {
-		dto.Followed = append(dto.Followed, followedDTO(f))
+		dto.Followed = append(dto.Followed, followedDTO(f, s.OutputDir, s.Format, c.onDisk.exists))
 	}
 	return dto
 }

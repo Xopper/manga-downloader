@@ -23,6 +23,7 @@ function followed(over: Partial<Followed>): Followed {
     latest: 10,
     savedUpTo: 8,
     saved: [1, 2, 3, 4, 5, 6, 7, 8],
+    everSaved: [1, 2, 3, 4, 5, 6, 7, 8],
     // followed at 8: 9 and 10 came out since
     known: [1, 2, 3, 4, 5, 6, 7, 8],
     baselined: true,
@@ -116,7 +117,10 @@ describe('chapters of a followed series', () => {
   const chapters: Chapter[] = [7, 8, 9, 10].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0 }));
   it('lists as new what came out since the follow and is not saved', () => {
     expect(newIndices(chapters, followed({}))).toEqual([2, 3]);
-    expect(newIndices(chapters, followed({ saved: [1, 2, 3, 4, 5, 6, 7, 8, 9] }))).toEqual([3]);
+    expect(newIndices(chapters, followed({ everSaved: [1, 2, 3, 4, 5, 6, 7, 8, 9] }))).toEqual([3]);
+    // saved in another folder: not saved here, but not new either
+    expect(newIndices(chapters, followed({ saved: [], everSaved: [9] }))).toEqual([3]);
+    expect(chapterMark(9, followed({ saved: [], everSaved: [9] }))).toBe('');
     // followed when 1 to 10 were out: nothing is new, saved or not
     expect(newIndices(chapters, followed({ known: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], saved: [] }))).toEqual([]);
     expect(newIndices(chapters, followed({ baselined: false }))).toEqual([]);

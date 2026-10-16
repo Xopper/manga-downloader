@@ -17,6 +17,8 @@ interface Props {
   selected: number[];
   /** The followed series' new chapters, which the button offers when nothing is picked */
   fresh: number[];
+  /** How many picked chapters are already in the folder, in the format, chosen: the run skips them */
+  already?: number;
   onStart: () => void;
   /** Picks the new chapters and starts */
   onStartNew: () => void;
@@ -25,7 +27,7 @@ interface Props {
   onDetails?: () => void;
 }
 
-export function DownloadDock({ state, error, chapters, selected, fresh, onStart, onStartNew, onCancel, onDetails }: Props) {
+export function DownloadDock({ state, error, chapters, selected, fresh, already = 0, onStart, onStartNew, onCancel, onDetails }: Props) {
   // Download and Cancel are different buttons, so the focus moves to the other
   // one when the run starts or ends, rather than falling to the body
   const focused = useRef<'start' | 'cancel' | null>(null);
@@ -115,17 +117,30 @@ export function DownloadDock({ state, error, chapters, selected, fresh, onStart,
   // than sitting there dead
   const nothingPicked = state.loaded && !state.loading && !state.stale && state.selectedCount === 0;
   const quick = nothingPicked && fresh.length > 0 && downloadBlocker({ ...state, selectedCount: fresh.length }) === '';
-  const blocker = quick ? '' : downloadBlocker(state);
-  const count = quick ? fresh.length : state.selectedCount;
+  // the picked chapters already in this folder, as this format, are skipped
+  const skipping = quick || nothingPicked ? 0 : Math.min(already, state.selectedCount);
+  const allThere = skipping > 0 && skipping === state.selectedCount;
+  let blocker = quick ? '' : downloadBlocker(state);
+  if (blocker === '' && allThere) {
+    blocker = `${skipping === 1 ? "It's" : "They're all"} in this folder already. Pick others, or choose another folder or format to save ${skipping === 1 ? 'it' : 'them'} again.`;
+  }
+  const count = (quick ? fresh.length : state.selectedCount) - skipping;
   const o = state.options;
   let text = label;
   if (quick) {
     text = `Download ${plural(fresh.length, 'new chapter', 'new chapters')}`;
   } else if (nothingPicked) {
     text = 'Pick chapters to download';
+  } else if (allThere) {
+    text = 'Already in this folder';
+  } else if (skipping > 0) {
+    text = `Download ${plural(count, 'chapter', 'chapters')}`;
   }
   // the label says it already: no hint repeating it underneath
-  const hint = quick ? 'Nothing picked: this gets the chapters that came out since you followed it.' : nothingPicked ? '' : blocker;
+  let hint = quick ? 'Nothing picked: this gets the chapters that came out since you followed it.' : nothingPicked ? '' : blocker;
+  if (hint === '' && skipping > 0) {
+    hint = `${plural(skipping, 'picked chapter is', 'picked chapters are')} already in this folder, so ${skipping === 1 ? "it's" : "they're"} skipped.`;
+  }
   return (
     <div className="dock">
       {count > 0 && (
@@ -143,7 +158,7 @@ export function DownloadDock({ state, error, chapters, selected, fresh, onStart,
         onBlur={() => (focused.current = null)}
         onClick={quick ? onStartNew : onStart}
       >
-        {!nothingPicked || quick ? <DownloadIcon /> : null} {text}
+        {(!nothingPicked || quick) && !allThere ? <DownloadIcon /> : null} {text}
       </button>
       {error !== '' ? (
         <p className="error-text small" role="alert">

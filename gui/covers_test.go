@@ -236,10 +236,10 @@ func TestCoverHandlerServesOnlyCoverNames(t *testing.T) {
 
 func TestFollowedDTOCarriesTheCoverPath(t *testing.T) {
 	name := coverFile("https://example.com/manga/x")
-	if got := followedDTO(Followed{URL: "https://example.com/manga/x", Cover: name}).Cover; got != "/covers/"+name {
+	if got := followedDTO(Followed{URL: "https://example.com/manga/x", Cover: name}, "", "", nil).Cover; got != "/covers/"+name {
 		t.Errorf("Cover = %q", got)
 	}
-	if got := followedDTO(Followed{URL: "https://example.com/manga/x"}).Cover; got != "" {
+	if got := followedDTO(Followed{URL: "https://example.com/manga/x"}, "", "", nil).Cover; got != "" {
 		t.Errorf("Cover without one = %q", got)
 	}
 }
