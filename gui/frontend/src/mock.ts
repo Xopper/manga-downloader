@@ -10,7 +10,8 @@
 // release build (v1.16.1 with &shot, v1.12.0 without) with a newer release
 // (v1.17.0 with &shot, v1.13.0 without): the status bar shows the yellow "!".
 // check is loading a site that needs the browser window, with the alert asking
-// the user to look at it; loading a URL with "check" in it does the same until
+// the user to look at it; loading a URL with "check" in it does the same (and
+// one with "slow" in it just takes 3 s) until
 // the load ends. &freeze stops the simulated run from moving (stable
 // screenshots), &dupes lists some numbers twice in two languages, &chapters=N
 // shows the newest N chapters, &novolumes lists no volumes (the series
@@ -843,7 +844,8 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     browserAuto = trimmed.includes('check');
     browserAlert = browserAuto ? MOCK_ALERT : '';
     push();
-    await new Promise((resolve) => setTimeout(resolve, browserAuto ? 3000 : 400));
+    // a link with "slow" in it takes 3 s, to see what the window does meanwhile
+    await new Promise((resolve) => setTimeout(resolve, browserAuto || trimmed.includes('slow') ? 3000 : 400));
     browserAlert = '';
     if (trimmed.includes('unknown')) {
       failLoad();

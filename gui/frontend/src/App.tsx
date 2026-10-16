@@ -58,6 +58,9 @@ export function App({ api }: { api: Api }) {
   // the series asked for, until the backend's state names it: the page
   // shows it loading from the click, not the previous series
   const [pending, setPending] = useState('');
+  // a series asked for while another one loads: loaded next, once that
+  // load ends, instead of refused
+  const [queued, setQueued] = useState('');
   const [actionError, setActionError] = useState('');
   const [optionError, setOptionError] = useState('');
   // options are written one at a time, each patch over the last set sent
@@ -80,6 +83,27 @@ export function App({ api }: { api: Api }) {
       setPending('');
     }
   }, [stateURL, pending]);
+
+  // the load that waited for the one before it
+  const loading = state?.loading ?? false;
+  useEffect(() => {
+    if (queued === '' || loading) {
+      return;
+    }
+    const target = queued;
+    setQueued('');
+    api.load(target).catch((e: unknown) => {
+      setPending('');
+      setLoadRefusal(errorMessage(e));
+    });
+  }, [queued, loading, api]);
+
+  // a refusal is about the moment it was made: a load that starts clears it
+  useEffect(() => {
+    if (loading) {
+      setLoadRefusal('');
+    }
+  }, [loading]);
 
   // a run that starts brings its strip back
   const running = state?.running ?? false;
@@ -119,11 +143,38 @@ export function App({ api }: { api: Api }) {
   const followed = followedOf(library, view.url);
   const fail = (set: (m: string) => void) => (e: unknown) => set(errorMessage(e));
 
+  // opens the series page of target and loads it. While another series
+  // loads, target waits its turn (the page shows it loading meanwhile);
+  // while a download or a library check runs, nothing can load, and the
+  // message says what to do.
   const load = (target: string) => {
     setLoadRefusal('');
     setActionError('');
+    if (state.running) {
+      setLoadRefusal('A download is running. Wait for it to finish, or stop it, before opening another series.');
+      return;
+    }
+    if (library.batch.active) {
+      setLoadRefusal('Every new chapter is being downloaded. Wait for it to finish, or stop it, before opening another series.');
+      return;
+    }
+    if (library.checking) {
+      setLoadRefusal('The library is being checked for new chapters. Wait for it to finish, or stop it, before opening a series.');
+      return;
+    }
     setPage('series');
     search.setQuery('');
+    if (state.loading) {
+      // the series loading already: nothing to queue, its page is up
+      if (urlKey(target) === urlKey(state.url)) {
+        setPending('');
+        setQueued('');
+        return;
+      }
+      setPending(target);
+      setQueued(target);
+      return;
+    }
     setPending(target);
     api.load(target).catch((e: unknown) => {
       setPending('');
@@ -224,6 +275,10 @@ export function App({ api }: { api: Api }) {
         onSettings={() => setSettingsOpen((o) => !o)}
         settingsOpen={settingsOpen}
         problem={problem}
+        onDismiss={() => {
+          setLoadRefusal('');
+          setOptionError('');
+        }}
       />
 
       {results ? (

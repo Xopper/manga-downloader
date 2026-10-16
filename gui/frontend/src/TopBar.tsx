@@ -5,7 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { AUTO_LOAD_DELAY_MS, shouldAutoLoad } from './autoLoad';
-import { AlertIcon, RefreshIcon, SearchIcon, SlidersIcon, Spinner } from './icons';
+import { AlertIcon, RefreshIcon, SearchIcon, SlidersIcon, Spinner, XIcon } from './icons';
 import { isLinkQuery } from './library';
 import { Mascot, useExpression } from './Mascot';
 import type { State } from './types';
@@ -23,9 +23,11 @@ interface Props {
   settingsOpen: boolean;
   /** A refused load or option, shown under the bar */
   problem: string;
+  /** Closes the problem banner */
+  onDismiss: () => void;
 }
 
-export function TopBar({ state, query, onQuery, onLoad, onHome, onCheck, onCancelCheck, onSettings, settingsOpen, problem }: Props) {
+export function TopBar({ state, query, onQuery, onLoad, onHome, onCheck, onCancelCheck, onSettings, settingsOpen, problem, onDismiss }: Props) {
   const busy = state.loading || state.running || state.library.checking || state.library.batch.active;
   const expression = useExpression(state);
   const library = state.library;
@@ -133,6 +135,9 @@ export function TopBar({ state, query, onQuery, onLoad, onHome, onCheck, onCance
         <div className="banner danger" role="alert">
           <AlertIcon />
           <span>{problem}</span>
+          <button type="button" className="banner-close" aria-label="Dismiss" title="Dismiss" onClick={onDismiss}>
+            <XIcon size={13} />
+          </button>
         </div>
       )}
     </header>

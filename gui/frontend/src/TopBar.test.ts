@@ -18,6 +18,7 @@ function render(state: State, over: Partial<Parameters<typeof TopBar>[0]> = {}):
       onSettings: () => undefined,
       settingsOpen: false,
       problem: '',
+      onDismiss: () => undefined,
       ...over,
     }),
   );
