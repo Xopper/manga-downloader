@@ -49,7 +49,9 @@ describe('ResultsPanel', () => {
     expect(markup.match(/class="hit-site"/g)?.length).toBe(4);
     expect(markup).toContain('data-url="https://www.mangaread.org/manga/one-piece/"');
     expect(markup).toContain('>1,120<');
-    expect(markup.match(/Open it once to see/g)?.length).toBe(2);
+    // with no count: one readable (open it to see), one search only (can't be counted)
+    expect(markup.match(/title="Open it to see how many chapters it has"/g)?.length).toBe(1);
+    expect(markup.match(/title="Search only: /g)?.length).toBe(1);
     // a series never opened shows the catalog's latest chapter as about that many
     expect(markup.match(/class="hit-chapters num approx" title="latest chapter the site listed"/g)?.length).toBe(1);
     expect(markup).toContain('≈ </span>');
@@ -63,6 +65,15 @@ describe('ResultsPanel', () => {
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain('>All sites</span>');
     expect(markup).not.toContain('role="listbox"');
+  });
+  it('shows the counts the window fetched, a spinner while it does, and why a dash', () => {
+    const ace = 'https://www.mangaread.org/manga/one-piece-ace/';
+    expect(render({ counts: { [ace]: 42 } })).toContain('<span class="hit-chapters num">42</span>');
+    expect(render({ counts: { [ace]: 'counting' } })).toContain('<span class="sr-only">counting</span>');
+    expect(render({ counts: { [ace]: 'failed' } })).toContain("Couldn&#x27;t count its chapters");
+    const markup = render({});
+    expect(markup).toContain('Search only: the app can&#x27;t read this site, so it can&#x27;t count its chapters');
+    expect(markup).toContain('Open it to see how many chapters it has');
   });
   it('tags a hit from a search-only site, and an adult one', () => {
     const markup = render({});

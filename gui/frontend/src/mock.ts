@@ -1072,6 +1072,17 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       push();
     },
 
+    async countChapters(target) {
+      await new Promise((resolve) => setTimeout(resolve, freeze ? 0 : 700));
+      if (target.includes('kingofshojo')) {
+        throw 'the site needs the browser window';
+      }
+      let h = 0;
+      for (const ch of target) {
+        h = (h * 31 + ch.charCodeAt(0)) % 997;
+      }
+      return 20 + (h % 300);
+    },
     async search(query, site) {
       const words = query.toLowerCase().split(/\s+/).filter((w) => w !== '');
       if (words.length === 0) {

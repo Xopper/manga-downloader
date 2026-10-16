@@ -45,6 +45,8 @@ export interface Api {
   // Search. The catalogs are on disk; the backend keeps them fresh.
   /** Finds series in the catalogs, best match first; site "" is every site */
   search(query: string, site: string): Promise<Hit[]>;
+  /** How many chapters a result lists, fetched (and remembered) when the app hasn't seen it; refused for a site that needs the browser window */
+  countChapters(url: string): Promise<number>;
   /** Every site of the table, for the picker */
   sites(): Promise<SiteInfo[]>;
   catalogStatus(): Promise<CatalogInfo>;
@@ -129,6 +131,7 @@ export function createWailsApi(): Api {
     showBrowser: () => app.ShowBrowser(),
     dismissBrowserAlert: () => app.DismissBrowserAlert(),
     search: (query, site) => app.Search(query, site),
+    countChapters: (url) => app.CountChapters(url),
     sites: () => app.Sites(),
     catalogStatus: () => app.CatalogStatus(),
     updateCatalog: () => app.UpdateCatalog(),

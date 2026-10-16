@@ -295,6 +295,7 @@ export function App({ api }: { api: Api }) {
             query={search.query}
             site={search.site}
             hits={search.hits}
+            counts={search.counts}
             searching={search.searching}
             busy={busy}
             blocked={blocked}

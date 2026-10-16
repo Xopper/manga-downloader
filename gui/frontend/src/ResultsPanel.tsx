@@ -7,7 +7,7 @@ import { AlertIcon, Spinner } from './icons';
 import { Mascot } from './Mascot';
 import { catalogSummary, resultRows, siteGroups } from './search';
 import { SitePicker } from './SitePicker';
-import type { CatalogInfo, Hit, SiteInfo } from './types';
+import type { CatalogInfo, ChapterCount, Hit, SiteInfo } from './types';
 
 /** A search-only hit the user picked, and the query and site it was picked under */
 export interface BlockedHit {
@@ -22,6 +22,8 @@ export interface ResultsPanelProps {
   query: string;
   site: string;
   hits: Hit[];
+  /** Chapter counts the window fetched for hits the catalogs had none for, by URL */
+  counts?: Record<string, ChapterCount>;
   searching: boolean;
   /** A load or a download runs: a pick waits, following doesn't */
   busy: boolean;
@@ -43,7 +45,7 @@ export interface ResultsPanelProps {
 }
 
 export function ResultsPanel(props: ResultsPanelProps) {
-  const { catalog, sites, query, site, hits, searching, busy, blocked, copied } = props;
+  const { catalog, sites, query, site, hits, counts = {}, searching, busy, blocked, copied } = props;
   const { onSite, onPick, onFollow, onUnfollow, onUpdate, onCopy, onOpen, onDismissBlocked } = props;
   const summary = catalogSummary(catalog, new Date());
   if (catalog.sites === 0) {
@@ -139,19 +141,16 @@ export function ResultsPanel(props: ResultsPanelProps) {
                       {!r.downloadable && <span className="hit-tag search-only">search only</span>}
                     </span>
                   </button>
-                  {hit.chapters > 0 && hit.approximate ? (
+                  {hit.chapters === 0 ? (
+                    <FetchedCount hit={hit} count={counts[hit.url]} />
+                  ) : hit.approximate ? (
                     <span className="hit-chapters num approx" title="latest chapter the site listed">
                       <span aria-hidden="true">≈ </span>
                       <span className="sr-only">about </span>
                       {hit.chapters.toLocaleString('en-US')}
                     </span>
-                  ) : hit.chapters > 0 ? (
-                    <span className="hit-chapters num">{hit.chapters.toLocaleString('en-US')}</span>
                   ) : (
-                    <span className="hit-chapters muted" title="Open it once to see how many chapters it has">
-                      <span aria-hidden="true">—</span>
-                      <span className="sr-only">unknown until opened</span>
-                    </span>
+                    <span className="hit-chapters num">{hit.chapters.toLocaleString('en-US')}</span>
                   )}
                   <button
                     type="button"
@@ -189,5 +188,34 @@ export function BookmarkIcon({ filled, size = 15 }: { filled: boolean; size?: nu
     >
       <path d="M6 3h12v18l-6-4-6 4z" />
     </svg>
+  );
+}
+
+/**
+ * The count of a hit the catalogs had no number for: the one the window
+ * fetched, a spinner while it does, or a dash that says why there's none
+ */
+function FetchedCount({ hit, count }: { hit: Hit; count: ChapterCount | undefined }) {
+  if (typeof count === 'number' && count > 0) {
+    return <span className="hit-chapters num">{count.toLocaleString('en-US')}</span>;
+  }
+  if (count === 'counting') {
+    return (
+      <span className="hit-chapters muted" title="Counting its chapters…">
+        <Spinner size={12} />
+        <span className="sr-only">counting</span>
+      </span>
+    );
+  }
+  const why = !hit.downloadable
+    ? "Search only: the app can't read this site, so it can't count its chapters"
+    : count === 'failed'
+      ? "Couldn't count its chapters: the site didn't answer, or needs the browser window. Open it to see them"
+      : 'Open it to see how many chapters it has';
+  return (
+    <span className="hit-chapters muted" title={why}>
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">{why}</span>
+    </span>
   );
 }

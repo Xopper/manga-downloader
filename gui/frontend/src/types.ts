@@ -187,6 +187,9 @@ export interface Hit {
   followed: boolean;
 }
 
+/** A search result's chapter count as the window fetched it: the number, while it's being fetched, or why it couldn't be */
+export type ChapterCount = number | 'counting' | 'failed';
+
 /** A site of the picker, with its catalog's standing */
 export interface SiteInfo {
   site: string;

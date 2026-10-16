@@ -26,6 +26,10 @@ export function CheckLibrary() {
   return window['go']['main']['App']['CheckLibrary']();
 }
 
+export function CountChapters(arg1) {
+  return window['go']['main']['App']['CountChapters'](arg1);
+}
+
 export function ChooseFolder() {
   return window['go']['main']['App']['ChooseFolder']();
 }

@@ -16,6 +16,8 @@ export function CheckLibrary():Promise<void>;
 
 export function ChooseFolder():Promise<string>;
 
+export function CountChapters(arg1:string):Promise<number>;
+
 export function Clear():Promise<void>;
 
 export function DismissBrowserAlert():Promise<void>;
