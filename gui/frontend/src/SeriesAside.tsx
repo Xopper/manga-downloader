@@ -4,6 +4,7 @@
 import type { CSSProperties } from 'react';
 import { DownloadDock } from './DownloadDock';
 import { formatNumber, hueOf } from './format';
+import { LinkIcon } from './icons';
 import { newIndices } from './library';
 import { SaveOptions } from './OptionsPanel';
 import { BookmarkIcon } from './ResultsPanel';
@@ -57,18 +58,18 @@ export function SeriesAside(props: Props) {
             {title}
           </h2>
           {host !== '' && (
-            <p className="series-meta">
-              <a
-                href={state.url}
-                onClick={(e) => {
-                  e.preventDefault();
-                  onOpenURL(state.url);
-                }}
-                title="Open on the site, in your browser"
-              >
-                {host}
-              </a>
-            </p>
+            <a
+              className="aside-host"
+              href={state.url}
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenURL(state.url);
+              }}
+              title="Open on the site, in your browser"
+            >
+              <LinkIcon size={12} />
+              <span>{host}</span>
+            </a>
           )}
           {state.loaded && (
             <button

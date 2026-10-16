@@ -2698,23 +2698,26 @@ a.version:hover {
 
 .aside-head {
   display: flex;
-  gap: 12px;
-  padding: 14px 16px 10px;
+  gap: 14px;
+  padding: 16px 16px 12px;
 }
 
+/* the cover sets the head's height; the name sits at its top, Follow at its foot */
 .aside-cover {
   flex: none;
-  width: 52px;
-  height: 70px;
+  width: 60px;
+  height: 84px;
   border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--border);
 }
 
 .aside-cover .cover-letter {
-  font-size: 22px;
+  font-size: 24px;
 }
 
 .aside-id {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
@@ -2722,9 +2725,50 @@ a.version:hover {
 }
 
 .aside-id .series-title {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
   font-size: 16px;
+  line-height: 1.25;
   white-space: normal;
-  max-height: 2.6em;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.aside-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  color: var(--text-3);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.aside-host span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.aside-host svg {
+  flex: none;
+}
+
+.aside-host:hover {
+  color: var(--accent-text);
+}
+
+.aside-host:hover span {
+  text-decoration: underline;
+}
+
+.aside-id .btn.follow {
+  margin-top: auto;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .btn.follow.on {
