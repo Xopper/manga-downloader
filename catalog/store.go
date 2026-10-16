@@ -20,31 +20,26 @@ import (
 type Store struct {
 	Dir string
 
-	mu       sync.RWMutex
-	catalogs map[string]*SiteCatalog
+	mu    sync.RWMutex
+	sites map[string]*siteData
+	// blocks is every site's block by site: what Search scans
+	blocks []*block
 	// sources is sources.json: the Tachiyomi sources the catalogs came
 	// through, nil without one
 	sources []SourceRow
-	// entries is every catalog's entries with their folded names, in site
-	// order, what Search scans; dirty marks it stale after a Write, so an
-	// update's hundreds of writes fold the titles once, at the next Search
-	entries []indexed
-	dirty   bool
 }
 
-// indexed is an entry ready to match. It points into its catalog's
-// entries rather than copying one: a million and a half copies were a
-// hundred megabytes of memory for nothing.
-type indexed struct {
-	site  string
-	entry *Entry
-	title string
-	alts  []string
+// siteData is a loaded catalog: its header, and its entries packed. The
+// Entry values themselves aren't kept (a million and a half of them were
+// most of the app's memory); Catalog rebuilds them from the block.
+type siteData struct {
+	meta  SiteCatalog
+	block *block
 }
 
 // NewStore makes a store over dir; nothing is read until Load
 func NewStore(dir string) *Store {
-	return &Store{Dir: dir, catalogs: map[string]*SiteCatalog{}}
+	return &Store{Dir: dir, sites: map[string]*siteData{}}
 }
 
 // Load reads every <site>.json in Dir (index.json excluded). A missing dir
@@ -54,11 +49,12 @@ func (s *Store) Load() []error {
 	if err != nil {
 		return []error{err}
 	}
-	// the files are read and parsed on every core at once: a few hundred
-	// of them hold over a million entries, and one core took seconds
+	// the files are read, parsed and packed on every core at once: a few
+	// hundred of them hold over a million entries, and one core took
+	// seconds. Each file's entries live only until its block is built.
 	type parsed struct {
-		catalog *SiteCatalog
-		err     error
+		data *siteData
+		err  error
 	}
 	results := make([]parsed, len(names))
 	inParallel(len(names), func(i int) {
@@ -77,16 +73,16 @@ func (s *Store) Load() []error {
 			results[i].err = fmt.Errorf("%s: not a catalog file: %v", filepath.Base(name), err)
 			return
 		}
-		results[i].catalog = &c
+		results[i].data = newSiteData(&c)
 	})
-	catalogs := make(map[string]*SiteCatalog, len(names))
+	sites := make(map[string]*siteData, len(names))
 	var warnings []error
 	for _, r := range results {
 		if r.err != nil {
 			warnings = append(warnings, r.err)
 			continue
 		}
-		catalogs[r.catalog.Site] = r.catalog
+		sites[r.data.meta.Site] = r.data
 	}
 
 	sources, err := readRows(filepath.Join(s.Dir, sourcesFile))
@@ -95,52 +91,30 @@ func (s *Store) Load() []error {
 	}
 
 	s.mu.Lock()
-	s.catalogs = catalogs
+	s.sites = sites
 	s.sources = sources
-	s.reindex()
-	s.dirty = false
+	s.sortBlocks()
 	s.mu.Unlock()
 
 	return warnings
 }
 
-// reindex rebuilds entries from catalogs; the caller holds mu. The titles
-// are folded on every core at once, a site per task, and the sites' entries
-// then follow each other in site order.
-func (s *Store) reindex() {
-	sites := make([]string, 0, len(s.catalogs))
-	for site := range s.catalogs {
-		sites = append(sites, site)
-	}
-	sort.Strings(sites)
-	bySite := make([][]indexed, len(sites))
-	inParallel(len(sites), func(i int) {
-		bySite[i] = indexSite(sites[i], s.catalogs[sites[i]])
-	})
-	n := 0
-	for _, ix := range bySite {
-		n += len(ix)
-	}
-	s.entries = make([]indexed, 0, n)
-	for _, ix := range bySite {
-		s.entries = append(s.entries, ix...)
-	}
+// newSiteData packs a catalog: its header kept as is, its entries folded
+// into a block
+func newSiteData(c *SiteCatalog) *siteData {
+	meta := *c
+	meta.Entries = nil
+
+	return &siteData{meta: meta, block: pack(c.Site, c.Entries)}
 }
 
-// indexSite folds a site's entries
-func indexSite(site string, c *SiteCatalog) []indexed {
-	out := make([]indexed, 0, len(c.Entries))
-	for i := range c.Entries {
-		e := &c.Entries[i]
-		ix := indexed{site: site, entry: e, title: Fold(e.Title)}
-		for _, alt := range e.AltNames {
-			if f := Fold(alt); f != "" {
-				ix.alts = append(ix.alts, f)
-			}
-		}
-		out = append(out, ix)
+// sortBlocks lists the sites' blocks by site; the caller holds mu
+func (s *Store) sortBlocks() {
+	s.blocks = make([]*block, 0, len(s.sites))
+	for _, d := range s.sites {
+		s.blocks = append(s.blocks, d.block)
 	}
-	return out
+	sort.Slice(s.blocks, func(i, j int) bool { return s.blocks[i].site < s.blocks[j].site })
 }
 
 // inParallel runs fn(i) for every i below n, as many at a time as there are
@@ -171,13 +145,40 @@ func inParallel(n int, fn func(i int)) {
 	wg.Wait()
 }
 
-// Catalog returns a site's loaded catalog
+// Catalog returns a site's loaded catalog, its entries rebuilt from the
+// packed block (a copy: the caller may change it)
 func (s *Store) Catalog(site string) (*SiteCatalog, bool) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-	c, ok := s.catalogs[strings.ToLower(site)]
+	d, ok := s.sites[strings.ToLower(site)]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	c := d.meta
+	c.Entries = d.block.entries()
 
-	return c, ok
+	return &c, true
+}
+
+// has reports whether the store holds a site's catalog, without rebuilding
+// its entries
+func (s *Store) has(site string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, ok := s.sites[strings.ToLower(site)]
+
+	return ok
+}
+
+// count is how many entries a site's catalog has, 0 without one
+func (s *Store) count(site string) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if d, ok := s.sites[strings.ToLower(site)]; ok {
+		return d.block.n
+	}
+
+	return 0
 }
 
 // indexFile is the published listing of the catalog files
@@ -205,7 +206,9 @@ func DefaultDir() (string, error) {
 	return filepath.Join(dir, "manga-downloader", "catalog"), nil
 }
 
-// Write saves a site's catalog to Dir (atomically, 0600) and loads it
+// Write saves a site's catalog to Dir (atomically, 0600) and loads it. The
+// entries are packed before the store is locked, so a search during an
+// update waits only for the swap.
 func (s *Store) Write(c *SiteCatalog) error {
 	b, err := json.Marshal(c)
 	if err != nil {
@@ -214,10 +217,10 @@ func (s *Store) Write(c *SiteCatalog) error {
 	if err := writeFileAtomic(filepath.Join(s.Dir, c.Site+".json"), b); err != nil {
 		return err
 	}
-	cp := *c
+	d := newSiteData(c)
 	s.mu.Lock()
-	s.catalogs[c.Site] = &cp
-	s.dirty = true
+	s.sites[c.Site] = d
+	s.sortBlocks()
 	s.mu.Unlock()
 
 	return nil
@@ -289,10 +292,10 @@ func (s *Store) Status() []SiteStatus {
 	out := make([]SiteStatus, 0, len(sites)+len(s.sources))
 	now := time.Now()
 	fill := func(st *SiteStatus) {
-		if c, ok := s.catalogs[st.Site]; ok {
+		if d, ok := s.sites[st.Site]; ok {
 			st.HasCatalog = true
-			st.Entries = len(c.Entries)
-			st.Crawled = c.Crawled
+			st.Entries = d.block.n
+			st.Crawled = d.meta.Crawled
 			if info, err := os.Stat(filepath.Join(s.Dir, st.Site+".json")); err == nil {
 				st.FileAge = now.Sub(info.ModTime())
 			}

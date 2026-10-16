@@ -49,19 +49,19 @@ func MergeSources(dir string) ([]SourceRow, error) {
 	store := NewStore(dir)
 	store.Load()
 	for _, site := range Sites() {
-		c, ok := store.Catalog(site.Site)
-		if !ok {
+		if !store.has(site.Site) {
 			continue
 		}
+		n := store.count(site.Site)
 		if r, has := by[site.Site]; has {
 			r.Downloadable = true
-			if r.Entries < len(c.Entries) {
-				r.Entries = len(c.Entries)
+			if r.Entries < n {
+				r.Entries = n
 			}
 			by[site.Site] = r
 			continue
 		}
-		by[site.Site] = SourceRow{Site: site.Site, Name: site.Label, Lang: site.Lang, Entries: len(c.Entries), Complete: true, Downloadable: true}
+		by[site.Site] = SourceRow{Site: site.Site, Name: site.Label, Lang: site.Lang, Entries: n, Complete: true, Downloadable: true}
 	}
 	rows := make([]SourceRow, 0, len(by))
 	for _, r := range by {

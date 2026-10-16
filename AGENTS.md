@@ -113,10 +113,21 @@ the Madara family the latest chapter number its list page showed, `latest`)
 in `catalog/`; `Store.Search` scans them in memory after folding (`Fold`:
 lowercase, NFKD, accents dropped, dakuten kept). Design:
 `docs/superpowers/specs/2026-10-15-catalog-design.md`. The store is big (a
-million and a half entries, ~400 MB in memory), so `Load`, `reindex` and
-`Search` work on every core at once (`inParallel`) and the index points into
-the catalogs' entries instead of copying them; measure before touching them
-(a load went from 2.5 s to 0.8 s and a search from 250 ms to 70 ms that way).
+million and a half entries), so it doesn't keep `Entry` values: each site is
+packed into a `block` (`catalog/pack.go`) as `Load` or `Write` reads it, the
+folded names in one byte arena the scan walks (titles and other names parted
+by a zero byte) and the titles, links and other names in deflated pages of
+256 entries, inflated only for a hit (the site's common link prefix is kept
+once). That is ~115 MB of heap for the full set, from ~400 MB as entries
+plus an index. `Catalog(site)` rebuilds a site's entries from its block (a
+copy, for the crawlers); inside the package, `has` and `count` answer
+without rebuilding. `Load` and `Search` work on every core at once
+(`inParallel`); a search scans the blocks without the lock (a block never
+changes, a write swaps in a new one), ranks the matches as `key`s and keeps
+the `limit` best through a heap, so a one-letter query that matches most of
+the store costs about what any query does; only the kept hits inflate a
+page. Measure before touching any of it (a load takes ~0.6 s, a search for
+"one piece" ~25 ms).
 
 - **The site table is `catalog/sites.json`** (embedded): every README site
   with its crawler `family`, list page, language, former domains (`aliases`)

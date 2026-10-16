@@ -235,7 +235,7 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 			continue
 		}
 		if le := local.entry(re.Site); le != nil && le.SHA256 == re.SHA256 {
-			if _, ok := s.Catalog(re.Site); ok {
+			if s.has(re.Site) {
 				merged.Sites = append(merged.Sites, re)
 				continue
 			}

@@ -3,6 +3,8 @@
 package catalog
 
 import (
+	"bytes"
+	"container/heap"
 	"runtime"
 	"sort"
 	"strings"
@@ -21,18 +23,43 @@ type Hit struct {
 // defaultLimit is how many hits Search returns when the caller doesn't say
 const defaultLimit = 50
 
+// key is a match before its entry is rebuilt: enough to rank it
+type key struct {
+	score    int
+	titleLen int
+	// block is the index in the store's site-ordered blocks, i the entry's
+	// in it: together the entries' order
+	block, i int
+}
+
+// before is the ranking: by score, then shorter title, then site, then
+// the entries' own order
+func (k key) before(o key) bool {
+	if k.score != o.score {
+		return k.score > o.score
+	}
+	if k.titleLen != o.titleLen {
+		return k.titleLen < o.titleLen
+	}
+	if k.block != o.block {
+		return k.block < o.block
+	}
+
+	return k.i < o.i
+}
+
 // Search finds the entries matching every word of query, in the given sites
 // (none means all), best first: by score, then shorter title, then site.
 // A query without a letter or digit matches nothing.
 func (s *Store) Search(query string, sites []string, limit int) []Hit {
-	words := strings.Fields(Fold(query))
+	words := bytes.Fields([]byte(Fold(query)))
 	if len(words) == 0 {
 		return nil
 	}
 	if limit <= 0 {
 		limit = defaultLimit
 	}
-	folded := strings.Join(words, " ")
+	folded := bytes.Join(words, []byte(" "))
 	var only map[string]bool
 	if len(sites) > 0 {
 		only = make(map[string]bool, len(sites))
@@ -41,90 +68,147 @@ func (s *Store) Search(query string, sites []string, limit int) []Hit {
 		}
 	}
 
-	// a write lock: the index may need rebuilding after writes
-	s.mu.Lock()
-	if s.dirty {
-		s.reindex()
-		s.dirty = false
+	// the blocks never change once built, so the scan runs without the lock
+	s.mu.RLock()
+	blocks := s.blocks
+	s.mu.RUnlock()
+	starts := make([]int, len(blocks)+1)
+	for i, b := range blocks {
+		starts[i+1] = starts[i] + b.n
 	}
+	total := starts[len(blocks)]
+
 	// the entries are scanned on every core at once, a slice of them each,
-	// and the hits put back in entry order
+	// and the matches put back in entry order
 	chunks := min(runtime.NumCPU(), 8)
-	size := (len(s.entries) + chunks - 1) / chunks
-	found := make([][]Hit, chunks)
-	inParallel(chunks, func(i int) {
-		from, to := i*size, min((i+1)*size, len(s.entries))
-		for from < to {
-			ix := &s.entries[from]
-			from++
-			if only != nil && !only[ix.site] {
+	size := (total + chunks - 1) / chunks
+	found := make([][]key, chunks)
+	inParallel(chunks, func(c int) {
+		from, to := c*size, min((c+1)*size, total)
+		for bi, b := range blocks {
+			lo, hi := max(from, starts[bi]), min(to, starts[bi+1])
+			if lo >= hi || (only != nil && !only[b.site]) {
 				continue
 			}
-			score := match(ix.title, folded, words)
-			for _, alt := range ix.alts {
-				if alt := match(alt, folded, words) - 10; alt > score {
-					score = alt
+			for i := lo - starts[bi]; i < hi-starts[bi]; i++ {
+				if score := b.score(i, folded, words); score > 0 {
+					found[c] = append(found[c], key{score: score, titleLen: int(b.titleLen[i]), block: bi, i: i})
 				}
 			}
-			if score > 0 {
-				found[i] = append(found[i], Hit{Site: ix.site, Entry: *ix.entry, Score: score})
-			}
 		}
 	})
-	s.mu.Unlock()
-	var hits []Hit
+	var keys []key
 	for _, f := range found {
-		hits = append(hits, f...)
+		keys = append(keys, f...)
+	}
+	keys = best(keys, limit)
+	if len(keys) == 0 {
+		return nil
 	}
 
-	sort.SliceStable(hits, func(i, j int) bool {
-		a, b := hits[i], hits[j]
-		if a.Score != b.Score {
-			return a.Score > b.Score
+	// a page inflated once for every hit on it
+	pages := map[[2]int][]byte{}
+	hits := make([]Hit, 0, len(keys))
+	for _, k := range keys {
+		b := blocks[k.block]
+		id := [2]int{k.block, k.i / pageSize}
+		data, ok := pages[id]
+		if !ok {
+			data = b.inflate(id[1])
+			pages[id] = data
 		}
-		if len(a.Entry.Title) != len(b.Entry.Title) {
-			return len(a.Entry.Title) < len(b.Entry.Title)
-		}
-
-		return a.Site < b.Site
-	})
-	if len(hits) > limit {
-		hits = hits[:limit]
+		hits = append(hits, Hit{Site: b.site, Entry: b.entry(k.i, data), Score: k.score})
 	}
 
 	return hits
 }
 
-// match scores a folded name against the folded query and its words; 0 is
-// no match
-func match(name, query string, words []string) int {
-	switch {
-	case name == query:
-		return 400
-	case strings.HasPrefix(name, query):
-		return 300
+// score matches entry i's folded names against the query; 0 is no match
+func (b *block) score(i int, query []byte, words [][]byte) int {
+	rec := b.names[b.nameOff[i]:b.nameOff[i+1]]
+	name, alts := rec, []byte(nil)
+	if k := bytes.IndexByte(rec, 0); k >= 0 {
+		name, alts = rec[:k], rec[k+1:]
 	}
-	nameWords := strings.Fields(name)
-	prefixes := true
-	for _, w := range words {
-		if !strings.Contains(name, w) {
-			return 0
+	score := match(name, query, words)
+	for len(alts) > 0 {
+		alt := alts
+		if k := bytes.IndexByte(alts, 0); k >= 0 {
+			alt, alts = alts[:k], alts[k+1:]
+		} else {
+			alts = nil
 		}
-		if prefixes && !hasWordPrefix(nameWords, w) {
-			prefixes = false
+		if alt := match(alt, query, words) - 10; alt > score {
+			score = alt
 		}
-	}
-	if prefixes {
-		return 200
 	}
 
-	return 100
+	return score
 }
 
-// hasWordPrefix reports whether a word of the name starts with w
-func hasWordPrefix(nameWords []string, w string) bool {
-	for _, n := range nameWords {
-		if strings.HasPrefix(n, w) {
+// best keeps the limit best keys, in ranking order. A one-letter query
+// matches most of the store, so the rest is dropped without a full sort.
+func best(keys []key, limit int) []key {
+	if len(keys) > limit {
+		h := &worstFirst{}
+		for _, k := range keys {
+			if len(*h) < limit {
+				heap.Push(h, k)
+			} else if k.before((*h)[0]) {
+				(*h)[0] = k
+				heap.Fix(h, 0)
+			}
+		}
+		keys = *h
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i].before(keys[j]) })
+
+	return keys
+}
+
+// worstFirst is a heap with the worst-ranked key on top
+type worstFirst []key
+
+func (h worstFirst) Len() int           { return len(h) }
+func (h worstFirst) Less(i, j int) bool { return h[j].before(h[i]) }
+func (h worstFirst) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *worstFirst) Push(x any)        { *h = append(*h, x.(key)) }
+func (h *worstFirst) Pop() any {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+
+	return x
+}
+
+// match scores a folded name against the folded query and its words; 0 is
+// no match
+func match(name, query []byte, words [][]byte) int {
+	switch {
+	case bytes.Equal(name, query):
+		return 400
+	case bytes.HasPrefix(name, query):
+		return 300
+	}
+	for _, w := range words {
+		if !bytes.Contains(name, w) {
+			return 0
+		}
+	}
+	for _, w := range words {
+		if !hasWordPrefix(name, w) {
+			return 100
+		}
+	}
+
+	return 200
+}
+
+// hasWordPrefix reports whether a word of the folded name (its words are
+// parted by single spaces) starts with w
+func hasWordPrefix(name, w []byte) bool {
+	for i := 0; i < len(name); i++ {
+		if (i == 0 || name[i-1] == ' ') && bytes.HasPrefix(name[i:], w) {
 			return true
 		}
 	}
