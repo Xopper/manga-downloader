@@ -33,21 +33,34 @@ describe('ChapterPanel', () => {
     const state = await api.state();
     const chapters = await api.chapters();
     const markup = render(state, chapters, followedOf(state.library, state.url));
-    expect(markup).toContain('>Select<');
     expect(markup).not.toContain('no language choice');
     expect(markup).not.toContain('no scanlation groups');
+    expect(markup).not.toContain('class="filters-bar"');
     expect(markup).not.toContain('class="filter-row"');
   });
-  it('shows the selectors beside the chips when the site lists values', async () => {
+  it('shows the selectors above the list when the site lists values', async () => {
     const api = createMockApi({ scenario: 'loaded', freeze: true });
     const state = await api.state();
     const chapters = await api.chapters();
     const markup = render(state, chapters, followedOf(state.library, state.url));
-    const chips = markup.indexOf('class="chip-row"');
-    const filters = markup.indexOf('class="filter-row"');
-    expect(filters).toBeGreaterThan(chips);
+    const filters = markup.indexOf('class="filters-bar"');
+    const toolbar = markup.indexOf('class="list-toolbar"');
+    expect(filters).toBeGreaterThan(-1);
+    expect(filters).toBeLessThan(toolbar);
     expect(markup).toContain('<label for=');
     expect(markup).not.toContain('placeholder="any"');
+  });
+  it('selects with one set of chips in the toolbar', async () => {
+    const api = createMockApi({ scenario: 'loaded', freeze: true });
+    const state = await api.state();
+    const chapters = await api.chapters();
+    const markup = render(state, chapters, followedOf(state.library, state.url));
+    expect(markup.match(/class="chip[^"]*"/g)?.length).toBe(3);
+    expect(markup).toContain('New · 12');
+    expect(markup).toContain('All · 597');
+    expect(markup).toContain('>None</button>');
+    expect(markup).not.toContain('btn ghost small');
+    expect(markup).not.toContain('>Select<');
   });
   it('shows a plain "Chapter N" title once, as the number', async () => {
     const api = createMockApi({ scenario: 'loaded', freeze: true });

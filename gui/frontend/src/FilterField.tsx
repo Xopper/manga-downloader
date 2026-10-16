@@ -18,6 +18,12 @@ interface RowProps {
   onReload: () => void;
 }
 
+/** Whether the row has anything to show: a filter the loaded site has no choice for is left out */
+export function hasFilterRow(state: State): boolean {
+  const shown = (choice: FilterChoice | null) => filterControl(state, choice) !== 'disabled';
+  return shown(state.languages) || shown(state.scanlators) || state.stale || !filtersIdentified(state);
+}
+
 /**
  * Both filters side by side, with the "not applied" note when the list is
  * stale. A filter the loaded site has no choice for is left out, and the
@@ -30,8 +36,7 @@ export function FilterRow({ state, busy, onPick, onOptions, onError, onReload }:
   const pick = (patch: Partial<Options>) => {
     void onPick(patch);
   };
-  const shown = (choice: FilterChoice | null) => filterControl(state, choice) !== 'disabled';
-  if (!shown(state.languages) && !shown(state.scanlators) && !state.stale && identified) {
+  if (!hasFilterRow(state)) {
     return null;
   }
 

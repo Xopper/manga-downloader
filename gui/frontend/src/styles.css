@@ -489,7 +489,7 @@ code {
 
 .toolbar-buttons {
   display: flex;
-  gap: 2px;
+  gap: 6px;
 }
 
 .range-form {
@@ -2517,29 +2517,35 @@ a.version:hover {
   text-overflow: ellipsis;
 }
 
-.chip-row {
+/* the language and scanlator selectors, above the list; only for a site
+   that offers a choice */
+.filters-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
   padding: 10px 14px;
-  flex-wrap: wrap;
 }
 
-.chip-row .spacer {
-  flex: 1;
-}
-
-/* the filters sit at the row's right end, together: on a narrow window the
-   pair drops under the chips as one piece */
-.chip-row .filter-row {
+.filters-bar .filter-row {
   min-height: 0;
   padding: 0;
-  flex-wrap: nowrap;
   gap: 6px 14px;
 }
 
-.chip-row .field.inline-field .input {
+.filters-bar .field.inline-field .input {
   width: 150px;
+}
+
+/* the selection toolbar holds the chips; the range form drops to its own
+   line when the panel is narrow */
+.list-toolbar {
+  flex-wrap: wrap;
+}
+
+.list-toolbar .chip {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 /* the list box ends with its rows: the hint sits right under them */

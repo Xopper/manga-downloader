@@ -3,7 +3,7 @@
 // arrows move, Space toggles, Shift extends, as in a native list box.
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { FilterRow } from './FilterField';
+import { FilterRow, hasFilterRow } from './FilterField';
 import { chapterTitle, errorMessage, formatNumber, plural } from './format';
 import { AlertIcon, ChevronIcon, LinkIcon, RefreshIcon } from './icons';
 import { chapterMark, newIndices } from './library';
@@ -330,33 +330,11 @@ function ChapterList({
 
   return (
     <section className="panel chapters fit" aria-label="Chapters">
-      <div className="chip-row">
-        <span className="muted small">Select</span>
-        {fresh.length > 0 && (
-          <button
-            type="button"
-            className={`chip${freshChosen ? ' on' : ''}`}
-            disabled={disabled}
-            title={followed !== null && followed.savedUpTo > 0 ? `Above chapter ${followed.savedUpTo}, the last one saved` : 'Nothing saved yet: every chapter'}
-            onClick={() => {
-              // the selection becomes exactly the new chapters
-              const freshSet = new Set(fresh);
-              const off = [...chosen].filter((i) => !freshSet.has(i));
-              const on = fresh.filter((i) => !chosen.has(i));
-              const first = off.length > 0 ? onToggleMany(off, false) : Promise.resolve();
-              first.then(() => (on.length > 0 ? onToggleMany(on, true) : undefined)).catch(fail);
-            }}
-          >
-            New · {fresh.length}
-          </button>
-        )}
-        <button type="button" className={`chip${all ? ' on' : ''}`} disabled={disabled || all} onClick={() => onSetAll(true).catch(fail)}>
-          All · {state.chapterCount.toLocaleString('en-US')}
-        </button>
-        {state.loading && <span className="reloading">Reloading…</span>}
-        <span className="spacer" />
-        <FilterRow state={state} busy={disabled} onPick={onPick} onOptions={onOptions} onError={onError} onReload={onReload} />
-      </div>
+      {hasFilterRow(state) && (
+        <div className="filters-bar">
+          <FilterRow state={state} busy={disabled} onPick={onPick} onOptions={onOptions} onError={onError} onReload={onReload} />
+        </div>
+      )}
 
       <div className="list-toolbar">
         <label className="master" title={all ? 'Select none' : 'Select all'}>
@@ -376,24 +354,38 @@ function ChapterList({
         <p className="count" aria-live="polite">
           <strong>{state.selectedCount}</strong> of {state.chapterCount} selected
         </p>
-        <div className="toolbar-buttons">
-          <button
-            type="button"
-            className="btn ghost small"
-            disabled={disabled || all}
-            onClick={() => onSetAll(true).catch(fail)}
-          >
-            All
+        <div className="toolbar-buttons" role="group" aria-label="Select">
+          {fresh.length > 0 && (
+            <button
+              type="button"
+              className={`chip${freshChosen ? ' on' : ''}`}
+              disabled={disabled}
+              title={followed !== null && followed.savedUpTo > 0 ? `Above chapter ${followed.savedUpTo}, the last one saved` : 'Nothing saved yet: every chapter'}
+              onClick={() => {
+                // the selection becomes exactly the new chapters
+                const freshSet = new Set(fresh);
+                const off = [...chosen].filter((i) => !freshSet.has(i));
+                const on = fresh.filter((i) => !chosen.has(i));
+                const first = off.length > 0 ? onToggleMany(off, false) : Promise.resolve();
+                first.then(() => (on.length > 0 ? onToggleMany(on, true) : undefined)).catch(fail);
+              }}
+            >
+              New · {fresh.length}
+            </button>
+          )}
+          <button type="button" className={`chip${all ? ' on' : ''}`} disabled={disabled || all} onClick={() => onSetAll(true).catch(fail)}>
+            All · {state.chapterCount.toLocaleString('en-US')}
           </button>
           <button
             type="button"
-            className="btn ghost small"
+            className={`chip${state.selectedCount === 0 ? ' on' : ''}`}
             disabled={disabled || state.selectedCount === 0}
             onClick={() => onSetAll(false).catch(fail)}
           >
             None
           </button>
         </div>
+        {state.loading && <span className="reloading">Reloading…</span>}
         <form
           className="range-form"
           onSubmit={(e) => {
