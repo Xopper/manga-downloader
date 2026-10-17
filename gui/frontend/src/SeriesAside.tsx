@@ -40,7 +40,8 @@ export function SeriesAside(props: Props) {
   const host = hostOf(state.url);
   const title = state.title !== '' ? state.title : followed?.title ?? host;
   const letter = (title.trim()[0] ?? '?').toUpperCase();
-  const cover = followed?.cover ?? '';
+  // a followed series' own cover, else the one fetched for the page (a series picked from the search)
+  const cover = followed?.cover || state.cover;
   const now = new Date();
   // what the dock offers when nothing is picked: the chapters that came out since it was followed
   const fresh = newIndices(chapters, followed);

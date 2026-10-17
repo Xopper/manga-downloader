@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image"
 	"image/color"
@@ -357,4 +358,76 @@ var tinyWebP = []byte{
 	0x78, 0x22, 0xaf, 0xb2, 0xe2, 0x97, 0xdc, 0x38, 0x2f, 0x66, 0xef, 0x33, 0x27, 0x26, 0x8d, 0x07,
 	0x2a, 0x5d, 0xa3, 0x02, 0x3b, 0xa0, 0x65, 0x63, 0x6f, 0x22, 0xf8, 0x53, 0x8b, 0xcd, 0xb7, 0xc8,
 	0xd6, 0xf1, 0x2a, 0xc4, 0x08, 0x68, 0xb6, 0x87, 0x00, 0x00,
+}
+
+// TestABrowsedSeriesShowsItsCover: a series loaded from the search, not
+// followed, gets its cover on the series page; following it reuses that
+// file, and loading another series removes it again once it isn't followed
+func TestABrowsedSeriesShowsItsCover(t *testing.T) {
+	srv, site := newCoverSite(t, `<html><head><meta property="og:image" content="/c.png"></head></html>`,
+		map[string][]byte{"/c.png": coverPNG(t, 40, 60)})
+	a, _, _ := newTestApp(t, 3)
+	s := testCovers(t)
+	a.ctrl.SetCovers(s)
+	url := srv.URL + "/manga/x"
+	a.ctrl.mu.Lock()
+	a.ctrl.url = url
+	a.ctrl.mu.Unlock()
+
+	a.ctrl.fetchCover(url, false)
+	name := coverFile(url)
+	if got := a.State().Cover; got != "/covers/"+name {
+		t.Fatalf("State().Cover = %q", got)
+	}
+
+	// following it takes the file already there, without asking the site again
+	if err := a.ctrl.Library().Follow(Followed{URL: url, Title: "X"}); err != nil {
+		t.Fatal(err)
+	}
+	a.ctrl.fetchCover(url, true)
+	if f, _ := a.ctrl.Library().Get(url); f.Cover != name {
+		t.Errorf("library cover = %q, want %q", f.Cover, name)
+	}
+	if site.hits["/manga/x"] != 1 {
+		t.Errorf("the page was fetched %d times", site.hits["/manga/x"])
+	}
+
+	// unfollowing it while it's loaded keeps the cover on the page
+	if err := a.Unfollow(url); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Has(name) {
+		t.Fatal("unfollowing the loaded series removed the cover it shows")
+	}
+
+	// another series loads: the cover of the one only browsed goes
+	a.ctrl.mu.Lock()
+	a.ctrl.beginLoadLocked(srv.URL + "/manga/y")
+	a.ctrl.loading = false
+	a.ctrl.mu.Unlock()
+	if s.Has(name) {
+		t.Error("the cover of a series no longer loaded nor followed is still there")
+	}
+}
+
+func TestFetchMissingCoversPrunesUnusedOnes(t *testing.T) {
+	a, _, _ := newTestApp(t, 3)
+	s := testCovers(t)
+	a.ctrl.SetCovers(s)
+	kept, dropped := coverFile("https://a.example/m/1"), coverFile("https://b.example/m/2")
+	for _, name := range []string{kept, dropped} {
+		if err := s.write(name, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := a.ctrl.Library().Follow(Followed{URL: "https://a.example/m/1", Title: "A"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.ctrl.Library().SetCover("https://a.example/m/1", kept); err != nil {
+		t.Fatal(err)
+	}
+	a.ctrl.FetchMissingCovers(context.Background())
+	if !s.Has(kept) || s.Has(dropped) {
+		t.Errorf("kept on disk: %v (want true), dropped on disk: %v (want false)", s.Has(kept), s.Has(dropped))
+	}
 }

@@ -207,11 +207,14 @@ func (a *App) shutdown(context.Context) {
 // State is everything the window shows except the chapter list, the
 // selection and the log, which have their own calls and events
 type State struct {
-	URL           string `json:"url"`
-	Loading       bool   `json:"loading"`
-	Loaded        bool   `json:"loaded"`
-	LoadError     string `json:"loadError"`
-	Title         string `json:"title"`
+	URL       string `json:"url"`
+	Loading   bool   `json:"loading"`
+	Loaded    bool   `json:"loaded"`
+	LoadError string `json:"loadError"`
+	Title     string `json:"title"`
+	// Cover is the loaded series' cover as the window loads it
+	// ("/covers/<file>"), followed or not; "" while it has none
+	Cover         string `json:"cover"`
 	ChapterCount  int    `json:"chapterCount"`
 	HasDuplicates bool   `json:"hasDuplicates"`
 	// HasGroupDuplicates is set when the list repeats a chapter number in one
@@ -361,6 +364,7 @@ func (a *App) state() State {
 		Loading:            c.Loading(),
 		Loaded:             c.Loaded(),
 		Title:              c.Title(),
+		Cover:              c.LoadedCover(),
 		ChapterCount:       len(c.Chapters()),
 		HasDuplicates:      c.HasDuplicates(),
 		HasGroupDuplicates: c.HasGroupDuplicates(),

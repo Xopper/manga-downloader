@@ -153,7 +153,9 @@ func (a *App) Unfollow(url string) error {
 	}
 	if ok {
 		c.addLog(LogInfo, fmt.Sprintf("Unfollowed %s", nonEmpty(entry.Title, url)))
-		if s := c.Covers(); s != nil && entry.Cover != "" {
+		// the series page still shows the cover of the series loaded: it goes
+		// when another one loads
+		if s := c.Covers(); s != nil && entry.Cover != "" && !c.isLoaded(url) {
 			if err := s.Remove(entry.Cover); err != nil {
 				c.addLog(LogWarn, "could not remove the cover: "+err.Error())
 			}

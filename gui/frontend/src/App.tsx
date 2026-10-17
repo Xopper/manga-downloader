@@ -139,7 +139,7 @@ export function App({ api }: { api: Api }) {
   const view: State =
     target === ''
       ? state
-      : { ...state, url: target, loading: true, loaded: false, loadError: '', title: '', chapterCount: 0, selectedCount: 0 };
+      : { ...state, url: target, loading: true, loaded: false, loadError: '', title: '', cover: '', chapterCount: 0, selectedCount: 0 };
   const followed = followedOf(library, view.url);
   const fail = (set: (m: string) => void) => (e: unknown) => set(errorMessage(e));
 

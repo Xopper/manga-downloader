@@ -441,6 +441,7 @@ func (c *Controller) beginLoadLocked(url string) {
 		if c.series != nil {
 			c.listGen++
 		}
+		c.dropLoadedCoverLocked()
 		c.series = nil
 		c.selected = nil
 		c.selGen++

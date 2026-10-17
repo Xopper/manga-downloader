@@ -370,6 +370,7 @@ export namespace main {
 	    loaded: boolean;
 	    loadError: string;
 	    title: string;
+	    cover: string;
 	    chapterCount: number;
 	    hasDuplicates: boolean;
 	    hasGroupDuplicates: boolean;
@@ -407,6 +408,7 @@ export namespace main {
 	        this.loaded = source["loaded"];
 	        this.loadError = source["loadError"];
 	        this.title = source["title"];
+	        this.cover = source["cover"];
 	        this.chapterCount = source["chapterCount"];
 	        this.hasDuplicates = source["hasDuplicates"];
 	        this.hasGroupDuplicates = source["hasGroupDuplicates"];

@@ -490,6 +490,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     loaded,
     loadError,
     title,
+    cover: '',
     chapterCount: chapters.length,
     hasDuplicates: chapters.some((c) => c.language !== ''),
     hasGroupDuplicates: chapters.some(

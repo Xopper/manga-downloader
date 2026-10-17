@@ -85,6 +85,8 @@ export interface State {
   loaded: boolean;
   loadError: string;
   title: string;
+  /** The loaded series' cover ("/covers/<file>"), followed or not; "" while it has none */
+  cover: string;
   chapterCount: number;
   hasDuplicates: boolean;
   /** One number is listed more than once in a language, and the groups tell the copies apart */

@@ -258,6 +258,29 @@ func (s *coverStore) write(name string, img image.Image) error {
 	return nil
 }
 
+// Has reports whether the cover file name is on disk
+func (s *coverStore) Has(name string) bool {
+	path := s.Path(name)
+	if path == "" {
+		return false
+	}
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// prune removes every cover file whose name keep doesn't hold
+func (s *coverStore) prune(keep map[string]bool) {
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if name := e.Name(); validCoverName(name) && !keep[name] {
+			_ = s.Remove(name)
+		}
+	}
+}
+
 // Remove deletes the cover file name; a missing file or a name that isn't
 // a cover's is a no-op
 func (s *coverStore) Remove(name string) error {
@@ -323,9 +346,11 @@ func coverHandler(dir string) http.Handler {
 	})
 }
 
-// The controller's side: a cover is fetched when a series is followed and
-// when a followed series without one is loaded or checked, in the
-// background, and never twice at once.
+// The controller's side: a cover is fetched when a series is followed, when
+// any series is loaded (followed or not, so the series page shows it), and
+// when a followed series without one is checked, in the background, and
+// never twice at once. The cover of a series loaded but not followed lives
+// until another series is loaded (dropLoadedCoverLocked).
 
 // SetCovers gives the controller the store the covers are kept in; without
 // one no cover is fetched
@@ -359,37 +384,93 @@ func (c *Controller) ensureCover(url string, retry bool) {
 func (c *Controller) fetchCover(url string, retry bool) {
 	s := c.Covers()
 	lib := c.Library()
-	entry, ok := lib.Get(url)
-	if s == nil || !ok || entry.Cover != "" {
+	entry, followed := lib.Get(url)
+	if s == nil || (followed && entry.Cover != "") {
 		return
 	}
-	if !s.begin(url, retry) {
+	if !followed && !c.isLoaded(url) {
 		return
 	}
-	name, err := s.Fetch(url)
-	s.end(url, err != nil)
-	if err != nil {
-		if !errors.Is(err, errCoverBrowser) {
-			c.addLog(LogInfo, fmt.Sprintf("%s: no cover (%s)", nonEmpty(entry.Title, url), err))
+	name := coverFile(url)
+	if !s.Has(name) {
+		if !s.begin(url, retry) {
+			return
 		}
-		return
+		var err error
+		name, err = s.Fetch(url)
+		s.end(url, err != nil)
+		if err != nil {
+			// a series only browsed fails quietly: the page shows its letter
+			if followed && !errors.Is(err, errCoverBrowser) {
+				c.addLog(LogInfo, fmt.Sprintf("%s: no cover (%s)", nonEmpty(entry.Title, url), err))
+			}
+			return
+		}
 	}
-	if err := lib.SetCover(url, name); err != nil {
-		c.addLog(LogWarn, "could not save the library: "+err.Error())
+	if _, followed = lib.Get(url); followed {
+		if err := lib.SetCover(url, name); err != nil {
+			c.addLog(LogWarn, "could not save the library: "+err.Error())
+		}
 	}
-	if _, still := lib.Get(url); !still {
-		// unfollowed while the cover was on its way
+	if _, still := lib.Get(url); !still && !c.isLoaded(url) {
+		// unfollowed, or another series loaded, while the cover was on its way
 		_ = s.Remove(name)
 	}
 	c.emit()
 }
 
-// FetchMissingCovers fetches, one after the other, the cover of every
-// followed series that has none, until ctx ends. It's for startup.
-func (c *Controller) FetchMissingCovers(ctx context.Context) {
-	if c.Covers() == nil {
+// isLoaded reports whether url is the series loaded (or loading) now
+func (c *Controller) isLoaded(url string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.url != "" && urlKey(c.url) == urlKey(url)
+}
+
+// LoadedCover is the window's path of the loaded series' cover, followed or
+// not, "" while it has none on disk
+func (c *Controller) LoadedCover() string {
+	s := c.Covers()
+	c.mu.Lock()
+	url := c.url
+	c.mu.Unlock()
+	if s == nil || url == "" {
+		return ""
+	}
+	if name := coverFile(url); s.Has(name) {
+		return coverPath(name)
+	}
+	return ""
+}
+
+// dropLoadedCoverLocked removes the cover of the series loaded until now
+// when it isn't followed: it was only there for the series page. The caller
+// holds mu.
+func (c *Controller) dropLoadedCoverLocked() {
+	if c.covers == nil || c.url == "" {
 		return
 	}
+	if _, followed := c.library.Get(c.url); followed {
+		return
+	}
+	// a file left behind is removed at the next start (FetchMissingCovers);
+	// no log here, which would take mu again
+	_ = c.covers.Remove(coverFile(c.url))
+}
+
+// FetchMissingCovers fetches, one after the other, the cover of every
+// followed series that has none, until ctx ends. It's for startup, so it
+// first removes the covers no followed series uses (the one of a series
+// only browsed when the app last quit).
+func (c *Controller) FetchMissingCovers(ctx context.Context) {
+	s := c.Covers()
+	if s == nil {
+		return
+	}
+	keep := map[string]bool{}
+	for _, f := range c.Library().List() {
+		keep[f.Cover] = true
+	}
+	s.prune(keep)
 	for _, f := range c.Library().List() {
 		if ctx.Err() != nil {
 			return
