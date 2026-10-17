@@ -20,7 +20,9 @@ import (
 // one gallery of pages rather than a series of chapters. A gallery is served
 // as a series with one chapter holding all its pages. The sites run a few
 // shared scripts (galleryEngines), told apart by the gallery page's markup,
-// so a clone on a new domain works without code.
+// so a clone on a new domain works without code. Some of those scripts (and
+// a few adult manhwa apps whose data sits in a script rather than the
+// markup PlainHTML reads) list chapters, which an engine's chapters gives.
 type Gallery struct {
 	*Grabber
 	doc    *goquery.Document
@@ -35,10 +37,16 @@ type galleryEngine struct {
 	name string
 	// match reports whether the fetched page is this script's gallery page
 	match func(doc *goquery.Document) bool
-	// title is the selector of the gallery's title; og:title is the fallback
-	title string
-	// pages returns the gallery's full-size page URLs in reading order
-	pages func(g *Gallery) ([]string, error)
+	// title is the selector of the gallery's title; titleOf, then og:title
+	// are the fallbacks
+	title   string
+	titleOf func(g *Gallery) string
+	// chapters lists a series' chapters, newest or oldest first as the site
+	// does; nil serves the page as one gallery
+	chapters func(g *Gallery) ([]*GalleryChapter, error)
+	// pages returns a chapter's full-size page URLs in reading order (for a
+	// gallery, its one chapter's URL is the gallery page's)
+	pages func(g *Gallery, c *GalleryChapter) ([]string, error)
 }
 
 // galleryEngines are the gallery scripts Gallery knows, tried in order
@@ -150,6 +158,9 @@ func (g *Gallery) FetchTitle() (string, error) {
 	if g.engine.title != "" {
 		g.title = sanitizeTitle(g.doc.Find(g.engine.title).First().Text())
 	}
+	if g.title == "" && g.engine.titleOf != nil {
+		g.title = sanitizeTitle(g.engine.titleOf(g))
+	}
 	if g.title == "" {
 		g.title = sanitizeTitle(galleryTitleSuffixRe.ReplaceAllString(
 			g.doc.Find(`meta[property="og:title"]`).AttrOr("content", ""), ""))
@@ -165,48 +176,123 @@ func (g *Gallery) FetchTitle() (string, error) {
 // "Title | HentaiHand")
 var galleryTitleSuffixRe = regexp.MustCompile(`\s+[-|»]\s+[^-|»]+$`)
 
-// FetchChapters returns the gallery as one chapter
+// FetchChapters returns the series' chapters, or the gallery as one chapter
 func (g *Gallery) FetchChapters() (Filterables, []error) {
 	if err := g.load(); err != nil {
 		return nil, []error{err}
 	}
 
-	return Filterables{&GalleryChapter{
-		Chapter: Chapter{
-			Number: 1,
-			ID:     chapterURLID(g.URL),
-			Label:  Label{Style: LabelNumbered},
-		},
-		URL: g.URL,
-	}}, nil
+	if g.engine.chapters == nil {
+		return Filterables{&GalleryChapter{
+			Chapter: Chapter{
+				Number: 1,
+				ID:     chapterURLID(g.URL),
+				Label:  Label{Style: LabelNumbered},
+			},
+			URL: g.URL,
+		}}, nil
+	}
+
+	chapters, err := g.engine.chapters(g)
+	if err != nil {
+		return nil, []error{err}
+	}
+	if len(chapters) == 0 {
+		return nil, []error{fmt.Errorf("no chapters found for %s", g.URL)}
+	}
+	list := make(Filterables, 0, len(chapters))
+	for _, c := range chapters {
+		if c.ID == "" {
+			c.ID = chapterURLID(c.URL)
+		}
+		list = append(list, c)
+	}
+
+	return list, nil
 }
 
-// FetchChapter returns the gallery's pages
+// FetchChapter returns a chapter's pages
 func (g *Gallery) FetchChapter(f Filterable) (*Chapter, error) {
 	if err := g.load(); err != nil {
 		return nil, err
 	}
+	gc, ok := f.(*GalleryChapter)
+	if !ok {
+		return nil, fmt.Errorf("not a gallery chapter: %T", f)
+	}
 
-	urls, err := g.engine.pages(g)
+	urls, err := g.engine.pages(g, gc)
 	if err != nil {
 		return nil, err
 	}
 	if len(urls) == 0 {
-		return nil, fmt.Errorf("no pages found for %s", g.URL)
+		return nil, fmt.Errorf("no pages found for %s", gc.URL)
 	}
 
 	chapter := &Chapter{
 		Title:      f.GetTitle(),
 		Label:      labelOf(f),
 		Number:     f.GetNumber(),
-		ID:         chapterURLID(g.URL),
+		ID:         gc.ID,
 		PagesCount: int64(len(urls)),
+		Language:   gc.Language,
+	}
+	if groups := gc.GetGroups(); len(groups) > 0 {
+		chapter.SetGroups(groups...)
 	}
 	for i, u := range urls {
 		chapter.Pages = append(chapter.Pages, Page{Number: int64(i + 1), URL: u})
 	}
 
 	return chapter, nil
+}
+
+// docOf returns the parsed page at pageURL: the gallery page itself, or a
+// fetch of another
+func (g *Gallery) docOf(pageURL string) (*goquery.Document, error) {
+	if pageURL == g.URL && g.doc != nil {
+		return g.doc, nil
+	}
+	return galleryDoc(pageURL, g.URL)
+}
+
+// resolve makes href absolute against the gallery page
+func (g *Gallery) resolve(href string) string {
+	base, _ := url.Parse(g.URL)
+	return resolveURLRelative(strings.TrimSpace(href), base)
+}
+
+// images returns the first non-empty attribute (of attrs, in order)
+// of every element sel matches in doc, made absolute against the gallery
+// page, without repeats
+func (g *Gallery) images(doc *goquery.Document, sel string, attrs ...string) []string {
+	var urls []string
+	seen := map[string]bool{}
+	doc.Find(sel).Each(func(_ int, s *goquery.Selection) {
+		for _, attr := range attrs {
+			if v := strings.TrimSpace(s.AttrOr(attr, "")); v != "" && !strings.HasPrefix(v, "data:") {
+				u := g.resolve(v)
+				if u != "" && !seen[u] {
+					seen[u] = true
+					urls = append(urls, u)
+				}
+				return
+			}
+		}
+	})
+	return urls
+}
+
+// galleryNumbered returns a chapter numbered from its text (else number)
+func galleryNumbered(chapterURL, text string, number float64) *GalleryChapter {
+	n, ok := parseChapterNumber(text)
+	if !ok {
+		n = number
+	}
+	return &GalleryChapter{
+		Chapter: Chapter{Number: n, Label: Label{Style: LabelNumbered}},
+		URL:     chapterURL,
+	}
 }
 
 // galleryThumbRe is a thumbnail's page number and file type ("12t.jpg")
@@ -220,7 +306,7 @@ var galleryAdultsTypesRe = regexp.MustCompile(`g_th\s*=\s*\$\.parseJSON\('(\{[^'
 
 // galleryAdultsPages builds every page from the first thumbnail's folder, the
 // page count and each page's file type (jpg when g_th doesn't say)
-func galleryAdultsPages(g *Gallery) ([]string, error) {
+func galleryAdultsPages(g *Gallery, _ *GalleryChapter) ([]string, error) {
 	count, err := strconv.Atoi(strings.TrimSpace(g.doc.Find("#load_pages").AttrOr("value", "")))
 	if err != nil || count <= 0 {
 		return nil, errors.New("gallery page count not found")
@@ -265,13 +351,12 @@ type galleryEnvyPage struct {
 
 // galleryEnvyPages reads the first page's reader, which lists every page's
 // file type in #readerPagesJson next to the image folder
-func galleryEnvyPages(g *Gallery) ([]string, error) {
+func galleryEnvyPages(g *Gallery, _ *GalleryChapter) ([]string, error) {
 	href, ok := g.doc.Find("#js-thumbs-grid a[href]").First().Attr("href")
 	if !ok {
 		return nil, errors.New("gallery reader link not found")
 	}
-	base, _ := url.Parse(g.URL)
-	reader, err := galleryDoc(resolveURLRelative(href, base), g.URL)
+	reader, err := galleryDoc(g.resolve(href), g.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +380,7 @@ func galleryEnvyPages(g *Gallery) ([]string, error) {
 }
 
 // galleryNhentaiPages turns every thumbnail into its full-size page
-func galleryNhentaiPages(g *Gallery) ([]string, error) {
+func galleryNhentaiPages(g *Gallery, _ *GalleryChapter) ([]string, error) {
 	var urls []string
 	g.doc.Find("#thumbnail-container a.gallerythumb img").Each(func(_ int, s *goquery.Selection) {
 		src := s.AttrOr("data-src", s.AttrOr("src", ""))
@@ -314,7 +399,7 @@ var hentaiHandComicRe = regexp.MustCompile(`\bcomic:\s*\{"id":\d+,"linkcode"`)
 var hentaiHandSlugRe = regexp.MustCompile(`/comic/([^/?#]+)`)
 
 // galleryHentaiHandPages asks the comic's images API
-func galleryHentaiHandPages(g *Gallery) ([]string, error) {
+func galleryHentaiHandPages(g *Gallery, _ *GalleryChapter) ([]string, error) {
 	m := hentaiHandSlugRe.FindStringSubmatch(g.URL)
 	if m == nil {
 		return nil, fmt.Errorf("no comic slug in %s", g.URL)
