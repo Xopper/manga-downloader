@@ -202,6 +202,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewHeavenManga(g),
 		NewLelScans(g),
 		plainHTML,
+		NewGallery(g),
 		NewTcb(g),
 		NewJestful(g),
 	}
