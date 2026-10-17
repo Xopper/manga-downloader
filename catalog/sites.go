@@ -20,9 +20,20 @@ type SiteInfo struct {
 	// Family names the crawler: themesia, madara, single, or a platform with no
 	// crawler yet (custom, nextjs, astro, nuxt, foolslide, blogger, api)
 	Family string `json:"family"`
-	// List is the family's list page; {page} is the page number
+	// List is the family's list page; {page} is the page number. For the
+	// sitemap family it's the site's sitemap (or sitemap index).
 	List string `json:"list,omitempty"`
-	Lang string `json:"lang"`
+	// Sitemaps picks, in a sitemap index, the child sitemaps that list series
+	// (a regular expression on their URL; all of them when empty)
+	Sitemaps string `json:"sitemaps,omitempty"`
+	// Series picks the sitemap URLs that are series (a regular expression on
+	// the URL); its first group, when it has one, is the series URL a chapter
+	// URL belongs to
+	Series string `json:"series,omitempty"`
+	// SeriesURL builds the series URL from Series' first group when it isn't
+	// a prefix of the matched URL ("https://www.utoon.us/en/manga/{1}.html")
+	SeriesURL string `json:"seriesURL,omitempty"`
+	Lang      string `json:"lang"`
 	// Crawl is false for sites with no crawler, API sites and browser-gated sites
 	Crawl bool `json:"crawl"`
 	// Browser marks the sites the README marks with *
