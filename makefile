@@ -121,6 +121,10 @@ catalog/smoke:
 	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site bluesolo.org
 	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site onma.top
 	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site mangadelsiglotvmanga.com.mx
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site anzmanga25.com
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site tvymanga3.com
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site animeallstar1.com
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site inmanga.com
 	test -s /tmp/catalog-smoke/index.json
 	grep -q '"entries": 1,' /tmp/catalog-smoke/index.json
 

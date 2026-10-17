@@ -18,7 +18,8 @@ type SiteInfo struct {
 	// Aliases are former domains of the site, so a URL on one still matches
 	Aliases []string `json:"aliases,omitempty"`
 	// Family names the crawler: themesia, madara, single, gigaviewer,
-	// sitemap, jsonlist, htmllist, blogger, or a platform with no crawler yet
+	// sitemap, jsonlist, htmllist, blogger, bloggerposts, links, jsonapi,
+	// inmanga, or a platform with no crawler yet
 	// (custom, nextjs, astro, nuxt, foolslide, api)
 	Family string `json:"family"`
 	// List is the family's list page; {page} is the page number. For the
@@ -30,16 +31,19 @@ type SiteInfo struct {
 	Sitemaps string `json:"sitemaps,omitempty"`
 	// Series picks the sitemap URLs that are series (a regular expression on
 	// the URL); its first group, when it has one, is the series URL a chapter
-	// URL belongs to
+	// URL belongs to. The links family keeps only the links it matches.
 	Series string `json:"series,omitempty"`
 	// SeriesURL builds the series URL from Series' first group when it isn't
 	// a prefix of the matched URL ("https://www.utoon.us/en/manga/{1}.html").
 	// For the jsonlist family it builds it from the item's fields instead
 	// ("https://www.twmanga.com/comic/{comic_id}"), and for the blogger
 	// family from the label ({1}, query-escaped).
+	// For the jsonapi family it's built from an item's fields
+	// ("https://luacomic.org/series/{series_slug}", "{link}").
 	SeriesURL string `json:"seriesURL,omitempty"`
-	// Items picks the series in a list page: for the jsonlist family the dot
-	// path of the array of series in the JSON ("" is a top-level array), for
+	// Items picks the series in a list page: for the jsonlist and jsonapi
+	// families the dot path of the array of series in the JSON ("" is a
+	// top-level array), for
 	// the htmllist family a CSS selector of the series links (or elements
 	// holding the link)
 	Items string `json:"items,omitempty"`
@@ -66,6 +70,14 @@ type SiteInfo struct {
 	Label string `json:"label,omitempty"`
 	// Note says why a site isn't crawled yet
 	Note string `json:"note,omitempty"`
+
+	// Links picks the series links on a list page (a CSS selector): the links
+	// family's rows, a gigaviewer site's series links when they aren't all its
+	// episode links
+	Links string `json:"links,omitempty"`
+	// TitleKey is, for the jsonapi family, an item's title (dotted keys,
+	// "title", "title.rendered")
+	TitleKey string `json:"titleKey,omitempty"`
 }
 
 //go:embed sites.json

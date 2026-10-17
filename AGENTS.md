@@ -175,7 +175,17 @@ page. Measure before touching any of it (a load takes ~0.6 s, a search for
   `/search?q={label}`, the series URL the Blogger grabber reads). `exclude`
   drops titles a regexp matches (genre labels, "Uncategorized"); the
   `gigaviewer` `list` can name several pages, parted by spaces. JSON is
-  read through `fetchText`, which `withFakeFetch` fakes too. They run without a browser, through `http.GetText` with
+  read through `fetchText`, which `withFakeFetch` fakes too.
+  `links` (a plain HTML
+  list no family reads: `links` is the CSS selector of its series links,
+  titled by their title attribute or text, `series` an optional URL filter),
+  `jsonapi` (a paged JSON API, WordPress REST or HeanCMS: `items` is the
+  array's dotted path, `titleKey` the title's, `seriesURL` the series URL
+  with `{field}`s), `bloggerposts` (Blogger blogs: the post feed's chapter titles
+  name the series, whose URL is the blog's `/search?q=`, as the grabber
+  reads it) and `inmanga` (its consult form, POSTed). The JSON and POST
+  crawlers read text through `fetchBody` (`fetch_body.go`, `withFakeBodies`
+  in tests). They run without a browser, through `http.GetText` with
   `DisableRetry` (a 404 is how a paged list ends), paced by `pagePause`, and
   stop when a page adds nothing new (a site that ignores `page=`). Tests use
   `withFakeFetch` and trimmed fixtures under `catalog/testdata/<family>/`.

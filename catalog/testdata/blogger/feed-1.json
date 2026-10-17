@@ -1,0 +1,100 @@
+{
+ "feed": {
+  "openSearch$totalResults": {
+   "$t": "7"
+  },
+  "entry": [
+   {
+    "title": {
+     "type": "text",
+     "$t": "Madan no Ichi Manga 102 Español "
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-0.html"
+     }
+    ]
+   },
+   {
+    "title": {
+     "type": "text",
+     "$t": "One Piece Manga 1196 [Español]"
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-1.html"
+     }
+    ]
+   },
+   {
+    "title": {
+     "type": "text",
+     "$t": "Kenichi 2 | Manga 27 Español "
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-2.html"
+     }
+    ]
+   },
+   {
+    "title": {
+     "type": "text",
+     "$t": "One Piece Manga 1195 [Español]"
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-3.html"
+     }
+    ]
+   },
+   {
+    "title": {
+     "type": "text",
+     "$t": "Fairy Tail 100 Years Quest 222 Español"
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-4.html"
+     }
+    ]
+   },
+   {
+    "title": {
+     "type": "text",
+     "$t": "Leer Blue Lock Manga 364 Parte 2 [Español]"
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-5.html"
+     }
+    ]
+   },
+   {
+    "title": {
+     "type": "text",
+     "$t": "Noticias de la semana"
+    },
+    "link": [
+     {
+      "rel": "alternate",
+      "type": "text/html",
+      "href": "https://www.b.test/2026/10/post-6.html"
+     }
+    ]
+   }
+  ]
+ }
+}
