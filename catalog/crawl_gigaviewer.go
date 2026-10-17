@@ -26,38 +26,51 @@ func init() {
 
 var gigaviewerEpisodePath = regexp.MustCompile(`^/episode/\d+$`)
 
-func (gigaviewer) Crawl(ctx context.Context, site SiteInfo, _ int) ([]Entry, error) {
-	list := site.List
-	if list == "" {
-		list = strings.TrimSuffix(site.Home, "/") + "/series"
-	}
-	base, err := url.Parse(list)
-	if err != nil {
-		return nil, err
-	}
-	doc, err := fetch(ctx, list)
-	if err != nil {
-		return nil, err
+// A site whose series are split over several pages (kuragebunch.com's
+// /series/kuragebunch, /series/oneshot, …) has them all in List, parted by
+// spaces; limit caps how many are read.
+func (gigaviewer) Crawl(ctx context.Context, site SiteInfo, limit int) ([]Entry, error) {
+	lists := strings.Fields(site.List)
+	if len(lists) == 0 {
+		lists = []string{strings.TrimSuffix(site.Home, "/") + "/series"}
 	}
 	var entries []Entry
 	seenURL, seenTitle := map[string]bool{}, map[string]bool{}
-	doc.Find(`a[href*="/episode/"]`).Each(func(_ int, a *goquery.Selection) {
-		href, _ := a.Attr("href")
-		u, err := base.Parse(href)
-		if err != nil || u.Host != base.Host || !gigaviewerEpisodePath.MatchString(u.Path) {
-			return
+	for i, list := range lists {
+		if limit > 0 && i >= limit {
+			break
 		}
-		u.RawQuery, u.Fragment = "", ""
-		title := gigaviewerTitle(a)
-		// the same series can be linked twice (a banner, then the list)
-		if title == "" || seenURL[u.String()] || seenTitle[title] {
-			return
+		if i > 0 {
+			if err := pause(ctx); err != nil {
+				return entries, err
+			}
 		}
-		seenURL[u.String()], seenTitle[title] = true, true
-		entries = append(entries, Entry{Title: title, URL: u.String()})
-	})
+		base, err := url.Parse(list)
+		if err != nil {
+			return entries, err
+		}
+		doc, err := fetch(ctx, list)
+		if err != nil {
+			return entries, err
+		}
+		doc.Find(`a[href*="/episode/"]`).Each(func(_ int, a *goquery.Selection) {
+			href, _ := a.Attr("href")
+			u, err := base.Parse(href)
+			if err != nil || u.Host != base.Host || !gigaviewerEpisodePath.MatchString(u.Path) {
+				return
+			}
+			u.RawQuery, u.Fragment = "", ""
+			title := gigaviewerTitle(a)
+			// the same series can be linked twice (a banner, then the list)
+			if title == "" || seenURL[u.String()] || seenTitle[title] {
+				return
+			}
+			seenURL[u.String()], seenTitle[title] = true, true
+			entries = append(entries, Entry{Title: title, URL: u.String()})
+		})
+	}
 	if len(entries) == 0 {
-		return nil, fmt.Errorf("%s: no series links", list)
+		return nil, fmt.Errorf("%s: no series links", site.List)
 	}
 
 	return entries, nil

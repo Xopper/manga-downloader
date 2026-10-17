@@ -17,11 +17,13 @@ type SiteInfo struct {
 	Home string `json:"home"`
 	// Aliases are former domains of the site, so a URL on one still matches
 	Aliases []string `json:"aliases,omitempty"`
-	// Family names the crawler: themesia, madara, single, or a platform with no
-	// crawler yet (custom, nextjs, astro, nuxt, foolslide, blogger, api)
+	// Family names the crawler: themesia, madara, single, gigaviewer,
+	// sitemap, jsonlist, htmllist, blogger, or a platform with no crawler yet
+	// (custom, nextjs, astro, nuxt, foolslide, api)
 	Family string `json:"family"`
 	// List is the family's list page; {page} is the page number. For the
-	// sitemap family it's the site's sitemap (or sitemap index).
+	// sitemap family it's the site's sitemap (or sitemap index); for the
+	// gigaviewer family it can be several pages, parted by spaces.
 	List string `json:"list,omitempty"`
 	// Sitemaps picks, in a sitemap index, the child sitemaps that list series
 	// (a regular expression on their URL; all of them when empty)
@@ -31,9 +33,31 @@ type SiteInfo struct {
 	// URL belongs to
 	Series string `json:"series,omitempty"`
 	// SeriesURL builds the series URL from Series' first group when it isn't
-	// a prefix of the matched URL ("https://www.utoon.us/en/manga/{1}.html")
+	// a prefix of the matched URL ("https://www.utoon.us/en/manga/{1}.html").
+	// For the jsonlist family it builds it from the item's fields instead
+	// ("https://www.twmanga.com/comic/{comic_id}"), and for the blogger
+	// family from the label ({1}, query-escaped).
 	SeriesURL string `json:"seriesURL,omitempty"`
-	Lang      string `json:"lang"`
+	// Items picks the series in a list page: for the jsonlist family the dot
+	// path of the array of series in the JSON ("" is a top-level array), for
+	// the htmllist family a CSS selector of the series links (or elements
+	// holding the link)
+	Items string `json:"items,omitempty"`
+	// ItemTitle is where an item's title is: jsonlist, its dot path in the
+	// item (default "title"); htmllist, a selector inside the item (default
+	// the item's own text, else its title attribute)
+	ItemTitle string `json:"itemTitle,omitempty"`
+	// ItemURL is where an item's series URL is: jsonlist, its dot path in the
+	// item (default "url"); htmllist, the attribute holding it (default
+	// href). Relative URLs are resolved against the list page.
+	ItemURL string `json:"itemURL,omitempty"`
+	// ItemAlt is the dot path of an item's other names (jsonlist), a string
+	// or a list of strings
+	ItemAlt string `json:"itemAlt,omitempty"`
+	// Exclude drops the entries whose title it matches (a regular
+	// expression): a blog's genre labels, a category that isn't a series
+	Exclude string `json:"exclude,omitempty"`
+	Lang    string `json:"lang"`
 	// Crawl is false for sites with no crawler, API sites and browser-gated sites
 	Crawl bool `json:"crawl"`
 	// Browser marks the sites the README marks with *

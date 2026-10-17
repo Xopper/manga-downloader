@@ -162,7 +162,20 @@ page. Measure before touching any of it (a load takes ~0.6 s, a search for
   but a sitemap: `list` is the sitemap or index, `sitemaps` picks an
   index's children, `series` picks the series URLs, its first group mapping
   a chapter URL to its series, or filling `seriesURL`'s `{1}`; titles come
-  from the slug, long numeric or hex ids cut off). They run without a browser, through `http.GetText` with
+  from the slug, long numeric or hex ids cut off), `jsonlist` (a JSON API
+  list, paged when `list` has `{page}`: `items` is the dot path of the
+  array, `itemTitle`/`itemURL`/`itemAlt` the item's fields, default
+  `title`/`url`; `seriesURL` builds the link from fields,
+  `…/comic/{comic_id}`; PizzaReader's `/api/comics`, WordPress REST
+  `/wp-json/wp/v2/categories`, baozimh's `amp_comic_list`), `htmllist` (a
+  plain HTML list: `items` is a CSS selector of the series links,
+  `itemURL` the attribute, `itemTitle` a selector inside; MyMangaReaderCMS's
+  `/changeMangaList?type=text`, FMReader's `/manga-list.html?page={page}`),
+  `blogger` (a Blogger blog's labels from its JSON feed, each linked as
+  `/search?q={label}`, the series URL the Blogger grabber reads). `exclude`
+  drops titles a regexp matches (genre labels, "Uncategorized"); the
+  `gigaviewer` `list` can name several pages, parted by spaces. JSON is
+  read through `fetchText`, which `withFakeFetch` fakes too. They run without a browser, through `http.GetText` with
   `DisableRetry` (a 404 is how a paged list ends), paced by `pagePause`, and
   stop when a page adds nothing new (a site that ignores `page=`). Tests use
   `withFakeFetch` and trimmed fixtures under `catalog/testdata/<family>/`.

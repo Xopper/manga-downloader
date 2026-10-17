@@ -1,0 +1,33 @@
+{
+ "version": "1.0",
+ "encoding": "UTF-8",
+ "feed": {
+  "id": {
+   "$t": "tag:blogger.com,1999:blog-3363270973511284619"
+  },
+  "category": [
+   {
+    "term": "Mangas"
+   },
+   {
+    "term": "Blue Lock"
+   },
+   {
+    "term": "Anime"
+   },
+   {
+    "term": "Shangri-La Frontier: Shitty Games Hunter Challenges Godly Game"
+   },
+   {
+    "term": "Yani Neko Anime"
+   }
+  ],
+  "title": {
+   "type": "text",
+   "$t": "Manga Del Siglo"
+  },
+  "openSearch$totalResults": {
+   "$t": "254"
+  }
+ }
+}

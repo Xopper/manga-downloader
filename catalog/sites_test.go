@@ -24,6 +24,9 @@ func TestSitesLoadsEmbeddedTable(t *testing.T) {
 		if s.Crawl && s.Family == "custom" {
 			t.Errorf("%s has no crawler family but crawls", s.Site)
 		}
+		if _, ok := CrawlerFor(s); s.Crawl && !ok {
+			t.Errorf("%s crawls but its family %q has no crawler", s.Site, s.Family)
+		}
 	}
 }
 
