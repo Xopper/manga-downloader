@@ -72,6 +72,9 @@ type webComicSite struct {
 	// Next selects the link to the archive's next page, for an archive split
 	// over pages
 	Next string
+	// NoReferer downloads the pictures without the site's Referer, for an
+	// image host that refuses it (kiutaku.com's mitaku.net)
+	NoReferer bool
 	// SortPictures puts a strip page's pictures in the order of the numbers
 	// their files end with, for a page that lays them out backwards
 	SortPictures bool
@@ -88,9 +91,9 @@ type wcEntry struct {
 	Number float64
 	// HasNumber is set when Number is the site's, else the position numbers it
 	HasNumber bool
-	Volume   int
-	Strips   []string
-	Pictures []string
+	Volume    int
+	Strips    []string
+	Pictures  []string
 }
 
 // NewWebComic returns a new WebComic grabber
@@ -294,12 +297,13 @@ func (w *WebComic) FetchChapter(f Filterable) (*Chapter, error) {
 		if err != nil {
 			return nil, err
 		}
+		noRef := w.site.NoReferer || noReferrer(doc)
 		srcs := wcComicImages(doc, w.site.Image)
 		if w.site.SortPictures {
 			slices.SortStableFunc(srcs, func(a, b string) int { return wcFileNumber(a) - wcFileNumber(b) })
 		}
 		for _, src := range srcs {
-			pages = append(pages, Page{Number: int64(len(pages) + 1), URL: src})
+			pages = append(pages, Page{Number: int64(len(pages) + 1), URL: src, NoReferer: noRef})
 		}
 	}
 	if len(pages) == 0 {
@@ -488,6 +492,38 @@ var webComicSites = []webComicSite{
 			return strings.ReplaceAll(comic, "_", " ")
 		},
 	},
+	// Photo galleries (NSFW): each post is a series of one chapter
+	{
+		Hosts: []string{"everia.club"},
+		List:  galleryList(".page-links a, a.post-page-numbers"),
+		Image: ".wp-block-image img, .entry-content img",
+		Title: galleryTitle,
+	},
+	{
+		Hosts: []string{"jjcos.com"},
+		List:  galleryList("a.post-page-numbers"),
+		Image: ".post-content img",
+		Title: galleryTitle,
+	},
+	{
+		Hosts: []string{"misskon.com"},
+		List:  galleryList("a.post-page-numbers"),
+		Image: "img.aligncenter",
+		Title: galleryTitle,
+	},
+	{
+		Hosts:     []string{"kiutaku.com"},
+		NoReferer: true,
+		List:      galleryList("a.pagination-link"),
+		Image:     ".article-fulltext img",
+		Title:     galleryTitle,
+	},
+	{
+		Hosts: []string{"3600000.xyz"},
+		List:  galleryList("a.post-page-numbers"),
+		Image: ".entry-content img",
+		Title: galleryTitle,
+	},
 	{
 		// gunnerkrigg.com: the archive names each chapter and lists its
 		// pages, whose pictures are numbered after them
@@ -603,6 +639,44 @@ func duckChapters(doc *goquery.Document) ([]wcEntry, error) {
 		entries = append(entries, e)
 	})
 	return entries, nil
+}
+
+// galleryPageRe reads the page number a gallery's pager link ends with:
+// WordPress' /2/ or ?page=2
+var galleryPageRe = regexp.MustCompile(`^(.*?[/=])(\d+)(/?)$`)
+
+// galleryList reads a photo gallery post, which is a series of one chapter:
+// its pages are the post and the pages its pager (the selector) links to,
+// counted up to the last one when the pager skips some ("1 2 3 … 9")
+func galleryList(pager string) func(doc *goquery.Document) ([]wcEntry, error) {
+	return func(doc *goquery.Document) ([]wcEntry, error) {
+		first := docURL(doc).String()
+		strips := []string{first}
+		last, prefix, suffix := 1, "", ""
+		for _, link := range wcLinks(doc, pager) {
+			// a page of this post, not of another listing
+			if !strings.HasPrefix(link, strings.TrimSuffix(first, "/")) || link == first {
+				continue
+			}
+			if m := galleryPageRe.FindStringSubmatch(link); m != nil {
+				if n, _ := strconv.Atoi(m[2]); n > last {
+					last, prefix, suffix = n, m[1], m[3]
+				}
+			}
+		}
+		for n := 2; n <= last; n++ {
+			strips = append(strips, prefix+strconv.Itoa(n)+suffix)
+		}
+		return []wcEntry{{Number: 1, HasNumber: true, Strips: strips}}, nil
+	}
+}
+
+// galleryTitle names a gallery after its heading, else its page title
+func galleryTitle(_ *url.URL, doc *goquery.Document) string {
+	if h1 := sanitizeTitle(doc.Find("h1").First().Text()); h1 != "" {
+		return h1
+	}
+	return smPageName(doc.Find("title").First().Text())
 }
 
 // holoearthEpisodeRe reads an episode link of a holoearth.com manga: the

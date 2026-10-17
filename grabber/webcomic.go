@@ -200,7 +200,8 @@ func wcComicImages(doc *goquery.Document, selector string) []string {
 // one, else its src, resolved against the page
 func wcImageURL(s *goquery.Selection, base *url.URL) string {
 	src := ""
-	for _, attr := range []string{"data-src", "data-lazy-src", "data-orig-file", "src"} {
+	// file is the images-lazyload-and-slideshow plugin's (3600000.xyz), whose src is a blank gif
+	for _, attr := range []string{"data-src", "data-lazy-src", "data-orig-file", "file", "src"} {
 		if v := strings.TrimSpace(s.AttrOr(attr, "")); v != "" && !strings.HasPrefix(v, "data:") {
 			src = v
 			break
