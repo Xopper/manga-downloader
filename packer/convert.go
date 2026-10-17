@@ -15,6 +15,8 @@ import (
 	// frame only, which is what we want: no e-reader renders animated AVIF at
 	// all, so a single frame beats an unreadable page.
 	_ "github.com/gen2brain/avif"
+	// encodes WebP (lossy, through libwebp built to WebAssembly: no cgo)
+	"github.com/gen2brain/webp"
 	// registers the WebP decoder with image.Decode
 	_ "golang.org/x/image/webp"
 )
@@ -45,6 +47,28 @@ func convertToJPEG(data []byte) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	if err := jpeg.Encode(buf, flattenAlpha(img), &jpeg.Options{Quality: jpegQuality}); err != nil {
 		return nil, fmt.Errorf("encoding jpeg: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// webpQuality is the quality pages are encoded at when saved as WebP:
+// libwebp's own default. Pages the sites serve are mostly JPEG already, and
+// re-encoding those at 85 made them bigger than they came; at 75 a sample
+// chapter of JPEG pages shrank by about a quarter, and PNG pages far more.
+const webpQuality = 75
+
+// convertToWebP decodes an image and re-encodes it as lossy WebP, for
+// --save-pages-as webp (smaller files)
+func convertToWebP(data []byte) ([]byte, error) {
+	img, err := decodeImage(data)
+	if err != nil {
+		return nil, fmt.Errorf("decoding image: %w", err)
+	}
+
+	buf := &bytes.Buffer{}
+	if err := webp.Encode(buf, img, webp.Options{Quality: webpQuality, Method: 4}); err != nil {
+		return nil, fmt.Errorf("encoding webp: %w", err)
 	}
 
 	return buf.Bytes(), nil

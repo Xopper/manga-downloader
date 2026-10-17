@@ -44,6 +44,10 @@ type Settings struct {
 	// transcode to JPEG when packing ("avif", "avif,webp" or "none"), so pages
 	// served in formats e-readers can't display end up readable
 	ConvertImages string
+	// SavePagesAs is the format every page is saved in: "" (or "original")
+	// keeps each page as the site served it (ConvertImages still applies),
+	// "jpeg" and "webp" re-encode every page in another format
+	SavePagesAs string
 	// Range is the range to be downloaded (in string, i.e. "1-10,23,45-50")
 	Range string
 	// Volumes packs one file per volume instead of one per chapter: either
@@ -113,6 +117,9 @@ type Site interface {
 	// GetConvertImages returns the set of source image formats to transcode to
 	// JPEG when packing
 	GetConvertImages() ConvertFormats
+	// GetSavePagesAs returns the format every page is re-encoded in, "" to
+	// keep each page's own
+	GetSavePagesAs() string
 	// GetMaxConcurrency returns the max concurrency for the site
 	GetMaxConcurrency() MaxConcurrency
 	// GetPreferredLanguage returns the preferred language for the site
@@ -406,6 +413,13 @@ func (g Grabber) GetReadingDirection() string {
 func (g Grabber) GetConvertImages() ConvertFormats {
 	formats, _ := ParseConvertFormats(g.Settings.ConvertImages)
 	return formats
+}
+
+// GetSavePagesAs returns the format every page is re-encoded in ("jpeg" or
+// "webp"), "" to keep each page's own. The value is validated at startup.
+func (g Grabber) GetSavePagesAs() string {
+	v, _ := ParseSavePagesAs(g.Settings.SavePagesAs)
+	return v
 }
 
 // NewSite returns a new site based on the passed url

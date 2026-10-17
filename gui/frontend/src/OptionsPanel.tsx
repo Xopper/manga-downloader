@@ -134,6 +134,13 @@ export function SaveOptions({ state, onOptions, onChooseFolder, onError, heading
   );
 }
 
+/** What each "Save pages as" choice does, shown under it */
+const SAVE_AS_HINTS: Record<Options['savePagesAs'], string> = {
+  original: 'Pages are kept the way the site sends them (JPEG, PNG, WebP or AVIF).',
+  jpeg: 'Every page becomes JPEG: it opens on any reader, e-ink too.',
+  webp: "Every page becomes WebP: smaller files, but some e-readers can't open it.",
+};
+
 /** The options that aren't about one series: pages, the filename template, the browser window */
 export function MoreOptions({ state, onOptions, onError }: Omit<Props, 'onChooseFolder'>) {
   const o = state.options;
@@ -149,25 +156,44 @@ export function MoreOptions({ state, onOptions, onError }: Omit<Props, 'onChoose
     <>
       <section className="opt-group" aria-labelledby="opt-pages">
         <h3 id="opt-pages">Pages</h3>
-        <fieldset className="field" disabled={locked}>
-          <legend>Convert to JPEG</legend>
-          <div className="check-row">
-            <Check
-              label="AVIF"
-              checked={avif.checked}
-              disabled={avif.disabled}
-              onChange={(checked) => set({ convertImages: convertValueOf({ ...flags, avif: checked }) })}
-            />
-            <Check
-              label="WebP"
-              checked={flags.webp}
-              onChange={(webp) => set({ convertImages: convertValueOf({ ...flags, webp }) })}
-            />
-          </div>
-          <p className="hint">
-            {o.format === 'epub' ? AVIF_EPUB_HINT : "Most e-readers can't open AVIF; WebP is unreliable on e-ink."}
-          </p>
-        </fieldset>
+        <div className="field-stack">
+          <Segmented<Options['savePagesAs']>
+            label="Save pages as"
+            value={o.savePagesAs}
+            disabled={locked}
+            options={[
+              { value: 'original', label: 'Original' },
+              { value: 'jpeg', label: 'JPEG' },
+              { value: 'webp', label: 'WebP' },
+            ]}
+            onChange={(savePagesAs) => set({ savePagesAs })}
+          />
+          <p className="hint">{SAVE_AS_HINTS[o.savePagesAs]}</p>
+        </div>
+
+        {o.savePagesAs === 'original' && (
+          <fieldset className="field" disabled={locked}>
+            <legend>Turn these into JPEG</legend>
+            <div className="check-row">
+              <Check
+                label="AVIF"
+                checked={avif.checked}
+                disabled={avif.disabled}
+                onChange={(checked) => set({ convertImages: convertValueOf({ ...flags, avif: checked }) })}
+              />
+              <Check
+                label="WebP"
+                checked={flags.webp}
+                onChange={(webp) => set({ convertImages: convertValueOf({ ...flags, webp }) })}
+              />
+            </div>
+            <p className="hint">
+              {o.format === 'epub'
+                ? AVIF_EPUB_HINT
+                : "Only pages the site sends in these formats change. Most e-readers can't open AVIF, and WebP often fails on e-ink."}
+            </p>
+          </fieldset>
+        )}
 
         <TextField
           label="Skip pages"

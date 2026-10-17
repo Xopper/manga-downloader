@@ -10,6 +10,7 @@ const base: Options = {
   language: '',
   scanlator: '',
   convertImages: 'avif',
+  savePagesAs: 'original',
   skipPages: '',
   filenameTemplate: '{{.Series}}',
   browserVisible: false,

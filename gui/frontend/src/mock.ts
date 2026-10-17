@@ -270,6 +270,7 @@ function defaultOptions(shot: boolean, epub: boolean): Options {
     language: '',
     scanlator: '',
     convertImages: 'avif',
+    savePagesAs: 'original',
     skipPages: '',
     filenameTemplate: TEMPLATE_DEFAULT,
     browserVisible: false,

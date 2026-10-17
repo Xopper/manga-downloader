@@ -27,6 +27,9 @@ type OptionsDTO struct {
 	Language         string `json:"language"`
 	Scanlator        string `json:"scanlator"`
 	ConvertImages    string `json:"convertImages"`
+	// SavePagesAs is "original", "jpeg" or "webp": the format every page is
+	// saved in, "original" keeping each page's own (ConvertImages aside)
+	SavePagesAs      string `json:"savePagesAs"`
 	SkipPages        string `json:"skipPages"`
 	FilenameTemplate string `json:"filenameTemplate"`
 	BrowserVisible   bool   `json:"browserVisible"`
@@ -110,6 +113,7 @@ func optionsOf(s grabber.Settings) OptionsDTO {
 		Language:         s.Language,
 		Scanlator:        s.Scanlator,
 		ConvertImages:    s.ConvertImages,
+		SavePagesAs:      savePagesAsOf(s.SavePagesAs),
 		SkipPages:        s.SkipPages,
 		FilenameTemplate: s.FilenameTemplate,
 		BrowserVisible:   s.BrowserVisible,
@@ -127,6 +131,7 @@ func applyOptions(s *grabber.Settings, o OptionsDTO) {
 	s.Language = o.Language
 	s.Scanlator = o.Scanlator
 	s.ConvertImages = o.ConvertImages
+	s.SavePagesAs = o.SavePagesAs
 	s.SkipPages = o.SkipPages
 	s.FilenameTemplate = o.FilenameTemplate
 	s.BrowserVisible = o.BrowserVisible
@@ -194,9 +199,22 @@ func loadOptions(path string, s *grabber.Settings) error {
 		notice.Warn("ignoring the saved convert-images %q, using %q: %v", o.ConvertImages, grabber.ConvertImagesDefault, err)
 		o.ConvertImages = grabber.ConvertImagesDefault
 	}
+	if _, err := grabber.ParseSavePagesAs(o.SavePagesAs); err != nil {
+		notice.Warn("ignoring the saved save-pages-as %q, keeping pages as they are: %v", o.SavePagesAs, err)
+		o.SavePagesAs = grabber.SavePagesOriginal
+	}
 	applyOptions(s, o)
 
 	return nil
+}
+
+// savePagesAsOf is the window's "Save pages as" choice for a setting value:
+// "" (a gui.json from before the choice existed) is "original"
+func savePagesAsOf(v string) string {
+	if parsed, err := grabber.ParseSavePagesAs(v); err == nil && parsed != "" {
+		return parsed
+	}
+	return grabber.SavePagesOriginal
 }
 
 // saveOptions writes o to path, replacing the file in one step so a crash

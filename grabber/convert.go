@@ -64,3 +64,25 @@ func ParseConvertFormats(value string) (ConvertFormats, error) {
 
 	return formats, nil
 }
+
+// The formats a page can be saved in (--save-pages-as)
+const (
+	SavePagesOriginal = "original"
+	SavePagesJPEG     = "jpeg"
+	SavePagesWebP     = "webp"
+)
+
+// ParseSavePagesAs reads a --save-pages-as value: "original" (or empty)
+// keeps each page as served, and is returned as ""; "jpeg" ("jpg") and
+// "webp" name the format every page is re-encoded in
+func ParseSavePagesAs(v string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "", SavePagesOriginal:
+		return "", nil
+	case SavePagesJPEG, "jpg":
+		return SavePagesJPEG, nil
+	case SavePagesWebP:
+		return SavePagesWebP, nil
+	}
+	return "", fmt.Errorf("invalid --save-pages-as format %q, valid formats are %q, %q or %q", v, SavePagesOriginal, SavePagesJPEG, SavePagesWebP)
+}

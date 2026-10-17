@@ -250,6 +250,40 @@ func TestNamePagesKeepsOriginalOnConversionFailure(t *testing.T) {
 	}
 }
 
+// TestNamePagesSavesEveryPageAs covers --save-pages-as: every page ends up in
+// the chosen format, whatever it came in as, and one already in it is kept
+// byte for byte (no needless re-encoding)
+func TestNamePagesSavesEveryPageAs(t *testing.T) {
+	img := gradientImage(8, 8)
+	png, jpg := pngBytes(t, img), jpegBytes(t, img)
+	pages := []*downloader.File{{Data: png}, {Data: jpg}, {Data: tinyWebP}}
+
+	cases := []struct {
+		saveAs string
+		want   []string
+		kept   int // index of the page that must keep its bytes, -1 for none
+	}{
+		{grabber.SavePagesWebP, []string{"000.webp", "001.webp", "002.webp"}, 2},
+		{grabber.SavePagesJPEG, []string{"000.jpg", "001.jpg", "002.jpg"}, 1},
+		{"", []string{"000.png", "001.jpg", "002.webp"}, -1},
+	}
+	for _, c := range cases {
+		named := namePagesAs(pages, nil, FormatCBZ, c.saveAs)
+		for i, page := range named {
+			if page.Name != c.want[i] {
+				t.Errorf("saveAs %q: page %d named %q, want %q", c.saveAs, i, page.Name, c.want[i])
+			}
+			ext := c.want[i][len("000."):]
+			if got := extFromContent(page.Data); got != ext {
+				t.Errorf("saveAs %q: page %d holds %q, want %q", c.saveAs, i, got, ext)
+			}
+		}
+		if c.kept >= 0 && !bytes.Equal(named[c.kept].Data, pages[c.kept].Data) {
+			t.Errorf("saveAs %q: page %d was re-encoded, want it kept as-is", c.saveAs, c.kept)
+		}
+	}
+}
+
 func TestConvertToJPEGDecodeError(t *testing.T) {
 	sentinel := errors.New("boom")
 

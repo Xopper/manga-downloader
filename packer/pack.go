@@ -42,7 +42,7 @@ func PackSingle(outputdir string, s grabber.Site, chapter *DownloadedChapter, pr
 			Labels:           map[string]string{epubSingleFolder: chapterLabel(chapter.Chapter)},
 		}
 	}
-	return pack(outputdir, format, s.GetFilenameTemplate(), releaseName(chapter.Chapter), NewChapterFileTemplateParts(title, chapter.Chapter), namePages(chapter.Files, pageFormats(format, s.GetConvertImages()), format), info, progress)
+	return pack(outputdir, format, s.GetFilenameTemplate(), releaseName(chapter.Chapter), NewChapterFileTemplateParts(title, chapter.Chapter), namePagesAs(chapter.Files, pageFormats(format, s.GetConvertImages()), format, s.GetSavePagesAs()), info, progress)
 }
 
 // PackBundle packs a bundle of downloaded chapters, grouping each chapter's
@@ -51,7 +51,7 @@ func PackSingle(outputdir string, s grabber.Site, chapter *DownloadedChapter, pr
 func PackBundle(outputdir string, s grabber.Site, chapters []*DownloadedChapter, rng string, progress func(page, progress int)) (string, error) {
 	title, _ := s.FetchTitle()
 	format := s.GetFormat()
-	files, labels := chapterFolders(chapters, format, s.GetConvertImages())
+	files, labels := chapterFolders(chapters, format, s.GetConvertImages(), s.GetSavePagesAs())
 	var info EPUBInfo
 	if format == FormatEPUB {
 		info = EPUBInfo{Series: title, Identity: "bundle " + memberKeys(chapters), ReadingDirection: s.GetReadingDirection(), Labels: labels}
@@ -78,7 +78,7 @@ func PackVolume(outputdir string, s grabber.Site, volume int, chapters []*Downlo
 		listed[i] = c.Chapter
 	}
 	format := s.GetFormat()
-	files, labels := chapterFolders(chapters, format, s.GetConvertImages())
+	files, labels := chapterFolders(chapters, format, s.GetConvertImages(), s.GetSavePagesAs())
 	var info EPUBInfo
 	if format == FormatEPUB {
 		info = EPUBInfo{
@@ -156,7 +156,7 @@ func memberKeys(chapters []*DownloadedChapter) string {
 // chapterFolders names the pages of several chapters for one archive, each
 // chapter in its own folder (Chapter 0001/000.jpg, ...). It also returns the
 // chapters' labels by folder, for the EPUB table of contents.
-func chapterFolders(chapters []*DownloadedChapter, format string, convert grabber.ConvertFormats) ([]File, map[string]string) {
+func chapterFolders(chapters []*DownloadedChapter, format string, convert grabber.ConvertFormats, saveAs string) ([]File, map[string]string) {
 	files := []File{}
 	labels := map[string]string{}
 	formats := pageFormats(format, convert)
@@ -177,7 +177,7 @@ func chapterFolders(chapters []*DownloadedChapter, format string, convert grabbe
 		// a repeated number gets the folder's suffix too, so the labels match the folders
 		labels[folder] = chapterLabel(chapter.Chapter) + strings.TrimPrefix(folder, base)
 
-		for _, page := range namePages(chapter.Files, formats, format) {
+		for _, page := range namePagesAs(chapter.Files, formats, format, saveAs) {
 			files = append(files, File{
 				Name: fmt.Sprintf("%s/%s", folder, page.Name),
 				Data: page.Data,
@@ -222,11 +222,31 @@ func titleBeyondNumber(title string, number float64) string {
 // format is the output format: an EPUB leaves out the pages it can't show,
 // and ArchiveEPUB warns about each of them.
 func namePages(pages []*downloader.File, formats grabber.ConvertFormats, format string) []File {
+	return namePagesAs(pages, formats, format, "")
+}
+
+// namePagesAs is namePages saving every page in saveAs ("jpeg", "webp")
+// when it's set: a page already in that format is kept as it is, and formats
+// no longer matters. "" keeps each page's own format, formats aside.
+func namePagesAs(pages []*downloader.File, formats grabber.ConvertFormats, format, saveAs string) []File {
 	named := make([]File, len(pages))
 	for i, page := range pages {
 		data, ext := page.Data, extFromContent(page.Data)
 
-		if formats.Has(ext) {
+		switch {
+		case saveAs == grabber.SavePagesWebP && ext != "webp":
+			if converted, err := convertToWebP(data); err != nil {
+				notice.Warn("- warning: page %03d: converting %s to webp: %s (keeping the original)", i, ext, err)
+			} else {
+				data, ext = converted, "webp"
+			}
+		case saveAs == grabber.SavePagesJPEG && ext != "jpg" && ext != "jpeg":
+			if converted, err := convertToJPEG(data); err != nil {
+				notice.Warn("- warning: page %03d: converting %s to jpeg: %s (keeping the original)", i, ext, err)
+			} else {
+				data, ext = converted, "jpg"
+			}
+		case saveAs == "" && formats.Has(ext):
 			converted, err := convertToJPEG(data)
 			if err != nil {
 				// keep both the original bytes and the original extension:

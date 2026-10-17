@@ -99,6 +99,7 @@ type fakeSite struct {
 	title     string
 	template  string
 	convert   grabber.ConvertFormats
+	saveAs    string
 	format    string
 	direction string
 }
@@ -121,6 +122,7 @@ func (f *fakeSite) GetReadingDirection() string { return f.direction }
 func (f *fakeSite) GetConvertImages() grabber.ConvertFormats {
 	return f.convert
 }
+func (f *fakeSite) GetSavePagesAs() string { return f.saveAs }
 func (f *fakeSite) GetMaxConcurrency() grabber.MaxConcurrency {
 	return grabber.MaxConcurrency{Chapters: 1, Pages: 1}
 }

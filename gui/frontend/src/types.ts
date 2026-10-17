@@ -18,6 +18,8 @@ export interface Options {
   scanlator: string;
   /** Comma-separated: "avif", "avif,webp", "webp" or "none". See convertImages.ts. */
   convertImages: string;
+  /** The format every page is saved in; "original" keeps each page's own (convertImages aside) */
+  savePagesAs: 'original' | 'jpeg' | 'webp';
   skipPages: string;
   filenameTemplate: string;
   browserVisible: boolean;

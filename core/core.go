@@ -61,6 +61,9 @@ func Validate(s *grabber.Settings) ([]ranges.Range, error) {
 	if _, err := grabber.ParseConvertFormats(s.ConvertImages); err != nil {
 		return nil, &SettingError{Setting: "convert-images", Value: s.ConvertImages, Err: err}
 	}
+	if _, err := grabber.ParseSavePagesAs(s.SavePagesAs); err != nil {
+		return nil, &SettingError{Setting: "save-pages-as", Value: s.SavePagesAs, Err: err}
+	}
 
 	if _, err := ParseVolumes(s.Volumes); err != nil {
 		return nil, &SettingError{Setting: "volumes", Value: s.Volumes, Err: err}

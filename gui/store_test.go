@@ -13,6 +13,27 @@ import (
 	"github.com/elboletaire/manga-downloader/packer"
 )
 
+// TestSavePagesAsDefaultsToOriginal: a gui.json saved before the choice
+// existed, or holding a value no longer valid, keeps pages as they are
+func TestSavePagesAsDefaultsToOriginal(t *testing.T) {
+	for _, saved := range []string{`{}`, `{"savePagesAs":"gif"}`} {
+		path := filepath.Join(t.TempDir(), "gui.json")
+		if err := os.WriteFile(path, []byte(saved), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		s := defaultSettings()
+		if err := loadOptions(path, s); err != nil {
+			t.Fatal(err)
+		}
+		if got := optionsOf(*s).SavePagesAs; got != "original" {
+			t.Errorf("%s: savePagesAs %q, want %q", saved, got, "original")
+		}
+		if got := s.SavePagesAs; got != "original" && got != "" {
+			t.Errorf("%s: setting %q, want pages kept as they are", saved, got)
+		}
+	}
+}
+
 func TestOptionsSaveAndLoadRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "gui.json")
 	want := OptionsDTO{
@@ -23,6 +44,7 @@ func TestOptionsSaveAndLoadRoundTrip(t *testing.T) {
 		Language:         "es",
 		Scanlator:        "group",
 		ConvertImages:    "avif,webp",
+		SavePagesAs:      "webp",
 		SkipPages:        "2,-1",
 		FilenameTemplate: "{{.Series}} {{.Number}}",
 		BrowserVisible:   true,
