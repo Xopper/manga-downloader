@@ -58,8 +58,14 @@ type webComicSite struct {
 	// Name is the comic's name, else the archive's title is
 	Name string
 	// Title names a comic whose series are parts of its archive, from the
-	// series URL
-	Title func(series *url.URL) string
+	// series URL and its archive page
+	Title func(series *url.URL, doc *goquery.Document) string
+	// Next selects the link to the archive's next page, for an archive split
+	// over pages
+	Next string
+	// SortPictures puts a strip page's pictures in the order of the numbers
+	// their files end with, for a page that lays them out backwards
+	SortPictures bool
 	// List reads an archive that isn't a flat list of strip links, in
 	// reading order
 	List func(doc *goquery.Document) ([]wcEntry, error)
@@ -67,8 +73,10 @@ type webComicSite struct {
 
 // wcEntry is a chapter as an archive lists it
 type wcEntry struct {
-	Title    string
-	Number   float64
+	Title  string
+	Number float64
+	// HasNumber is set when Number is the site's, else the position numbers it
+	HasNumber bool
 	Volume   int
 	Strips   []string
 	Pictures []string
@@ -122,7 +130,7 @@ func (w *WebComic) FetchTitle() (string, error) {
 	}
 	if w.site.Title != nil {
 		if u, err := url.Parse(w.URL); err == nil {
-			return w.site.Title(u), nil
+			return w.site.Title(u, doc), nil
 		}
 	}
 	if w.site.Name != "" {
@@ -141,23 +149,35 @@ func (w *WebComic) FetchChapters() (Filterables, []error) {
 		return nil, []error{err}
 	}
 
-	var entries []wcEntry
-	if w.site.List != nil {
-		entries, err = w.site.List(doc)
-	} else {
-		entries = w.site.links(doc)
+	docs := []*goquery.Document{doc}
+	if w.site.Next != "" {
+		docs = append(docs, w.nextPages(doc)...)
 	}
-	if err != nil {
-		return nil, []error{err}
+	var entries []wcEntry
+	for _, doc := range docs {
+		var more []wcEntry
+		if w.site.List != nil {
+			more, err = w.site.List(doc)
+		} else {
+			more = w.site.links(doc)
+		}
+		if err != nil {
+			return nil, []error{err}
+		}
+		entries = append(entries, more...)
+	}
+	if w.site.NewestFirst {
+		slices.Reverse(entries)
 	}
 	if len(entries) == 0 {
 		return nil, []error{errNoStrips(w.BaseUrl())}
 	}
 
 	language := pageLanguage(doc)
+	numbered := !slices.ContainsFunc(entries, func(e wcEntry) bool { return !e.HasNumber })
 	for i, e := range entries {
 		number := e.Number
-		if number == 0 {
+		if !numbered {
 			number = float64(i + 1)
 		}
 		ch := &WebComicChapter{
@@ -176,14 +196,12 @@ func (w *WebComic) FetchChapters() (Filterables, []error) {
 	return w.chapters, nil
 }
 
-// links reads a flat archive: its strip links, oldest first, each numbered
-// by its link when the site's links carry a number. A link listed twice is
-// the first one.
+// links reads a flat archive page: its strip links, each numbered by its
+// link when the site's links carry a number. A link listed twice is the first one.
 func (s *webComicSite) links(doc *goquery.Document) []wcEntry {
 	base := docURL(doc)
 	var entries []wcEntry
 	seen := map[string]bool{}
-	numbered := s.NumberRe != nil
 	doc.Find(s.Links).Each(func(_ int, a *goquery.Selection) {
 		link := resolveURLRelative(a.AttrOr("href", ""), base)
 		if link == "" || seen[link] {
@@ -192,7 +210,7 @@ func (s *webComicSite) links(doc *goquery.Document) []wcEntry {
 		seen[link] = true
 		title := sanitizeTitle(a.Text())
 		if title == "" {
-			title = sanitizeTitle(a.AttrOr("title", ""))
+			title = sanitizeTitle(a.AttrOr("title", a.Find("img").AttrOr("alt", "")))
 		}
 		if s.TitleRe != nil {
 			if m := s.TitleRe.FindStringSubmatch(title); m != nil {
@@ -200,24 +218,38 @@ func (s *webComicSite) links(doc *goquery.Document) []wcEntry {
 			}
 		}
 		e := wcEntry{Title: title, Strips: []string{link}}
-		if numbered {
+		if s.NumberRe != nil {
 			if m := s.NumberRe.FindStringSubmatch(link); m != nil {
 				e.Number, _ = strconv.ParseFloat(m[1], 64)
-			} else {
-				numbered = false
+				e.HasNumber = true
 			}
 		}
 		entries = append(entries, e)
 	})
-	if s.NewestFirst {
-		slices.Reverse(entries)
-	}
-	if !numbered {
-		for i := range entries {
-			entries[i].Number = 0
-		}
-	}
 	return entries
+}
+
+// wcMaxArchivePages bounds the pages of an archive split over pages
+const wcMaxArchivePages = 100
+
+// nextPages follows the archive's next page links, and returns the pages
+// after the first
+func (w *WebComic) nextPages(doc *goquery.Document) []*goquery.Document {
+	var docs []*goquery.Document
+	seen := map[string]bool{docURL(doc).String(): true}
+	for len(docs) < wcMaxArchivePages {
+		next := resolveURLRelative(doc.Find(w.site.Next).First().AttrOr("href", ""), docURL(doc))
+		if next == "" || seen[next] {
+			break
+		}
+		seen[next] = true
+		var err error
+		if doc, err = wcGetDoc(next, w.BaseUrl(), false); err != nil {
+			break
+		}
+		docs = append(docs, doc)
+	}
+	return docs
 }
 
 // FetchChapter returns a chapter's pictures: those the archive gave, else the
@@ -233,7 +265,11 @@ func (w *WebComic) FetchChapter(f Filterable) (*Chapter, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, src := range wcComicImages(doc, w.site.Image) {
+		srcs := wcComicImages(doc, w.site.Image)
+		if w.site.SortPictures {
+			slices.SortStableFunc(srcs, func(a, b string) int { return wcFileNumber(a) - wcFileNumber(b) })
+		}
+		for _, src := range srcs {
 			pages = append(pages, Page{Number: int64(len(pages) + 1), URL: src})
 		}
 	}
@@ -250,6 +286,18 @@ func (w *WebComic) FetchChapter(f Filterable) (*Chapter, error) {
 		Language:   ch.Language,
 		Pages:      pages,
 	}, nil
+}
+
+// wcFileNumberRe reads the number a picture's file name ends with ("img_4.png")
+var wcFileNumberRe = regexp.MustCompile(`(\d+)\.\w+(?:\?.*)?$`)
+
+// wcFileNumber is the number a picture's file name ends with, 0 without one
+func wcFileNumber(src string) int {
+	n := 0
+	if m := wcFileNumberRe.FindStringSubmatch(src); m != nil {
+		n, _ = strconv.Atoi(m[1])
+	}
+	return n
 }
 
 // webComicSites are the sites WebComic reads
@@ -300,11 +348,74 @@ var webComicSites = []webComicSite{
 	{
 		// reallifecomics.com: one archive page per year, the series
 		Hosts: []string{"reallifecomics.com"},
-		Title: func(series *url.URL) string {
+		Title: func(series *url.URL, _ *goquery.Document) string {
 			return strings.TrimSpace("Real Life Comics " + series.Query().Get("year"))
 		},
 		Links: `a[href*="comic.php?comic="], a[href*="comic-mobile.php?comic="]`,
 		Image: `img[src*="/wp-content/uploads/"], img[src*="/comics/"]`,
+	},
+	{
+		// peppercarrot.com: a page per series, newest episode first
+		Hosts:       []string{"peppercarrot.com"},
+		Links:       `figure.thumbnail a[href$=".html"]`,
+		NumberRe:    regexp.MustCompile(`/(\d+)\.html$`),
+		TitleRe:     regexp.MustCompile(`^\d+\.\s*(.*?)(?:\s*\(click to open the episode\))?$`),
+		NewestFirst: true,
+		Image:       `img[src*="/0_sources/"]`,
+	},
+	{
+		// dragonball-multiverse.com: a chapters page per comic, the series
+		Hosts: []string{"dragonball-multiverse.com"},
+		List:  dbmChapters,
+		Image: `img[alt="[DBM PAGE IMAGE]"], #balloonsimg img`,
+		Title: func(_ *url.URL, doc *goquery.Document) string {
+			return sanitizeTitle(doc.Find("h1.horscadrelect").First().Text())
+		},
+	},
+	{
+		// sas.ewanb.me (Solar and Sundry): the home page lists every page
+		Hosts:    []string{"sas.ewanb.me"},
+		Name:     "Solar and Sundry",
+		Archive:  "/",
+		Links:    `a[href^="/comic/"]`,
+		NumberRe: regexp.MustCompile(`/comic/(\d+)$`),
+		TitleRe:  regexp.MustCompile(`^p\d+\s*[—–-]\s*(.*)$`),
+		Image:    "img.comic:not(.thumbnail)",
+	},
+	{
+		// commitstrip.com: a year's archive (/en/2017) is the series, 20
+		// strips a page, newest first
+		Hosts:       []string{"commitstrip.com"},
+		Links:       ".excerpt a[href]",
+		Next:        "a.nextpostslink",
+		NewestFirst: true,
+		Image:       ".entry-content img",
+		Title: func(series *url.URL, _ *goquery.Document) string {
+			year := regexp.MustCompile(`/((?:19|20)\d\d)\b`).FindStringSubmatch(series.Path)
+			if year == nil {
+				return "CommitStrip"
+			}
+			return "CommitStrip " + year[1]
+		},
+	},
+	{
+		// elan.school: the chapters page, a dozen pages of chapter posts
+		Hosts: []string{"elan.school"},
+		Name:  "Elan School",
+		Links: ".listing-item a.title",
+		Next:  `a:contains("Next")`,
+		Image: `.cb-entry img[class*="wp-image-"], .entry-content img[class*="wp-image-"]`,
+	},
+	{
+		// holoearth.com: each manga's pages list its episodes, whose
+		// pictures the page lays out last first
+		Hosts:        []string{"holoearth.com"},
+		List:         holoearthChapters,
+		Image:        `img[src*="/comic/"]`,
+		SortPictures: true,
+		Title: func(_ *url.URL, doc *goquery.Document) string {
+			return sanitizeTitle(holoearthTitleRe.ReplaceAllString(doc.Find("title").First().Text(), ""))
+		},
 	},
 	{
 		// gunnerkrigg.com: the archive names each chapter and lists its
@@ -337,7 +448,69 @@ func gunnerkriggChapters(doc *goquery.Document) ([]wcEntry, error) {
 		names[i] = e.Title
 	}
 	for i, n := range wcNumbers(names) {
-		entries[i].Number = n
+		entries[i].Number, entries[i].HasNumber = n, true
 	}
 	return entries, nil
 }
+
+// dbmChapters reads a Dragon Ball Multiverse comic's chapters page: each
+// chapter's heading and the links to its pages
+func dbmChapters(doc *goquery.Document) ([]wcEntry, error) {
+	base := docURL(doc)
+	var entries []wcEntry
+	doc.Find(".chapters-wrapper .chapter").Each(func(_ int, ch *goquery.Selection) {
+		var strips []string
+		ch.Find("p a[href]").Each(func(_ int, a *goquery.Selection) {
+			if u := resolveURLRelative(a.AttrOr("href", ""), base); u != "" {
+				strips = append(strips, u)
+			}
+		})
+		if len(strips) > 0 {
+			entries = append(entries, wcEntry{Title: sanitizeTitle(ch.Find("h4").First().Text()), Strips: strips})
+		}
+	})
+	names := make([]string, len(entries))
+	for i, e := range entries {
+		names[i] = e.Title
+	}
+	for i, n := range wcNumbers(names) {
+		entries[i].Number, entries[i].HasNumber = n, true
+	}
+	return entries, nil
+}
+
+// holoearthEpisodeRe reads an episode link of a holoearth.com manga: the
+// manga's path and the episode's number
+var holoearthEpisodeRe = regexp.MustCompile(`^(.*/manga/[^/]+/)ep(\d+)/?$`)
+
+// holoearthChapters reads the episode list a holoearth.com manga's pages
+// carry, keeping the episodes of the manga the page belongs to
+func holoearthChapters(doc *goquery.Document) ([]wcEntry, error) {
+	base := docURL(doc)
+	series := base.Path
+	if m := holoearthEpisodeRe.FindStringSubmatch(series); m != nil {
+		series = m[1]
+	}
+	var entries []wcEntry
+	seen := map[string]bool{}
+	doc.Find("a[href]").Each(func(_ int, a *goquery.Selection) {
+		link := resolveURLRelative(a.AttrOr("href", ""), base)
+		u, err := url.Parse(link)
+		if err != nil || seen[link] {
+			return
+		}
+		m := holoearthEpisodeRe.FindStringSubmatch(u.Path)
+		if m == nil || !strings.HasPrefix(series, m[1]) {
+			return
+		}
+		seen[link] = true
+		n, _ := strconv.ParseFloat(m[2], 64)
+		entries = append(entries, wcEntry{Number: n, HasNumber: true, Strips: []string{link}})
+	})
+	slices.SortFunc(entries, func(a, b wcEntry) int { return int(a.Number - b.Number) })
+	return entries, nil
+}
+
+// holoearthTitleRe is the chapter and site a holoearth.com page title wraps
+// the manga's name in ("【Chapter 0】Vesta de Cooking | HOLONOMETRIA")
+var holoearthTitleRe = regexp.MustCompile(`【[^】]*】|\s*\|.*$`)

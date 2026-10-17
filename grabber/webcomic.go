@@ -129,7 +129,15 @@ func wcNameNumber(name string) (float64, bool) {
 // its title; any other name goes after the number
 func wcChapter(name string, number float64) Chapter {
 	ch := Chapter{Number: number, Title: name, Label: Label{Style: LabelPrefixed}}
-	if m := ChapterTitlePrefix.FindStringSubmatchIndex(name); m != nil {
+	if name == "" {
+		ch.Label.Style = LabelNumbered
+		return ch
+	}
+	m := ChapterTitlePrefix.FindStringSubmatchIndex(name)
+	if m == nil {
+		m = wcNumberPrefix.FindStringSubmatchIndex(name)
+	}
+	if m != nil {
 		if n, err := strconv.ParseFloat(name[m[2]:m[3]], 64); err == nil && n == number {
 			ch.Title = strings.TrimSpace(name[m[1]:])
 			ch.Label = Label{Style: LabelNumbered, Number: name[m[2]:m[3]]}
@@ -140,6 +148,9 @@ func wcChapter(name string, number float64) Chapter {
 	}
 	return ch
 }
+
+// wcNumberPrefix is a number a name opens with and its separator ("9: Counting Down")
+var wcNumberPrefix = regexp.MustCompile(`^0*(\d+(?:\.\d+)?)\s*(?:[:.\-–—]\s*|$)`)
 
 // wcStripPages reads each strip's page for its pictures, one after another
 func wcStripPages(strips []string, referer string) ([]Page, error) {

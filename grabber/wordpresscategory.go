@@ -435,13 +435,14 @@ func (w *WordPressCategory) FetchChapter(f Filterable) (*Chapter, error) {
 // wpBvURLRe reads the real image URL out of a Bv lazy-loader placeholder.
 var wpBvURLRe = regexp.MustCompile(`bv-img-url="([^"]+)"`)
 
-// wpPageImages returns the post body's images in document order, once each.
-// Lazy-loaded images hold a placeholder data: URI in src and the real image
-// elsewhere, see wpLazyURL.
+// wpPageImages returns the post body's images in document order, once each:
+// the theme's .entry-content, or the Elementor widget that holds the post
+// (randowis.com). Lazy-loaded images hold a placeholder data: URI in src and
+// the real image elsewhere, see wpLazyURL.
 func wpPageImages(doc *goquery.Document) []Page {
 	var pages []Page
 	seen := map[string]bool{}
-	doc.Find(".entry-content img").Each(func(_ int, s *goquery.Selection) {
+	doc.Find(".entry-content img, .elementor-widget-theme-post-content img").Each(func(_ int, s *goquery.Selection) {
 		if wpHiddenImage(s) {
 			return
 		}
