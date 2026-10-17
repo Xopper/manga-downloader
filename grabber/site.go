@@ -207,6 +207,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewXlecx(g),
 		NewE621(g),
 		NewPhotoGallery(g),
+		NewHiperdex(g),
 		plainHTML,
 		NewTcb(g),
 		NewJestful(g),

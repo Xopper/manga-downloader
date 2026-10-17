@@ -469,6 +469,14 @@ var plainHTMLSelectors = []SiteSelector{
 		SeriesLink:       `#chapnav a[href*="/manga/"], .coverz a[href*="/series/"]`,
 		FollowSeriesLink: true,
 	},
+	// manga18.me (YiiMadara theme): the chapter list's .wleft wrapper sets it
+	// apart from the manganelo family's row-content-chapter lists. Pages are
+	// all in .read-content.
+	{
+		Title: ".post-title h1",
+		Rows:  ".panel-manga-chapter.wleft ul.row-content-chapter li a.chapter-name",
+		Image: ".read-content img",
+	},
 }
 
 // PlainHTML is a grabber for any plain HTML page (with no ajax pagination whatsoever)
