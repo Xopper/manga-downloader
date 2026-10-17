@@ -507,6 +507,16 @@
   "downloadable": true
  },
  {
+  "site": "bigsolo.org",
+  "name": "",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 108,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "blackcloveronline.com",
   "name": "Black Clover",
   "lang": "en",
@@ -1352,6 +1362,16 @@
   "downloadable": true
  },
  {
+  "site": "eldermanga.com",
+  "name": "",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 105,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "elftoon.net",
   "name": "Elf Toon",
   "lang": "en",
@@ -1462,6 +1482,16 @@
   "entries": 990,
   "complete": true,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "eskimangalar.com",
+  "name": "",
+  "lang": "tr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 61,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -2935,6 +2965,16 @@
   "downloadable": true
  },
  {
+  "site": "limonmanga.com",
+  "name": "",
+  "lang": "tr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 31,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "linkmanga.com",
   "name": "LinkManga",
   "lang": "en",
@@ -2986,7 +3026,7 @@
   "lang": "en",
   "nsfw": false,
   "sourceId": "972271455406675873",
-  "entries": 0,
+  "entries": 670,
   "complete": false,
   "failed": true,
   "downloadable": true
@@ -3275,7 +3315,7 @@
   "lang": "en",
   "nsfw": true,
   "sourceId": "1448906013733277368",
-  "entries": 0,
+  "entries": 187666,
   "complete": false,
   "failed": true,
   "downloadable": true
@@ -3669,6 +3709,16 @@
   "downloadable": true
  },
  {
+  "site": "mangalib.me",
+  "name": "MangaLib",
+  "lang": "ru",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 20000,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "mangalivre.to",
   "name": "Manga Livre, former mangalivre.tv/mangalivre.net",
   "lang": "pt-BR",
@@ -3920,6 +3970,16 @@
   "entries": 5012,
   "complete": true,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "mangas-origines.fr",
+  "name": "French",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 1936,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -5875,7 +5935,7 @@
   "lang": "en",
   "nsfw": true,
   "sourceId": "3696994059835859589",
-  "entries": 0,
+  "entries": 188,
   "complete": false,
   "failed": true,
   "downloadable": true
@@ -6390,6 +6450,16 @@
   "nsfw": false,
   "sourceId": "",
   "entries": 248,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "uzaymanga.com",
+  "name": "",
+  "lang": "tr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 142,
   "complete": true,
   "downloadable": true
  },
