@@ -27,6 +27,8 @@ type Store struct {
 	// sources is sources.json: the Tachiyomi sources the catalogs came
 	// through, nil without one
 	sources []SourceRow
+	// typo is the vocabulary the typo search looks words up in (typo.go)
+	typo typoState
 }
 
 // siteData is a loaded catalog: its header, and its entries packed. The

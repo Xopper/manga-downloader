@@ -70,6 +70,12 @@ func runSearch(w io.Writer, store *catalog.Store, query, site string, limit int,
 		sites = []string{site}
 	}
 	hits := store.Search(query, sites, limit)
+	if wanted := limit; len(hits) < wanted || (wanted <= 0 && len(hits) < catalog.DefaultLimit) {
+		// too few exact hits: the typo search fills in, once its word
+		// list is built (the window builds it in the background)
+		store.BuildTypoIndex()
+		hits = store.Search(query, sites, limit)
+	}
 	rows := make([]searchHit, 0, len(hits))
 	for _, h := range hits {
 		rows = append(rows, searchHit{Site: h.Site, Title: h.Entry.Title, URL: h.Entry.URL, Downloadable: store.Downloadable(h.Site), Latest: h.Entry.Latest})

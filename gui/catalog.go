@@ -294,6 +294,9 @@ func openCatalog() *catalog.Store {
 	for _, warn := range store.Load() {
 		log.Printf("catalog: %v", warn)
 	}
+	// the typo search's word list, ready before the first search (a search
+	// also starts it, once the catalogs change)
+	go store.BuildTypoIndex()
 
 	return store
 }

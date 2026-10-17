@@ -16,12 +16,14 @@ type Hit struct {
 	Entry Entry
 	// Score ranks the hit: exact title 400, title prefix 300, every query
 	// word at the start of a title word 200, every word anywhere 100; a match
-	// on another name scores 10 less
+	// on another name scores 10 less. A typo hit (typo.go) scores what the
+	// corrected query would, less 150 a typo (a word typed without its space
+	// counts as one), and 1 at least.
 	Score int
 }
 
-// defaultLimit is how many hits Search returns when the caller doesn't say
-const defaultLimit = 50
+// DefaultLimit is how many hits Search returns when the caller doesn't say
+const DefaultLimit = 50
 
 // key is a match before its entry is rebuilt: enough to rank it
 type key struct {
@@ -30,6 +32,8 @@ type key struct {
 	// block is the index in the store's site-ordered blocks, i the entry's
 	// in it: together the entries' order
 	block, i int
+	// typo is set on a typo hit, whose block is the typo index's
+	typo bool
 }
 
 // before is the ranking: by score, then shorter title, then site, then
@@ -50,14 +54,17 @@ func (k key) before(o key) bool {
 
 // Search finds the entries matching every word of query, in the given sites
 // (none means all), best first: by score, then shorter title, then site.
-// A query without a letter or digit matches nothing.
+// When fewer than limit hits are good ones (every word at a word's start,
+// or better), the entries matching with typos or a missing space join in,
+// ranked by their own score. A query without a
+// letter or digit matches nothing.
 func (s *Store) Search(query string, sites []string, limit int) []Hit {
 	words := bytes.Fields([]byte(Fold(query)))
 	if len(words) == 0 {
 		return nil
 	}
 	if limit <= 0 {
-		limit = defaultLimit
+		limit = DefaultLimit
 	}
 	folded := bytes.Join(words, []byte(" "))
 	var only map[string]bool
@@ -101,21 +108,63 @@ func (s *Store) Search(query string, sites []string, limit int) []Hit {
 	for _, f := range found {
 		keys = append(keys, f...)
 	}
-	keys = best(keys, limit)
+	strong := 0
+	for _, k := range keys {
+		if k.score >= strongScore {
+			strong++
+		}
+	}
+	var idx *typoIndex
+	if strong < limit {
+		idx = s.typoIndex(blocks)
+	}
+	if idx == nil {
+		return hitsOf(blocks, nil, best(keys, limit))
+	}
+	exact := make(map[*block]map[int]bool, len(keys))
+	for _, k := range keys {
+		if exact[blocks[k.block]] == nil {
+			exact[blocks[k.block]] = map[int]bool{}
+		}
+		exact[blocks[k.block]][k.i] = true
+	}
+	for _, h := range idx.search(words, only, func(b *block, i int) bool { return exact[b][i] }) {
+		keys = append(keys, key{score: h.score, titleLen: h.titleLen, block: h.block, i: h.i, typo: true})
+	}
+	// the index can be a step behind the store (a catalog just updated), so
+	// an entry can come both ways: it's listed once all the same
+	var hits []Hit
+	seen := map[[2]string]bool{}
+	for _, h := range hitsOf(blocks, idx.blocks, best(keys, limit+limit/2)) {
+		if id := [2]string{h.Site, h.Entry.URL}; !seen[id] && len(hits) < limit {
+			seen[id] = true
+			hits = append(hits, h)
+		}
+	}
+
+	return hits
+}
+
+// hitsOf rebuilds the entries of keys, from blocks or, for a typo hit,
+// typoBlocks; a page is inflated once for every hit on it
+func hitsOf(blocks, typoBlocks []*block, keys []key) []Hit {
 	if len(keys) == 0 {
 		return nil
 	}
-
-	// a page inflated once for every hit on it
-	pages := map[[2]int][]byte{}
+	pages := map[*block]map[int][]byte{}
 	hits := make([]Hit, 0, len(keys))
 	for _, k := range keys {
 		b := blocks[k.block]
-		id := [2]int{k.block, k.i / pageSize}
-		data, ok := pages[id]
+		if k.typo {
+			b = typoBlocks[k.block]
+		}
+		if pages[b] == nil {
+			pages[b] = map[int][]byte{}
+		}
+		data, ok := pages[b][k.i/pageSize]
 		if !ok {
-			data = b.inflate(id[1])
-			pages[id] = data
+			data = b.inflate(k.i / pageSize)
+			pages[b][k.i/pageSize] = data
 		}
 		hits = append(hits, Hit{Site: b.site, Entry: b.entry(k.i, data), Score: k.score})
 	}
