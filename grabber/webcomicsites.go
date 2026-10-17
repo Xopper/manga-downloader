@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/elboletaire/manga-downloader/http"
@@ -87,6 +88,9 @@ type webComicSite struct {
 	// List reads an archive that isn't a flat list of strip links, in
 	// reading order
 	List func(doc *goquery.Document) ([]wcEntry, error)
+	// ListSeries is List for an archive that holds several series, which
+	// the series URL picks
+	ListSeries func(series *url.URL, doc *goquery.Document) ([]wcEntry, error)
 }
 
 // wcEntry is a chapter as an archive lists it
@@ -185,7 +189,12 @@ func (w *WebComic) FetchChapters() (Filterables, []error) {
 	var entries []wcEntry
 	for _, doc := range docs {
 		var more []wcEntry
-		if w.site.List != nil {
+		if w.site.ListSeries != nil {
+			var u *url.URL
+			if u, err = url.Parse(w.URL); err == nil {
+				more, err = w.site.ListSeries(u, doc)
+			}
+		} else if w.site.List != nil {
 			more, err = w.site.List(doc)
 		} else {
 			more = w.site.links(doc)
@@ -527,6 +536,15 @@ var webComicSites = []webComicSite{
 			return wpSiteName(doc)
 		},
 	},
+	{
+		// schlockmercenary.com: a book is the series (its first day's URL),
+		// its chapters are runs of daily strips
+		Hosts:      []string{"schlockmercenary.com"},
+		Archive:    "/archives/",
+		ListSeries: schlockChapters,
+		Image:      `img[src*="/strip/"]:not(.preload-image)`,
+		Title:      schlockTitle,
+	},
 	// Photo galleries (NSFW): each post is a series of one chapter
 	{
 		Hosts: []string{"everia.club"},
@@ -802,6 +820,90 @@ func wpChapterTaxonomy(doc *goquery.Document) ([]wcEntry, error) {
 		list[i].Number, list[i].HasNumber = n, true
 	}
 	return list, nil
+}
+
+// schlockDay is how Schlock Mercenary names a day's strip page
+const schlockDay = "2006-01-02"
+
+// schlockEnd is the day after Schlock Mercenary's last strip (July 2020),
+// where its last chapter ends
+var schlockEnd = time.Date(2020, 7, 28, 0, 0, 0, 0, time.UTC)
+
+// schlockBook is a book of Schlock Mercenary's archive
+type schlockBook struct {
+	title    string
+	start    string
+	chapters []wcEntry
+	starts   []time.Time
+}
+
+// schlockBooks reads Schlock Mercenary's archive: its books, each with the
+// days its chapters start on
+func schlockBooks(doc *goquery.Document) []schlockBook {
+	var books []schlockBook
+	doc.Find(".archive-book").Each(func(_ int, b *goquery.Selection) {
+		head := b.Find("h4 a").First()
+		book := schlockBook{title: sanitizeTitle(head.Text()), start: strings.Trim(head.AttrOr("href", ""), "/")}
+		b.Find("ul.chapters a[href]").Each(func(_ int, a *goquery.Selection) {
+			day, err := time.Parse(schlockDay, strings.Trim(a.AttrOr("href", ""), "/"))
+			if err != nil {
+				return
+			}
+			book.chapters = append(book.chapters, wcEntry{Title: sanitizeTitle(a.Text())})
+			book.starts = append(book.starts, day)
+		})
+		if len(book.chapters) > 0 {
+			books = append(books, book)
+		}
+	})
+	return books
+}
+
+// schlockChapters reads the book of Schlock Mercenary the series URL (a
+// day: the book's first, or any in it) names: its chapters, each the daily
+// strips from its first day to the next chapter's
+func schlockChapters(series *url.URL, doc *goquery.Document) ([]wcEntry, error) {
+	books := schlockBooks(doc)
+	day, err := time.Parse(schlockDay, strings.Trim(series.Path, "/"))
+	if err != nil {
+		day = books[0].starts[0]
+	}
+	pick := -1
+	for i, b := range books {
+		if !b.starts[0].After(day) {
+			pick = i
+		}
+	}
+	if pick < 0 {
+		return nil, errSeriesNotFound(series.String())
+	}
+	book := books[pick]
+	base := docURL(doc).Scheme + "://" + docURL(doc).Host + "/"
+	for i := range book.chapters {
+		end := schlockEnd
+		if i+1 < len(book.starts) {
+			end = book.starts[i+1]
+		} else if pick+1 < len(books) {
+			end = books[pick+1].starts[0]
+		}
+		for d := book.starts[i]; d.Before(end); d = d.AddDate(0, 0, 1) {
+			book.chapters[i].Strips = append(book.chapters[i].Strips, base+d.Format(schlockDay))
+		}
+	}
+	return book.chapters, nil
+}
+
+// schlockTitle names a book of Schlock Mercenary
+func schlockTitle(series *url.URL, doc *goquery.Document) string {
+	day := strings.Trim(series.Path, "/")
+	books := schlockBooks(doc)
+	title := ""
+	for _, b := range books {
+		if b.start <= day || title == "" {
+			title = b.title
+		}
+	}
+	return "Schlock Mercenary - " + title
 }
 
 // holoearthEpisodeRe reads an episode link of a holoearth.com manga: the
