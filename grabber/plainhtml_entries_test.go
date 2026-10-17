@@ -122,27 +122,6 @@ func TestPlainHTMLEntries(t *testing.T) {
 			"https://live.staticflickr.com/65535/50931739642_1a2b3c4d5e_o.jpg",
 		},
 	}, {
-		name: "comic easel widget",
-		series: `<html><body><h1 id="site-title" class="site-title"><a href="/">Tower Of God Manga Online</a></h1>
-<article><header><h1 class="entry-title" itemprop="headline">Tower Of God</h1></header><div class="entry-content">
-<div id='Chapters_List' class='widgets_on_page'><ul><li id="ceo_latest_comics_widget-3" class="widget ceo_latest_comics_widget"><h2 class="widgettitle">All Chapters</h2><ul>
-<li><a href="https://w82.thetowerofgod.com/manga/tower-of-god-chapter-603/">Tower Of God Chapter 603</a></li>
-<li><a href="https://w82.thetowerofgod.com/manga/tower-of-god-chapter-602/">Tower Of God Chapter 602</a></li>
-</ul></li></ul></div></div></article></body></html>`,
-		// a3 Lazy Load leaves a shared placeholder in src, the page in
-		// data-src, and a <noscript> copy that isn't parsed as markup
-		reader: `<html><body><div class="entry-content"><h2>Tower Of God</h2>
-<div class="separator"><a href="https://blogger.googleusercontent.com/img/b/R29v/s9172/tower_of_god_603_1.jpg"><img class="lazy lazy-hidden" src="//w82.thetowerofgod.com/wp-content/plugins/a3-lazy-load/assets/images/lazy_placeholder.gif" data-lazy-type="image" data-src="https://blogger.googleusercontent.com/img/b/R29v/s15000/tower_of_god_603_1.jpg"><noscript><img src="https://blogger.googleusercontent.com/img/b/R29v/s15000/tower_of_god_603_1.jpg"></noscript></a></div>
-<div class="separator"><a href="https://blogger.googleusercontent.com/img/b/R29v/s9172/tower_of_god_603_2.jpg"><img class="lazy lazy-hidden" src="//w82.thetowerofgod.com/wp-content/plugins/a3-lazy-load/assets/images/lazy_placeholder.gif" data-lazy-type="image" data-src="https://blogger.googleusercontent.com/img/b/R29v/s15000/tower_of_god_603_2.jpg"></a></div>
-</div></body></html>`,
-		wantRows:  "li.ceo_latest_comics_widget li:has(a)",
-		wantTitle: "Tower Of God",
-		wantNums:  []float64{603, 602},
-		wantPages: []string{
-			"https://blogger.googleusercontent.com/img/b/R29v/s15000/tower_of_god_603_1.jpg",
-			"https://blogger.googleusercontent.com/img/b/R29v/s15000/tower_of_god_603_2.jpg",
-		},
-	}, {
 		name: "saymanhwa",
 		// the chapter grid sits in an element with id="chapters", which the
 		// meowing.org entry's "#chapters a" would otherwise claim

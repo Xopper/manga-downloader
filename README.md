@@ -48,7 +48,8 @@ Linux, and as a **command line tool** for scripts, servers and Docker.
 **Desktop app and command line**
 
 - **[179 supported sites](#supported-sites)**, from big aggregators to small
-  scanlation groups.
+  scanlation groups, and 303 more found through the search catalogs (manga,
+  web comics, galleries).
 - **[Search without a link](#search)**: the supported sites' catalogs are
   on your disk, so a title is found by name, offline, in the app or with
   `manga-downloader search`.
@@ -649,6 +650,7 @@ A URL points at one edition, and `--language` downloads another one instead
 | `--concurrency-pages` | `-C`  | Number of pages downloaded at once per chapter (max 10)  | 10             |
 | `--retry`             | `-r`  | Retries per failed page (max 3, `0` disables retrying)   | 1              |
 | `--browser-visible`   |       | Always show the browser window (rarely needed)           | off            |
+| `--flaresolverr`      |       | A FlareSolverr server's address, for Cloudflare-challenged sites | off    |
 | `--version`           | `-v`  | Show version information                                 |                |
 
 Run `manga-downloader help` to list them in your terminal.
@@ -857,6 +859,20 @@ Verified weekly by CI. Sites marked `*` open a browser window, so they are check
 > shows a window when a site needs one, remembering the sites that
 > needed one until it exits. `--browser-visible` shows it for every site, which
 > is rarely needed.
+
+This fork also downloads from 303 sites outside this list: sites whose series
+come from Tachiyomi sources in the search catalogs, each checked end to end with
+`tools/site-try` (a series, its chapters, a chapter's pages, the first picture).
+They're the `crawl: false` rows of `catalog/sites.json` noted "listed by its
+Tachiyomi source".
+
+> [!TIP]
+> **FlareSolverr** helps with sites whose Cloudflare check the built-in browser
+> can't pass. Run it (`docker run -d -p 127.0.0.1:8191:8191
+> ghcr.io/flaresolverr/flaresolverr`) and give its address with
+> `--flaresolverr http://127.0.0.1:8191`, or in the app under *Advanced*. A site
+> it opens keeps its clearance for its next requests; when the clearance doesn't
+> carry over, the site's pages are read through FlareSolverr (pictures never are).
 
 Other sites built on the same platforms often work too, even when they aren't
 listed. If one doesn't, [open an issue][issues] or send a pull request.

@@ -34,17 +34,6 @@ func init() {
 			ChapterTitle: "td:first-child",
 			Image:        "img.pages__img",
 		},
-		// WordPress with Comic Easel's chapter widget (w82.thetowerofgod.com):
-		// the home page is the series, and the reader's pages are blogger
-		// images lazy-loaded by a3 Lazy Load
-		SiteSelector{
-			Title:        "h1.entry-title",
-			Rows:         "li.ceo_latest_comics_widget li:has(a)",
-			Link:         "a",
-			Chapter:      "a",
-			ChapterTitle: "a",
-			Image:        ".entry-content .separator img",
-		},
 	)
 }
 

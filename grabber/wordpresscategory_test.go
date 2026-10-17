@@ -347,3 +347,16 @@ func TestWordPressCategoryLazyPlaceholders(t *testing.T) {
 		}
 	}
 }
+
+// a3 Lazy Load leaves a placeholder in src and the page in data-src
+func TestWpPageImagesSkipsLazyPlaceholders(t *testing.T) {
+	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(`<div class="entry-content">
+<img class="lazy lazy-hidden" src="//example.com/wp-content/plugins/a3-lazy-load/assets/images/lazy_placeholder.gif" data-src="https://cdn.example.com/11.jpg">
+<img src="https://cdn.example.com/11.jpg">
+<img class="lazy lazy-hidden" src="//example.com/lazy_placeholder.gif" data-src="https://cdn.example.com/12.jpg">
+</div>`))
+	pages := wpPageImages(doc)
+	if len(pages) != 2 || pages[0].URL != "https://cdn.example.com/11.jpg" || pages[1].URL != "https://cdn.example.com/12.jpg" {
+		t.Errorf("pages = %+v", pages)
+	}
+}

@@ -137,6 +137,18 @@ page. Measure before touching any of it (a load takes ~0.6 s, a search for
   and `crawl` flag. `tools/site-check/` is the probe that filled it; rerun it
   before editing the table. A site with no crawler yet, an API site or a
   browser-gated one is `crawl: false` and shows "no catalog" in `status`.
+- **FlareSolverr** (`http/flaresolverr.go`, off until `http.SetFlareSolverr`,
+  `--flaresolverr` or the app's Advanced option): a GET answered with
+  Cloudflare's challenge (`isChallenge`) has it earn the host's clearance once
+  (per-host lock, not again for 10 min), then retries with its cookies and
+  per-host user agent (`SetHostUserAgent`). If the retry still gets the
+  challenge, those are dropped and the host is "proxied": its non-picture
+  GETs are read through FlareSolverr (Chrome's JSON view unwrapped).
+  `tools/site-try` reads `FLARESOLVERR`.
+- **`tools/site-try`** checks sites end to end without saving: grabber,
+  title, chapters, one free chapter's pages, the first page fetched and
+  sniffed as a picture (AVIF included). A site is only added to the table
+  once it passes there.
 - **Crawlers are per family, not per site** (`crawl_*.go`, registered in
   `crawlers` by `init`): `themesia` (`/manga/list-mode/`, else the
   `/manga/?page=N` grid), `madara` (`/manga/page/N/?m_orderby=alphabet`: the default order is

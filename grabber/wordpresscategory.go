@@ -447,8 +447,12 @@ func wpPageImages(doc *goquery.Document) []Page {
 			return
 		}
 		src := strings.TrimSpace(s.AttrOr("src", ""))
-		if strings.HasPrefix(src, "data:") {
-			src = wpLazyURL(s)
+		// a lazy-load plugin's placeholder (a3 Lazy Load's lazy_placeholder.gif,
+		// Base64 data) stands where the page goes, which is in data-src
+		if strings.HasPrefix(src, "data:") || strings.Contains(src, "placeholder") || s.HasClass("lazy-hidden") {
+			if lazy := wpLazyURL(s); lazy != "" || strings.HasPrefix(src, "data:") {
+				src = lazy
+			}
 		}
 		if src == "" || strings.HasPrefix(src, "data:") || seen[src] {
 			return
