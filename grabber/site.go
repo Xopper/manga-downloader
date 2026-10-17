@@ -156,6 +156,12 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewMgeko(g),
 		NewMangapark(g),
 		NewGuya(g),
+		NewMangAdventure(g),
+		NewKemono(g),
+		NewPizzaReader(g),
+		NewReadVagabond(g),
+		NewExplosm(g),
+		NewJunmeitu(g),
 		NewAtsumaru(g),
 		NewGlobalcomix(g),
 		NewVortexscans(g),
@@ -204,6 +210,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		plainHTML,
 		NewTcb(g),
 		NewJestful(g),
+		NewComicControl(g),
 	}
 	var early []Site
 	for _, newSite := range earlySites {

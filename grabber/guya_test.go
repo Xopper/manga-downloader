@@ -21,6 +21,8 @@ func TestGuyaSlug(t *testing.T) {
 		{"https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/281/7/", "Kaguya-Wants-To-Be-Confessed-To", false},
 		{"https://guya.cubari.moe/read/manga/Oshi-No-Ko/", "Oshi-No-Ko", false},
 		{"https://danke.moe/read/manga/100-girlfriends/", "100-girlfriends", false},
+		{"https://hachirumi.com/reader/series/infinite-loop/", "infinite-loop", false},
+		{"https://hachirumi.com/reader/series/infinite-loop/1/1/", "infinite-loop", false},
 		{"https://guya.moe/", "", true},
 	}
 
@@ -178,6 +180,7 @@ func TestGuyaTestByAPI(t *testing.T) {
 		{"/read/manga/Series/", true},
 		{"/read/manga/Series/1/3/", true},
 		{"/read/manga/Missing/", false},
+		{"/reader/series/Series/", true},
 		{"/manga/Series/", false},
 	}
 	for _, c := range cases {

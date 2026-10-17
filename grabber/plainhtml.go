@@ -323,8 +323,33 @@ var plainHTMLSelectors = []SiteSelector{
 		Image:            "img.myImage, #pages img",
 		SeriesLink:       `h1 a[href^="/series/"]`,
 		FollowSeriesLink: true,
-		// paid rows overlay a lock icon (lock-open is a different icon)
-		Locked: `img[src*="material-symbols:lock.svg"]`,
+		// paid rows overlay a lock icon (lock-open is a different icon);
+		// early-access ones carry an "Upcoming" clock badge instead (kewnscans)
+		Locked: `img[src*="material-symbols:lock.svg"], img[src*="mdi:clock.svg"]`,
+	},
+	// comicasura.net (an "Asura Scans" mirror on the 2xstorage CDN): rows
+	// carry data-chapter-num (the "first chapter" button outside them is
+	// left out), and the reader is plain <img>s in div.center wrappers.
+	{
+		Title:        "h1.comic-title-content",
+		Rows:         "div.chapter-items[data-chapter-num] a",
+		Chapter:      "div.text-sm",
+		ChapterTitle: "div.text-sm",
+		Image:        "div.center > img.object-cover",
+		// the reader's "All chapters are in <series>" line
+		SeriesLink: `p.text-sm > a[href*="/manga/"]`,
+	},
+	// MangaCatalog one-series sites (ww12.readsnk.com,
+	// ww6.readjujutsukaisen.com, ww4.readsololeveling.org…): each row is a
+	// bg-bg-secondary card whose first column links the chapter, and the
+	// reader is img.js-page; the image CDN wants the site's Referer.
+	{
+		Title:        "h1.my-3",
+		Rows:         "div.bg-bg-secondary div.col-span-4",
+		Link:         "a",
+		Chapter:      "a",
+		ChapterTitle: "div.text-xs",
+		Image:        "img.js-page",
 	},
 	// en-thunderscans.com: mangastream/themesia theme (reader page uses
 	// ts_reader.run, already handled generically). Some recent chapters

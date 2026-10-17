@@ -1093,6 +1093,9 @@ func TestPlainHTMLLockedRows(t *testing.T) {
 		{"meowing.org platform", "#chapters a", `<h1>S</h1><div id="chapters">
 			<a href="/chapter/a/"><img src="https://api.iconify.design/material-symbols:lock.svg?color=white"><span class="text-sm truncate">Chapter 24</span></a>
 			<a href="/chapter/b/"><img src="https://api.iconify.design/material-symbols:lock-open-right.svg"><span class="text-sm truncate">Chapter 23</span></a></div>`},
+		{"meowing.org early access", "#chapters a", `<h1>S</h1><div id="chapters">
+			<a href="/chapter/a/"><span class="text-sm truncate">Chapter 24</span><div><span class="text-xs font-medium">Upcoming</span><img src="https://api.iconify.design/mdi:clock.svg?color=white" class="w-4"></div></a>
+			<a href="/chapter/b/"><span class="text-sm truncate">Chapter 23</span></a></div>`},
 		{"themesia coin", "#chapterlist li:has(.chapternum):has(a[href])", `<h1 itemprop="name">S</h1><ul id="chapterlist">
 			<li data-num="24"><div class="chbox"><a href="https://example.com/s-chapter-24/"><span class="chapternum">Chapter 24</span></a>
 			<span class="d-flex text-gold"><svg viewBox="0 0 512 512"></svg>50</span></div></li>
