@@ -1340,6 +1340,9 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 		}
 		return urls
 	}
+	if urls := webnexPages(selector, doc); urls != nil {
+		return urls
+	}
 	// the Init Manga theme ships the chapter encrypted
 	if urls, ok, err := initMangaImages(doc); ok {
 		if err != nil {

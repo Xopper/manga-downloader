@@ -5,6 +5,7 @@ package grabber
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -66,13 +67,14 @@ func checkPlainHTMLEntry(t *testing.T, c plainHTMLEntryCase) {
 		t.Fatalf("got %d pages, want %d: %v", len(chapter.Pages), len(c.wantPages), pageURLs(chapter))
 	}
 	for i, want := range c.wantPages {
+		want = strings.Replace(want, "BASE", srv.URL, 1)
 		if chapter.Pages[i].URL != want {
 			t.Errorf("page %d = %q, want %q", i+1, chapter.Pages[i].URL, want)
 		}
 	}
 }
 
-func TestSingleSeriesThemes(t *testing.T) {
+func TestPlainHTMLEntries(t *testing.T) {
 	cases := []plainHTMLEntryCase{{
 		name: "readfairytail",
 		series: `<html><body>
@@ -179,6 +181,26 @@ func TestSingleSeriesThemes(t *testing.T) {
 		wantPages: []string{
 			"https://cdn.hentaisco.cc/manga_6a2c469a6c626/chapter-15/001.jpg",
 			"https://cdn.hentaisco.cc/manga_6a2c469a6c626/chapter-15/002.jpg",
+		},
+	}, {
+		name: "webnex",
+		// a chapter can have another group's upload in a menu; the reader
+		// renders its first pages and lists them all in the flight data
+		series: `<html><body><h1>I Took Over the Demonic Ancestor</h1>
+<section class="chapters" id="chapters"><ul>
+<li class="ch-row"><a class="ch-link" href="/read/chapter-mangadex-4c1c7a31-6f990926f518"><span class="ch-num"><span class="visually-hidden">Chapter </span>48</span><span class="ch-title">[Season 1 End]</span></a><span class="ch-source">ManhwaFreak</span></li>
+<li class="ch-row"><a class="ch-link" href="/read/chapter-mangadex-baa935a6-c12087afa3a5"><span class="ch-num"><span class="visually-hidden">Chapter </span>47</span><span class="ch-title is-plain">Chapter 47</span></a><div class="ch-sources"><button class="ch-source-trigger" type="button"><span class="ch-source-name">Ansh Scans</span></button><div class="ch-sources-menu"><ul><li><span class="ch-sources-item is-current"><span class="ch-sources-name">Ansh Scans</span></span></li><li><a class="ch-sources-item" href="/read/chapter-mangadex-072ee120-f2edfcbbe4a1"><span class="ch-sources-name">ManhwaFreak</span></a></li></ul></div></div></li>
+</ul></section></body></html>`,
+		reader: `<html><body>
+<img src="/api/image/e94f7a56ab088fabd8511998be6fb420/001.webp" class="page-image" loading="eager">
+<script>self.__next_f.push([1,"3:{\"group\":\"ManhwaFreak\",\"pages\":[\"/api/image/e94f7a56ab088fabd8511998be6fb420/001.webp\",\"/api/image/e94f7a56ab088fabd8511998be6fb420/002.webp\"]}\n"])</script>
+</body></html>`,
+		wantRows:  "li.ch-row:has(a.ch-link)",
+		wantTitle: "I Took Over the Demonic Ancestor",
+		wantNums:  []float64{48, 47},
+		wantPages: []string{
+			"BASE/api/image/e94f7a56ab088fabd8511998be6fb420/001.webp",
+			"BASE/api/image/e94f7a56ab088fabd8511998be6fb420/002.webp",
 		},
 	}}
 	for _, c := range cases {
