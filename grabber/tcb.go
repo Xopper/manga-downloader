@@ -528,5 +528,10 @@ func (t Tcb) readerPageImages(f Filterable, pageNum int, pageDoc *goquery.Docume
 			pages = append(pages, t.readerImage(pageNum, u))
 		}
 	})
+	if len(pages) == 0 {
+		for _, u := range madaraForkImages(pageDoc) {
+			pages = append(pages, t.readerImage(pageNum, u))
+		}
+	}
 	return pages
 }

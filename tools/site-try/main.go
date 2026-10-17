@@ -129,6 +129,10 @@ func try(u string) (r Result) {
 	}
 	r.Bytes = len(f.Data)
 	r.Type = stdhttp.DetectContentType(f.Data)
+	// AVIF isn't among the types the standard library sniffs
+	if len(f.Data) > 12 && string(f.Data[4:8]) == "ftyp" && (string(f.Data[8:12]) == "avif" || string(f.Data[8:12]) == "avis") {
+		r.Type = "image/avif"
+	}
 	r.OK = strings.HasPrefix(r.Type, "image/") && r.Bytes > 1000
 	if !r.OK {
 		r.Error = "the first page isn't a picture"

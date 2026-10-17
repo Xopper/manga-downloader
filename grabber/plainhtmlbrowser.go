@@ -160,7 +160,11 @@ var browserSelectors = []BrowserSiteSelector{
 			Link:         "a:not([title])",
 			Image:        "img.PB0mN",
 		},
-		Domains:      []string{"mangahub.io"},
+		// the network's mirrors serve the same pages without the challenge,
+		// but their readers still add all but the first 6 pages by script
+		Domains: []string{"mangahub.io", "mangafox.fun", "mangakakalot.fun",
+			"mangareader.site", "mangapanda.onl", "mangahere.onl", "1manga.co",
+			"mangatoday.fun", "mangaonline.fun", "onemanga.info", "manganel.me"},
 		ChaptersWait: "li.list-group-item",
 		ImageWait:    "img.PB0mN",
 		// the reader appends page <img> tags progressively; without this,

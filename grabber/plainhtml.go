@@ -1489,6 +1489,16 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 		}
 		return urls
 	}
+	if urls := webnexPages(selector, doc); urls != nil {
+		return urls
+	}
+	// the Init Manga theme ships the chapter encrypted
+	if urls, ok, err := initMangaImages(doc); ok {
+		if err != nil {
+			notice.Warn("could not decrypt the chapter: %s", err)
+		}
+		return urls
+	}
 
 	// Check for chapImages JavaScript variable first
 
@@ -1514,6 +1524,9 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 	// of the chapter in a ts_reader javascript call
 	re = regexp.MustCompile(`(?s)ts_reader\.run\(.*?"images":\s*\[(.*?)\]`)
 	matches = re.FindStringSubmatch(html)
+	if matches == nil {
+		matches = re.FindStringSubmatch(dataScripts(doc))
+	}
 	if len(matches) > 1 {
 		urls := regexp.MustCompile(`"([^"]+)"`).FindAllStringSubmatch(matches[1], -1)
 		imgs := []string{}
@@ -1710,7 +1723,7 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 			return
 		}
 		src := s.AttrOr("src", "")
-		if src == "" || strings.HasPrefix(src, "data:image") || isSVGPlaceholder(src, s) {
+		if src == "" || strings.HasPrefix(src, "data:image") || isSVGPlaceholder(src, s) || isLazyPlaceholder(src, s) {
 			src = s.AttrOr("data-src", "")
 		}
 		if src == "" {
