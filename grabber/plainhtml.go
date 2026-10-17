@@ -3,6 +3,7 @@
 package grabber
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/url"
 	"regexp"
@@ -468,6 +469,80 @@ var plainHTMLSelectors = []SiteSelector{
 		Image:            `.reader-area img[data-lazy-src]:not([data-lazy-src*="maid.my.id"]), .reader-area-main img`,
 		SeriesLink:       `#chapnav a[href*="/manga/"], .coverz a[href*="/series/"]`,
 		FollowSeriesLink: true,
+	},
+	// topmanhua.fan and zazamanga.com: a Laravel copy of Madara (no
+	// ajax/chapters) whose series page lists every chapter as a
+	// div.wp-manga-chapter (Madara's own rows are <li>s). Newer installs of the
+	// same platform load the list from an API instead (see zinmanga.go).
+	{
+		Title:        ".post-title h1",
+		Rows:         "div.wp-manga-chapter",
+		Link:         "a",
+		Chapter:      "a",
+		ChapterTitle: "a",
+		Image:        "div.reading-content img",
+	},
+	// manga18fx.com and mangadna.com: one adult manhwa platform with a
+	// MangaBox-like row list. The reader's logo sits outside .read-content.
+	{
+		Title:        ".post-title h1",
+		Rows:         "ul.row-content-chapter li",
+		Link:         "a.chapter-name",
+		Chapter:      "a.chapter-name",
+		ChapterTitle: "a.chapter-name",
+		Image:        ".read-content img[data-src]",
+	},
+	// manhwaz.cc: Astro site whose release list hides the older rows with a
+	// "concealed" class (still in the HTML). The reader's pages go through
+	// the site's own image proxy.
+	{
+		Title:   "h1",
+		Rows:    ".release-list a.release-row",
+		Chapter: "strong",
+		Image:   ".reader-pages figure.reader-page-image img",
+	},
+	// mangafreak.me: the series table lists every chapter (the box above it
+	// only the latest), and the reader renders every page as img#gohere.
+	{
+		Title: ".manga_series_data h1",
+		Rows:  ".manga_series_list a.chapter-link",
+		Image: "img#gohere",
+	},
+	// mangack.com: the Ifenzi WordPress theme, chapters at
+	// /chapter/{series}-chapter-N/ with their pages in the post body.
+	{
+		Title:        "h1.entry-title",
+		Rows:         "ul.chapterslist li",
+		Link:         "a.title",
+		Chapter:      "a.title",
+		ChapterTitle: "a.title",
+		Image:        ".entry-content .separator img",
+	},
+	// read-horimiya.online: a one-series WordPress theme ("NEW") run by many
+	// read-{series}.online sites; the home page is the series page.
+	{
+		Title:        "#manga-info-right h1",
+		Rows:         "#chapter-list a.chapter-list-item",
+		Chapter:      ".chapter-name",
+		ChapterTitle: ".chapter-name",
+		Image:        ".images-container img",
+	},
+	// 18porncomic.com: the Manga18 theme (manga18.club). The reader builds
+	// its pages from a base64 slides_p_path array (see getPlainHTMLImageURL).
+	{
+		Title: ".detail_name h1",
+		Rows:  "a.chapter_num",
+		Image: "img.image-chapter",
+	},
+	// comivex.com: Alpine.js theme; every chapter is in ul.ch-list and the
+	// reader renders all its pages in #chapter-images.
+	{
+		Title:        "h1.md-title",
+		Rows:         "ul.ch-list li.ch-item",
+		Link:         "a.ch-link",
+		Chapter:      ".ch-num",
+		ChapterTitle: ".ch-num",
+		Image:        "#chapter-images img",
 	},
 }
 
@@ -1350,6 +1425,11 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 		// Found chapImages variable, split by comma
 		return strings.Split(matches[1], ",")
 	}
+	// the Manga18 theme (18porncomic.com, manga18.club) keeps the pages as a
+	// base64 array its reader decodes with atob()
+	if urls := slidesPagePaths(html); len(urls) > 0 {
+		return urls
+	}
 	// some sites store a plain text array with the urls into a hidden layer
 	pimages := doc.Find("#arraydata")
 	if pimages.Length() == 1 {
@@ -1565,6 +1645,26 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 	})
 
 	return imgs
+}
+
+var slidesPathRe = regexp.MustCompile(`slides_p_path\s*=\s*\[([^\]]*)\]`)
+
+// slidesPagePaths decodes the Manga18 theme's `var slides_p_path = ["base64",…]`
+// page list, or returns nil when the page has none
+func slidesPagePaths(html string) []string {
+	m := slidesPathRe.FindStringSubmatch(html)
+	if m == nil {
+		return nil
+	}
+	var urls []string
+	for _, q := range regexp.MustCompile(`"([A-Za-z0-9+/=]+)"`).FindAllStringSubmatch(m[1], -1) {
+		u, err := base64.StdEncoding.DecodeString(q[1])
+		if err != nil || !strings.HasPrefix(string(u), "http") {
+			continue
+		}
+		urls = append(urls, string(u))
+	}
+	return urls
 }
 
 // unescapeJSString undoes the escapes of a JavaScript string literal body

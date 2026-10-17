@@ -154,6 +154,28 @@ func TestBloggerPagesTextarea(t *testing.T) {
 	}
 }
 
+// murimscans.site's reader template prints the post in div.chapter-raw-content,
+// its pages with no alt, next to the theme's own pictures
+func TestBloggerPagesChapterRawContent(t *testing.T) {
+	const post = `<html><body><img src="https://blogger.googleusercontent.com/logo.png" alt="Murim Scans">
+<div class='chapter-raw-content' style='margin-bottom: 20px;'>
+<div class="separator" style="clear: both;"><a href="https://i.ibb.co/a/1.webp"><img border="0" data-original-width="800" loading="lazy" src="https://i.ibb.co/a/1.webp" /></a></div>
+<div class="separator" style="clear: both;"><a href="https://i.ibb.co/b/2.webp"><img border="0" loading="lazy" src="https://i.ibb.co/b/2.webp" /></a></div>
+<img src="https://x/share.png" alt="Share">
+</div></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(post))
+	if err != nil {
+		t.Fatal(err)
+	}
+	postURL, _ := url.Parse("https://www.murimscans.site/2026/01/chapter-190.html")
+
+	pages := bloggerPages(doc, postURL)
+	if len(pages) != 2 || pages[0].URL != "https://i.ibb.co/a/1.webp" || pages[1].URL != "https://i.ibb.co/b/2.webp" {
+		t.Fatalf("pages = %+v", pages)
+	}
+}
+
 func TestBloggerFingerprint(t *testing.T) {
 	cases := map[string]bool{
 		`<link href='https://www.blogger.com/static/v1/widgets/4165133002-widget_css_bundle.css' rel='stylesheet'/>`:    true,

@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -109,11 +112,13 @@ func TestTcbSeriesRe(t *testing.T) {
 		{"https://lhtranslation.net/manga/gaikotsu-kishi-sama/chapter-1/", "manga/gaikotsu-kishi-sama"},
 		{"https://gdscans.com/manga/example/volume-10/chapter-50/", "manga/example"},
 		{"https://lilymanga.net/gl/a-love-hate-chord/episode-02/", "gl/a-love-hate-chord"},
-		{"https://lilymanga.net/gl/a-love-hate-chord", ""},
+		{"https://lilymanga.net/gl/a-love-hate-chord", "gl/a-love-hate-chord"},
+		{"https://mangatop.org/series/im-actually-a-cultivation-bigshot/?t=2", "series/im-actually-a-cultivation-bigshot"},
+		// the type segment is the site's own choice, so any word is one
+		{"https://grabber.zone/comics/sonic-comic-origins-reboot/", "comics/sonic-comic-origins-reboot"},
+		{"https://hunlightcomics.com/m/some-series/chapter-3/", "m/some-series"},
 		{"https://lhtranslation.net/manga/", ""},
-		{"https://example.com/somanga/foo/", ""},
-		{"https://example.com/glimpse/foo/", ""},
-		{"https://example.com/comics/foo/", ""},
+		{"https://example.com/foo", ""},
 		{"https://example.com/", ""},
 	}
 
@@ -242,7 +247,11 @@ func TestTcbFetchChapterRejectsNonMangaReaders(t *testing.T) {
 	for name, tc := range map[string]struct{ html, want string }{
 		"video": {`<div class="reading-content-wrap chapter-type-video"><iframe src="https://mega.nz/embed/x"></iframe></div>`, "Ep 1 is a video, not a manga chapter"},
 		"text":  {`<div class="reading-content-wrap chapter-type-text"><p>Once upon a time</p></div>`, "Ep 1 is a novel chapter, not a manga chapter"},
-		"manga": {`<div class="reading-content-wrap chapter-type-manga"><div class="reading-content"><img id="image-0" data-src="/a.png"></div></div>`, ""},
+		// only the theme's lazy-load placeholder: still a novel
+		"text with placeholder": {`<div class="reading-content-wrap chapter-type-text"><div class="reading-content"><img src="/wp-content/themes/madara/images/dflazy.jpg"><p>Text</p></div></div>`, "Ep 1 is a novel chapter, not a manga chapter"},
+		// manhwaden.com pastes a manhwa's pages into a text chapter
+		"text with pages": {`<div class="reading-content-wrap chapter-type-text"><div class="reading-content"><div class="text-left"><p><img src="https://m1.example.net/ch-17--1.jpg"></p></div></div></div>`, ""},
+		"manga":           {`<div class="reading-content-wrap chapter-type-manga"><div class="reading-content"><img id="image-0" data-src="/a.png"></div></div>`, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -424,5 +433,83 @@ func TestTcbFetchChaptersLockedMarker(t *testing.T) {
 	chapters, _ = tcb.FetchChapters()
 	if LockedOf(chapters[0]) || chapters[0].GetTitle() != "Bölüm 6 - 💦" {
 		t.Errorf("other host: locked %v, title %q", LockedOf(chapters[0]), chapters[0].GetTitle())
+	}
+}
+
+// mangatop.org splits its ajax/chapters list over ?t=N pages, 30 rows each,
+// and only answers POSTs that send a Content-Length
+func TestTcbPaginatedChapterList(t *testing.T) {
+	page := func(n int, last int) string {
+		var b strings.Builder
+		b.WriteString(`<ul class="main version-chap">`)
+		for i := 0; i < 2; i++ {
+			num := (last-n)*2 + 2 - i
+			fmt.Fprintf(&b, `<li class="wp-manga-chapter"><a href="/series/x/chapter-%d/">Chapter %d</a></li>`, num, num)
+		}
+		b.WriteString(`</ul><div class="pagination"><span class="page current page-1">1</span>`)
+		for p := 2; p <= last; p++ {
+			fmt.Fprintf(&b, `<span class="page page-%d"><a href="/?t=%d" data-page="%d">%d</a></span>`, p, p, p, p)
+		}
+		b.WriteString(`</div>`)
+		return b.String()
+	}
+	var mu sync.Mutex
+	asked := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/series/x/ajax/chapters/" && r.URL.Path != "/series/x/ajax/chapters" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("Content-Length") == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		n := 1
+		if q := r.URL.Query().Get("t"); q != "" {
+			n, _ = strconv.Atoi(q)
+		}
+		mu.Lock()
+		asked[r.URL.RawQuery] = true
+		mu.Unlock()
+		_, _ = w.Write([]byte(page(n, 3)))
+	}))
+	t.Cleanup(srv.Close)
+
+	tcb := NewTcb(&Grabber{URL: srv.URL + "/series/x/", Settings: &Settings{}})
+	if ok, err := tcb.Test(); err != nil || !ok {
+		t.Fatalf("Test() = %v, %v; want the series to match", ok, err)
+	}
+	chapters, errs := tcb.FetchChapters()
+	if len(errs) > 0 {
+		t.Fatalf("FetchChapters() errors: %v", errs)
+	}
+	var got []float64
+	for _, c := range chapters {
+		got = append(got, c.GetNumber())
+	}
+	if want := []float64{6, 5, 4, 3, 2, 1}; !reflect.DeepEqual(got, want) {
+		t.Errorf("chapter numbers = %v, want %v (every page, in order)", got, want)
+	}
+	if !asked["t=2"] || !asked["t=3"] {
+		t.Errorf("pages asked = %v, want t=2 and t=3", asked)
+	}
+}
+
+// Any first path segment can be Madara's type segment, so an URL whose probe
+// fails is just another site, and its error isn't reported; the known ones are.
+func TestTcbProbeErrors(t *testing.T) {
+	srv := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(srv.Close)
+
+	for path, wantErr := range map[string]bool{
+		"/series/x/": false,
+		"/comics/x/": false,
+		"/manga/x/":  true,
+	} {
+		tcb := NewTcb(&Grabber{URL: srv.URL + path, Settings: &Settings{}})
+		ok, err := tcb.Test()
+		if ok || (err != nil) != wantErr {
+			t.Errorf("Test() on %s = %v, %v; want no match, error %v", path, ok, err, wantErr)
+		}
 	}
 }
