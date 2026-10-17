@@ -1,0 +1,21 @@
+{
+ "comics": [
+  {
+   "title": "Aishiteru Game wo Owarasetai",
+   "alt_titles": [
+    "愛してるゲームを終わらせたい",
+    "I Want to End This Love Game"
+   ],
+   "url": "/comics/aishiteru-game-wo-owarasetai",
+   "slug": "aishiteru-game-wo-owarasetai"
+  },
+  {
+   "title": "Alien Headbutt",
+   "alt_titles": [
+    "エイリアンヘッドバット"
+   ],
+   "url": "/comics/alien-headbutt",
+   "slug": "alien-headbutt"
+  }
+ ]
+}

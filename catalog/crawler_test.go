@@ -34,13 +34,26 @@ func (f *fakeFetch) fetch(_ context.Context, url string) (*goquery.Document, err
 	return goquery.NewDocumentFromReader(strings.NewReader(page))
 }
 
-// withFakeFetch replaces the page fetcher for the test and disables pacing
+func (f *fakeFetch) text(_ context.Context, url string) (string, error) {
+	f.mu.Lock()
+	f.calls = append(f.calls, url)
+	page, ok := f.pages[url]
+	f.mu.Unlock()
+	if !ok {
+		return "", &http.StatusError{Code: 404}
+	}
+
+	return page, nil
+}
+
+// withFakeFetch replaces the page and text fetchers for the test and disables
+// pacing
 func withFakeFetch(t *testing.T, pages map[string]string) *fakeFetch {
 	t.Helper()
 	f := &fakeFetch{pages: pages}
-	prevFetch, prevPause := fetch, pagePause
-	fetch, pagePause = f.fetch, 0
-	t.Cleanup(func() { fetch, pagePause = prevFetch, prevPause })
+	prevFetch, prevText, prevPause := fetch, fetchText, pagePause
+	fetch, fetchText, pagePause = f.fetch, f.text, 0
+	t.Cleanup(func() { fetch, fetchText, pagePause = prevFetch, prevText, prevPause })
 
 	return f
 }

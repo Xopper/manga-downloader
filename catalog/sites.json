@@ -129,10 +129,14 @@
  {
   "site": "animeallstar30.com",
   "home": "https://animeallstar30.com",
-  "family": "custom",
+  "family": "jsonlist",
   "lang": "es",
-  "crawl": false,
-  "label": "AnimeAllStar, Spanish"
+  "crawl": true,
+  "label": "AnimeAllStar, Spanish",
+  "list": "https://animeallstar30.com/wp-json/wp/v2/categories?per_page=100&page={page}&_fields=name,link,count",
+  "itemTitle": "name",
+  "itemURL": "link",
+  "exclude": "^Uncategorized$"
  },
  {
   "site": "anzmanga25.com",
@@ -332,10 +336,13 @@
  {
   "site": "bluesolo.org",
   "home": "https://bluesolo.org",
-  "family": "custom",
+  "family": "jsonlist",
   "lang": "fr",
-  "crawl": false,
-  "label": "Blue Solo, French scantrad"
+  "crawl": true,
+  "label": "Blue Solo, French scantrad",
+  "list": "https://bluesolo.org/api/comics",
+  "items": "comics",
+  "itemAlt": "alt_titles"
  },
  {
   "site": "bunmanga.com",
@@ -603,7 +610,8 @@
   "family": "custom",
   "lang": "en",
   "crawl": false,
-  "browser": true
+  "browser": true,
+  "note": "Cloudflare challenges plain HTTP (403) on every page and its API"
  },
  {
   "site": "commitstrip.com",
@@ -951,9 +959,12 @@
  {
   "site": "fmteam.fr",
   "home": "https://fmteam.fr",
-  "family": "custom",
+  "family": "jsonlist",
   "lang": "fr",
-  "crawl": false
+  "crawl": true,
+  "list": "https://fmteam.fr/api/comics",
+  "items": "comics",
+  "itemAlt": "alt_titles"
  },
  {
   "site": "foamgirl.net",
@@ -1478,9 +1489,11 @@
  {
   "site": "jestful.net",
   "home": "https://jestful.net",
-  "family": "custom",
+  "family": "htmllist",
   "lang": "en",
-  "crawl": false
+  "crawl": true,
+  "list": "https://jestful.net/manga-list.html?page={page}&sort=name&sort_type=ASC",
+  "items": ".series-title a"
  },
  {
   "site": "jjcos.com",
@@ -1671,10 +1684,9 @@
   "home": "https://kuragebunch.com",
   "family": "gigaviewer",
   "lang": "ja",
-  "crawl": false,
+  "crawl": true,
   "label": "Japanese, Kurage Bunch (GigaViewer)",
-  "list": "https://kuragebunch.com/comics",
-  "note": "its list page names no series, only their episodes"
+  "list": "https://kuragebunch.com/series/kuragebunch https://kuragebunch.com/series/comicbunch https://kuragebunch.com/series/friday https://kuragebunch.com/series/kanata https://kuragebunch.com/series/oneshot"
  },
  {
   "site": "kuramanga.com",
@@ -1722,10 +1734,13 @@
  {
   "site": "lelscans.net",
   "home": "https://lelscans.net",
-  "family": "custom",
+  "family": "htmllist",
   "lang": "fr",
-  "crawl": false,
-  "label": "French"
+  "crawl": true,
+  "label": "French",
+  "list": "https://lelscans.net/",
+  "items": "option[value*=\"/lecture-\"]",
+  "itemURL": "value"
  },
  {
   "site": "leslie-victims.pages.dev",
@@ -2024,8 +2039,10 @@
   "home": "https://www.mangadelsiglotvmanga.com.mx",
   "family": "blogger",
   "lang": "es",
-  "crawl": false,
-  "label": "Manga del Siglo TV Manga, Spanish"
+  "crawl": true,
+  "label": "Manga del Siglo TV Manga, Spanish",
+  "list": "https://www.mangadelsiglotvmanga.com.mx/feeds/posts/summary?alt=json&max-results=0",
+  "exclude": "(?i)^(mangas|manwha|manhwa|manga in english|anime|kanojo|romcom)$| anime$"
  },
  {
   "site": "mangadenizi.net",
@@ -2430,10 +2447,14 @@
  {
   "site": "mangavault.lat",
   "home": "https://mangavault.lat",
-  "family": "astro",
+  "family": "jsonlist",
   "lang": "es",
-  "crawl": false,
-  "label": "MangaVault"
+  "crawl": true,
+  "label": "MangaVault",
+  "list": "https://mangavault.lat/api/mangas/search?nsfwMode=include&page={page}",
+  "seriesURL": "https://mangavault.lat/manga/{slug}",
+  "items": "results",
+  "itemAlt": "alternative_titles"
  },
  {
   "site": "mangaworld.mx",
@@ -2521,7 +2542,8 @@
   "family": "custom",
   "lang": "en",
   "crawl": false,
-  "browser": true
+  "browser": true,
+  "note": "Cloudflare challenges plain HTTP (403); the grabber needs a visible browser"
  },
  {
   "site": "manhwa18.cc",
@@ -3008,10 +3030,12 @@
  {
   "site": "onma.top",
   "home": "https://onma.top",
-  "family": "custom",
+  "family": "htmllist",
   "lang": "ar",
-  "crawl": false,
-  "label": "Arabic"
+  "crawl": true,
+  "label": "Arabic",
+  "list": "https://onma.top/changeMangaList?type=text",
+  "items": "ul.manga-list a.alpha-link"
  },
  {
   "site": "orchisasia.org",
@@ -3414,10 +3438,12 @@
  {
   "site": "scan-vf.net",
   "home": "https://www.scan-vf.net",
-  "family": "custom",
+  "family": "htmllist",
   "lang": "fr",
-  "crawl": false,
-  "label": "ScanVF"
+  "crawl": true,
+  "label": "ScanVF",
+  "list": "https://www.scan-vf.net/changeMangaList?type=text",
+  "items": "ul.manga-list a.alpha-link"
  },
  {
   "site": "schlockmercenary.com",
@@ -3466,10 +3492,13 @@
  {
   "site": "silentquill.net",
   "home": "https://silentquill.net",
-  "family": "custom",
+  "family": "htmllist",
   "lang": "en",
-  "crawl": false,
-  "label": "Armageddon Scanlation"
+  "crawl": true,
+  "label": "Armageddon Scanlation",
+  "list": "https://silentquill.net/series/",
+  "items": "li a[href^=\"/series/\"]:not([href=\"/series/\"])",
+  "itemTitle": "span.font-semibold"
  },
  {
   "site": "simply-hentai.com",
@@ -3662,7 +3691,8 @@
   "family": "custom",
   "lang": "en",
   "crawl": false,
-  "browser": true
+  "browser": true,
+  "note": "Cloudflare challenges plain HTTP (403); the grabber needs a visible browser"
  },
  {
   "site": "toonily.com",
@@ -3774,10 +3804,14 @@
  {
   "site": "twmanga.com",
   "home": "https://www.twmanga.com",
-  "family": "custom",
+  "family": "jsonlist",
   "lang": "zh",
-  "crawl": false,
-  "label": "包子漫画, baozimh.com mirror"
+  "crawl": true,
+  "label": "包子漫画, baozimh.com mirror",
+  "list": "https://www.twmanga.com/api/bzmhq/amp_comic_list?type=all&region=all&state=all&filter=*&page={page}&limit=36&language=tw",
+  "seriesURL": "https://www.twmanga.com/comic/{comic_id}",
+  "items": "items",
+  "itemTitle": "name"
  },
  {
   "site": "universe.leagueoflegends.com",

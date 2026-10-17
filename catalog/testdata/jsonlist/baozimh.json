@@ -1,0 +1,29 @@
+{
+ "next": "/api/bzmhq/amp_comic_list?type=all&region=all&state=all&filter=*&page=2&limit=36&language=tw",
+ "items": [
+  {
+   "comic_id": "yirenzhixia-dongmantang",
+   "type_names": [
+    "熱血",
+    "冒險"
+   ],
+   "author": "動漫堂",
+   "name": "一人之下",
+   "topic_img": "yirenzhixia-dongmantang.jpg",
+   "region_name": "國漫",
+   "region": "cn"
+  },
+  {
+   "comic_id": "shaosong-yuewenmanhua",
+   "type_names": [
+    "穿越",
+    "古風"
+   ],
+   "author": "閱文漫畫",
+   "name": "紹宋",
+   "topic_img": "shaosong-yuewenmanhua.jpg",
+   "region_name": "國漫",
+   "region": "cn"
+  }
+ ]
+}

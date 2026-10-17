@@ -37,6 +37,12 @@ type fetcher func(ctx context.Context, url string) (*goquery.Document, error)
 
 var fetch fetcher = httpFetch
 
+// textFetcher is how crawlers get a raw body (a JSON API) rather than a
+// page; tests replace it with fixtures too
+type textFetcher func(ctx context.Context, url string) (string, error)
+
+var fetchText textFetcher = httpFetchText
+
 // pagePause spaces list page requests out (0 in tests)
 var pagePause = 300 * time.Millisecond
 
@@ -44,15 +50,21 @@ var pagePause = 300 * time.Millisecond
 // headers as the grabbers), without the retry loop: a missing page is how a
 // crawler learns it reached the end
 func httpFetch(ctx context.Context, u string) (*goquery.Document, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	text, err := http.GetText(http.RequestParams{URL: u, Referer: homeOf(u), DisableRetry: true})
+	text, err := httpFetchText(ctx, u)
 	if err != nil {
 		return nil, err
 	}
 
 	return goquery.NewDocumentFromReader(strings.NewReader(text))
+}
+
+// httpFetchText GETs a body the way httpFetch does, unparsed
+func httpFetchText(ctx context.Context, u string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+
+	return http.GetText(http.RequestParams{URL: u, Referer: homeOf(u), DisableRetry: true})
 }
 
 // homeOf is the origin of a URL with a trailing slash, the referer the sites
