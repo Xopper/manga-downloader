@@ -670,3 +670,21 @@ func TestRequestAccepts2xx(t *testing.T) {
 		t.Errorf("GetText() = %q, %v; want the body", text, err)
 	}
 }
+
+// TestRequestAcceptsPartialContentForRange takes a 206 as the answer to a
+// request that asked for a Range, and nothing else
+func TestRequestAcceptsPartialContentForRange(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusPartialContent)
+		w.Write([]byte("part"))
+	}))
+	defer srv.Close()
+
+	text, err := GetText(RequestParams{URL: srv.URL, Headers: map[string]string{"Range": "bytes=0-3"}, DisableRetry: true})
+	if err != nil || text != "part" {
+		t.Errorf("GetText(Range) = %q, %v; want the part", text, err)
+	}
+	if _, err := GetText(RequestParams{URL: srv.URL, DisableRetry: true}); err == nil {
+		t.Error("GetText() accepted a 206 nobody asked for")
+	}
+}

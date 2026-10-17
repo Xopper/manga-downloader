@@ -318,8 +318,9 @@ func doRequest(t string, params Params) (body io.ReadCloser, contentType string,
 		SetCookie(domain, c.Name, c.Value)
 	}
 
-	// any 2xx is an answer: manganow.to's image list comes back as a 202
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+	// any 2xx is an answer (manganow.to's image list comes back as a 202),
+	// but a 206 only to a Range request (pages read out of a remote archive)
+	if resp.StatusCode < 200 || resp.StatusCode > 299 || (resp.StatusCode == http.StatusPartialContent && req.Header.Get("Range") == "") {
 		// drain a bounded amount before closing so the connection can go
 		// back to the pool instead of being torn down on every failure
 		head, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))

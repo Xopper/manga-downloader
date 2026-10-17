@@ -483,6 +483,17 @@ var plainHTMLSelectors = []SiteSelector{
 		ChapterTitle: "a",
 		Image:        "div.reading-content img",
 	},
+	// manga18.me (YiiMadara theme): the chapter list's .wleft wrapper sets it
+	// apart from manga18fx's (next) and the manganelo family's row-content-chapter lists. Pages are
+	// all in .read-content.
+	// manhwa18.cc's live pages have the same wrapper; its h1's "18+" badge
+	// is a span.
+	{
+		Title:      ".post-title h1",
+		TitleNoise: "span",
+		Rows:       ".panel-manga-chapter.wleft ul.row-content-chapter li a.chapter-name",
+		Image:      ".read-content img",
+	},
 	// manga18fx.com and mangadna.com: one adult manhwa platform with a
 	// MangaBox-like row list. The reader's logo sits outside .read-content.
 	// Only pages with its .post-title: a trimmed page of manhwa18.cc's script
