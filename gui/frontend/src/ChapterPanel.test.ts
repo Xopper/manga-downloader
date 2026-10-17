@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ChapterPanel } from './ChapterPanel';
+import { ChapterBox, ChapterPanel, ChapterTitle, LOCKED_HINT } from './ChapterPanel';
 import { followedOf } from './library';
 import { createMockApi } from './mock';
 import type { Chapter, Followed, State } from './types';
@@ -80,11 +80,43 @@ describe('ChapterPanel', () => {
     const api = createMockApi({ scenario: 'loaded', freeze: true });
     const state = await api.state();
     const chapters: Chapter[] = [
-      { index: 0, number: 3, title: 'Chapter 3', language: '', group: '', volume: 0 },
-      { index: 1, number: 4, title: 'Chapter 4 - The fight', language: '', group: '', volume: 0 },
+      { index: 0, number: 3, title: 'Chapter 3', language: '', group: '', volume: 0, locked: false },
+      { index: 1, number: 4, title: 'Chapter 4 - The fight', language: '', group: '', volume: 0, locked: false },
     ];
     const markup = render({ ...state, chapterCount: 2, selectedCount: 0, options: { ...state.options, packAs: 'chapters' } }, chapters, null);
     expect(markup).toContain('<span class="num">3</span><span class="title"></span>');
     expect(markup).toContain('<span class="num">4</span><span class="title">The fight</span>');
+  });
+});
+
+function title(locked: boolean): string {
+  return renderToStaticMarkup(createElement(ChapterTitle, { title: 'Chapter 186', locked }));
+}
+
+describe('ChapterTitle', () => {
+  it('marks a locked chapter with a lock that names why, in the title', () => {
+    const html = title(true);
+    expect(html).toContain(`class="lock" role="img" title="${LOCKED_HINT}" aria-label="${LOCKED_HINT}"`);
+    expect(html).toContain('class="title"');
+    expect(html.indexOf('class="lock"')).toBeLessThan(html.indexOf('Chapter 186'));
+  });
+
+  it('shows a free chapter with no lock at all', () => {
+    const html = title(false);
+    expect(html).not.toContain('lock');
+    expect(html).toBe('<span class="title">Chapter 186</span>');
+  });
+});
+
+describe('ChapterBox', () => {
+  const box = (on: boolean, locked: boolean) => renderToStaticMarkup(createElement(ChapterBox, { on, locked }));
+
+  it('greys out the box of a locked chapter', () => {
+    expect(box(false, true)).toBe('<span class="box disabled" aria-hidden="true"></span>');
+  });
+
+  it('leaves a free chapter\'s box as it was', () => {
+    expect(box(false, false)).toBe('<span class="box" aria-hidden="true"></span>');
+    expect(box(true, false)).toBe('<span class="box on" aria-hidden="true"></span>');
   });
 });

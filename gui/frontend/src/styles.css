@@ -202,6 +202,10 @@ code {
   white-space: nowrap;
 }
 
+.warn-text {
+  color: var(--warning);
+}
+
 .error-text {
   color: var(--danger);
 }
@@ -638,6 +642,21 @@ input[type='search']::-webkit-search-decoration {
   border-radius: 6px;
 }
 
+/* a locked chapter can't be picked: its row stays, dimmed, with the lock */
+.row.locked {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.row.locked:hover {
+  background: none;
+}
+
+.box.disabled {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
 .list.locked .row {
   cursor: default;
   opacity: 0.6;
@@ -810,6 +829,13 @@ input[type='search']::-webkit-search-decoration {
   text-overflow: ellipsis;
 }
 
+/* both tags share the row's last grid column, so a row never spills into another */
+.tags {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .lang,
 .group {
   padding: 1px 7px;
@@ -821,6 +847,14 @@ input[type='search']::-webkit-search-decoration {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* a locked chapter's mark, inline before its title */
+.lock {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 5px;
+  color: var(--warning);
 }
 
 /* a group's name is a name, not a code: it keeps its own casing */
@@ -1106,6 +1140,23 @@ input[type='search']::-webkit-search-decoration {
 
 .input.invalid {
   border-color: var(--danger);
+}
+
+/* the box with a control inside its right end; the padding keeps text clear of it */
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap > .input {
+  display: block;
+  padding-right: 36px;
+}
+
+.input-action {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
 }
 
 .folder {
@@ -1430,6 +1481,7 @@ fieldset:disabled .check {
   color: var(--text-3);
 }
 
+.job-fetching .job-icon,
 .job-downloading .job-icon,
 .job-archiving .job-icon {
   color: var(--accent);
@@ -1530,6 +1582,31 @@ fieldset:disabled .check {
   background: var(--accent);
   transform-origin: left center;
   transition: transform 0.25s var(--ease);
+}
+
+.job-fetching .bar > span {
+  right: 60%;
+  opacity: 0.6;
+  transition: none;
+  animation: fetching-slide 1.2s var(--ease) infinite alternate;
+}
+
+@keyframes fetching-slide {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(150%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-fetching .bar > span {
+    animation: none;
+    right: 0;
+    opacity: 0.25;
+  }
 }
 
 .job-archiving .bar > span {
@@ -3210,4 +3287,8 @@ a.version:hover {
   .checking span {
     display: none;
   }
+}
+
+.browser-alert p.update-error {
+  color: var(--danger);
 }

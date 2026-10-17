@@ -12,6 +12,7 @@ These guides are not loaded with every session. Open the file when the task matc
 
 - **Sites and grabbers** (adding, fixing or investigating a site (new or supported), smoke-test failures, Cloudflare/browser problems): the `grabbers` skill, `.agents/skills/grabbers/SKILL.md`.
 - **Desktop app** (`gui/`: Go backend, React frontend, bindings, packaging, theme, options): the `gui` skill, `.agents/skills/gui/SKILL.md`.
+- **Release assets** (retaking the README and website screenshots and demo GIFs before a release; macOS only): the `pre-release` skill, `.agents/skills/pre-release/SKILL.md`.
 
 ## Commands
 
@@ -19,6 +20,8 @@ These guides are not loaded with every session. Open the file when the task matc
 make install          # go mod download
 make build            # clean + test + build unix binary (injects version via ldflags)
 make build/all        # unix + windows binaries
+make build/demo       # the VHS tapes' binary, served from demo/series (demo tag, see demo/README.md)
+make test/demo        # the demo build's tests
 GOOS=windows GOARCH=386 make build/release   # one release binary, built as release.yaml does
 make test             # go test -v ./... (uses richgo if installed)
 go test ./ranges -run TestParse   # run a single test
@@ -31,7 +34,7 @@ The makefile is tracked lowercase; on macOS `git add` needs the lowercase name. 
 
 Releases: the version lives only in the git tag (the makefile injects the short sha, the release workflow also injects `git describe`). There's no CHANGELOG and no hardcoded version. **`release.yaml` triggers on a *published GitHub Release*, not on a tag push** — pushing a tag alone releases nothing.
 
-- **Website**: `website/` is the GitHub Pages site (Vite + TS, pnpm, deployed by `pages.yaml`). Its supported-sites list is parsed from this README's "Supported sites" section at build time, so keep that list's `- [domain (note)](url) \*` format and the "Show all N" count in sync. It's published in English, Spanish and Catalan: page text lives in `website/locales/*.json` (i18next format, rendered at build time), so add or change a string in all three files. See `website/README.md`.
+- **Website**: `website/` is the GitHub Pages site (Vite + TS, pnpm, deployed by `pages.yaml`). Its supported-sites list is parsed from this README's "Supported sites" section at build time, so keep that table's `| [domain](url) \* | notes | last verified |` row format and the "Show all N" count in sync. The "Last verified" column holds a date, `❌ failing since <date>` or `—` (never checked; the start for a new site): `tools/site-status` rewrites only that column from smoke results, run weekly by the last job of `smoke.yaml` (which commits the README) and by hand with `make site-status TARGETS="toonily"` for the browser sites CI can't run. It maps a smoke target to its row by the host of its first URL, and reports unmapped targets and rows (CI `::warning::`s); a row with no smoke target keeps `—` until one exists. The job commits through the GraphQL `createCommitOnBranch` (master requires signed commits), and the website shows the new dates at the next daily Pages run. It's published in English, Spanish and Catalan: page text lives in `website/locales/*.json` (i18next format, rendered at build time), so add or change a string in all three files. See `website/README.md`.
 - **Homebrew**: `packaging/homebrew/tap/` holds the formula (`manga-downloader`, CLI) and cask (`manga-downloader-app`, desktop app; `Casks/manga-downloader.rb` is its deprecated old-name alias) for `elboletaire/homebrew-tap`. Each published release runs a `homebrew` job in `release.yaml` and `release-gui.yaml`, which copies them into the tap and sets the version and sha256s with `scripts/update-homebrew.sh`. Both jobs share one concurrency group. Keep the asset names in those files in step with the release workflows. See `packaging/homebrew/README.md`.
 
 ## Architecture
@@ -51,8 +54,8 @@ The steps:
 1. `grabber.NewSite(url, settings)` → `IdentifySite()` calls `Test()` on each registered grabber (`grabber/site.go`), matching by domain or by fetching the URL. **Order matters**: domain-matching grabbers first, then `PlainHTML`, then the remaining fetch-testing ones. After all grabbers decline, `PlainHTML` gets a final chance via `resolveSeriesURL()`, and only then `WordPressCategory` and `Blogger` are tried by markup (themesia chapter pages are WordPress posts too).
 2. The matched `Site` fetches title and chapters; the range argument (`ranges.Parse`, `1-10,12,15-20`) filters them.
 3. Each fetched chapter is passed through `Chapter.SkipPages` (`--skip-pages`, see below) before anything is downloaded, inside `core.Download`.
-4. Chapters download concurrently (`downloader.FetchChapter`), bounded by `--concurrency` (max 5) and `--concurrency-pages` (max 10). Pages are plain GETs with a Referer.
-5. `packer` writes CBZ, EPUB or raw output (`PackSingle`, or `PackBundle` with `--bundle`), named via a text/template (`--filename-template`, `packer/filename.go`); duplicate names get a `v{{.Version}}` suffix. Both paths go through `namePages` (`packer/pack.go`), which sniffs each page's format to name it `000.jpg`, `001.png`, … and transcodes per `--convert-images`.
+4. Each chapter's page list is fetched after `Events.Fetching` (renderers show the row as "fetching pages" until `Started`; `--bundle`'s totals pre-pass doesn't emit it). Chapters download concurrently (`downloader.FetchChapter`), bounded by `--concurrency` (max 5) and `--concurrency-pages` (max 10). Pages are plain GETs with a Referer.
+5. `packer` writes CBZ, EPUB or raw output (`PackSingle`, or `PackBundle` with `--bundle`), named via a text/template (`--filename-template`, `packer/filename.go`; `{{.Title}}` is `grabber.ChapterLabel`, `{{.SiteTitle}}` the site's title alone); duplicate names get a `v{{.Version}}` suffix. Both paths go through `namePages` (`packer/pack.go`), which sniffs each page's format to name it `000.jpg`, `001.png`, … and transcodes per `--convert-images`.
 
 **Chapter URL resolution**: both series and chapter links are accepted; see the grabbers skill for the full pattern.
 

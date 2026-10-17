@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -125,6 +126,15 @@ type PagePacer interface {
 	WaitPage()
 }
 
+// earlySites are grabbers tried before every built-in one. Only the demo build
+// registers any (see demo/), so they're empty in release builds.
+var earlySites []func(*Grabber) Site
+
+// RegisterEarly adds a grabber that IdentifySite tries ahead of the built-in ones
+func RegisterEarly(newSite func(*Grabber) Site) {
+	earlySites = append(earlySites, newSite)
+}
+
 // IdentifySite returns the site passing the Test() for the specified url
 func (g *Grabber) IdentifySite() (Site, []error) {
 	// PlainHTML is pre-created so IdentifySite can call its chapter-URL
@@ -147,6 +157,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewMangapark(g),
 		NewGuya(g),
 		NewAtsumaru(g),
+		NewGlobalcomix(g),
 		NewVortexscans(g),
 		NewAzorafly(g),
 		NewBigsolo(g),
@@ -176,6 +187,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewMangatown(g),
 		NewMangaplus(g),
 		NewChainsawManOnline(g),
+		NewGigaviewer(g),
 		NewHeavenlyDelusion(g),
 		NewToivoLite(g),
 		NewInmanga(g),
@@ -187,10 +199,17 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewBluesolo(g),
 		NewLuascans(g),
 		NewProjectsuki(g),
+		NewHeavenManga(g),
+		NewLelScans(g),
 		plainHTML,
 		NewTcb(g),
 		NewJestful(g),
 	}
+	var early []Site
+	for _, newSite := range earlySites {
+		early = append(early, newSite(g))
+	}
+	sites = append(early, sites...)
 	var errs []error
 
 	for _, s := range sites {
@@ -242,6 +261,20 @@ func pageLanguage(doc *goquery.Document) string {
 func (g Grabber) BaseUrl() string {
 	u, _ := url.Parse(g.URL)
 	return u.Scheme + "://" + u.Host
+}
+
+// retryFlakyHosts are the sites whose origin fails pages at random with a
+// 404 or 5xx (see Page.RetryFlaky).
+var retryFlakyHosts = []string{"mangazin.org"}
+
+// retryFlaky reports whether the site's pages opt in to Page.RetryFlaky
+func (g *Grabber) retryFlaky() bool {
+	if g == nil {
+		return false
+	}
+	u, _ := url.Parse(g.URL)
+	host := strings.TrimPrefix(strings.ToLower(u.Hostname()), "www.")
+	return slices.Contains(retryFlakyHosts, host)
 }
 
 // GetPreferredLanguage returns the preferred language for the site

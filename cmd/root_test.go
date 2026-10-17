@@ -537,8 +537,11 @@ func TestFitTitle(t *testing.T) {
 	}{
 		// the whole row is too long: the title gives way, the tags stay whole
 		{"tags kept", title, " [TCB Scans]", 40, "One Piece - Chapter 1135 - … [TCB Scans]"},
-		// short titles are padded as fixedW always did
-		{"short title", "Chapter 5", " [TCB Scans]", 40, fixedW("Chapter 5 [TCB Scans]", 40)},
+		// a title that fits is padded so the tags sit against the right edge
+		{"short title", "Chapter 5", " [TCB Scans]", 40, "Chapter 5" + strings.Repeat(" ", 19) + " [TCB Scans]"},
+		// wide runes count two cells
+		{"cjk", "第一話の題名", " [en]", 19, "第一話の題名   [en]"},
+		{"cjk truncated", "第一話の題名第一話", " [en]", 12, "第一話… [en]"},
 		// no tags: identical to fixedW
 		{"no tags", title, "", 40, fixedW(title, 40)},
 		// the tags alone don't fit: they are truncated
@@ -698,7 +701,7 @@ func exitedProgram() *tea.Program {
 func TestPrintlnNoBlockAfterQuit(t *testing.T) {
 	prog := tea.NewProgram(progressModel{
 		width:         80,
-		states:        make(map[*grabber.Chapter]*barState),
+		states:        make(map[grabber.Filterable]*barState),
 		volStates:     make(map[*core.Volume]*volumeBarState),
 		chapterVolume: make(map[*grabber.Chapter]*core.Volume),
 	})
@@ -763,7 +766,7 @@ func TestReleaseLabelInMessages(t *testing.T) {
 			ev.DownloadFailed(chapter, errBoom)
 			want := "downloading " + tt.want + "...\n" +
 				"- error downloading page 3 of " + tt.want + ": boom\n" +
-				"- error downloading chapter " + tt.want + ": boom\n"
+				"- error downloading " + tt.want + ": boom\n"
 			if got := buf.String(); got != want {
 				t.Errorf("output = %q, want %q", got, want)
 			}
@@ -787,12 +790,153 @@ func TestReleaseLabelInMessages(t *testing.T) {
 			w.Close()
 			os.Stderr = prevErr
 			out, _ := io.ReadAll(r)
-			want := "- error fetching chapter " + tt.want + ": boom\n" +
-				"- skipping chapter " + tt.want + ": --skip-pages excludes all of its pages\n" +
+			want := "- error fetching " + tt.want + ": boom\n" +
+				"- skipping " + tt.want + ": --skip-pages excludes all of its pages\n" +
 				"- error downloading page 3 of " + tt.want + ": boom\n"
 			if got := string(out); got != want {
 				t.Errorf("output = %q, want %q", got, want)
 			}
 		})
+	}
+}
+
+// the download-all prompt counts the chapters the listing marks as locked
+func TestAllChaptersLabel(t *testing.T) {
+	free := &grabber.Chapter{Number: 1}
+	paid := &grabber.Chapter{Number: 2, Locked: true}
+
+	if got, want := allChaptersLabel(grabber.Filterables{free}), "Do you want to download all 1 chapters"; got != want {
+		t.Errorf("no locked chapters: got %q, want %q", got, want)
+	}
+	want := "Do you want to download all 2 chapters (1 locked, skipped)"
+	if got := allChaptersLabel(grabber.Filterables{free, paid}); got != want {
+		t.Errorf("one locked chapter: got %q, want %q", got, want)
+	}
+}
+
+// locked chapters are dropped before downloading, with one line naming them
+func TestSkipLocked(t *testing.T) {
+	chapters := grabber.Filterables{
+		&grabber.Chapter{Number: 133},
+		&grabber.Chapter{Number: 134, Locked: true},
+		&grabber.Chapter{Number: 135, Locked: true},
+	}
+
+	open, note := skipLocked(chapters)
+	if len(open) != 1 || open[0].GetNumber() != 133 {
+		t.Errorf("open = %v, want only chapter 133", open)
+	}
+	if want := "skipping 2 locked chapters: 134-135"; note != want {
+		t.Errorf("note = %q, want %q", note, want)
+	}
+
+	open, note = skipLocked(chapters[:1])
+	if len(open) != 1 || note != "" {
+		t.Errorf("no locked chapters: open = %v, note = %q", open, note)
+	}
+
+	open, note = skipLocked(chapters[1:])
+	if len(open) != 0 || note == "" {
+		t.Errorf("all locked: open = %v, note = %q", open, note)
+	}
+}
+
+// A chapter shows up as "fetching" while its page list is fetched, and the
+// same row turns into the downloading one on Started.
+func TestChapterRowFetchingThenDownloading(t *testing.T) {
+	listed := &grabber.Chapter{Title: "Chapter 0001"}
+	fetched := &grabber.Chapter{Title: "Chapter 0001", PagesCount: 10}
+	m := newProgressModel("Series", "", false, false, false, true)
+	m.width = 80
+	send := func(msg tea.Msg) {
+		next, _ := m.Update(msg)
+		m = next.(progressModel)
+	}
+
+	send(chapterFetchingMsg{listed: listed})
+	row := ansi.Strip(m.renderChapterRow(m.states[listed]))
+	if !strings.Contains(row, "Series - Chapter 0001") || !strings.Contains(row, "fetching") || strings.Contains(row, "0/0") {
+		t.Errorf("fetching row %q, want the title and fetching without a counter", row)
+	}
+
+	send(chapterFetchedMsg{listed: listed, chapter: fetched})
+	send(chapterStartedMsg{chapter: fetched, total: 10 * steps})
+	if len(m.states) != 1 || len(m.chapters) != 1 {
+		t.Fatalf("%d states and %d rows, want the fetching row reused", len(m.states), len(m.chapters))
+	}
+	row = ansi.Strip(m.renderChapterRow(m.states[fetched]))
+	if !strings.Contains(row, " 0/10 ") || !strings.Contains(row, "downloading") {
+		t.Errorf("started row %q, want 0/10 downloading", row)
+	}
+}
+
+// A chapter that ends before it starts leaves its fetching row with a final status.
+func TestChapterRowFetchingEnds(t *testing.T) {
+	listed := &grabber.Chapter{Title: "Chapter 0001"}
+	m := newProgressModel("Series", "", false, false, false, true)
+	m.width = 80
+	send := func(msg tea.Msg) {
+		next, _ := m.Update(msg)
+		m = next.(progressModel)
+	}
+
+	send(chapterFetchingMsg{listed: listed})
+	send(chapterEndedMsg{chapter: listed, status: "failed"})
+	if s := m.states[listed]; s.status != "failed" {
+		t.Errorf("status after a failed fetch = %q, want failed", s.status)
+	}
+}
+
+// A cancelled run still ends the chapter whose fetch was in flight, so its row
+// doesn't stay on "fetching".
+func TestChapterRowLeavesFetchingWhenCancelled(t *testing.T) {
+	listed := &grabber.Chapter{Title: "Chapter 0001"}
+	fetched := &grabber.Chapter{Title: "Chapter 0001", PagesCount: 10}
+	m := newProgressModel("Series", "", false, false, false, true)
+	m.width = 80
+	send := func(msg tea.Msg) {
+		next, _ := m.Update(msg)
+		m = next.(progressModel)
+	}
+
+	send(chapterFetchingMsg{listed: listed})
+	send(chapterFetchedMsg{listed: listed, chapter: fetched})
+	send(chapterStartedMsg{chapter: fetched, total: 10 * steps})
+	send(downloadFailedMsg{chapter: fetched})
+	if s := m.states[fetched]; s == nil || s.status == "fetching" || s.status != "failed" {
+		t.Errorf("row after the cancelled download = %+v, want failed", s)
+	}
+}
+
+// Bundle and volume chapters add no row of their own while fetching.
+func TestFetchingAddsNoRowInBundleOrVolume(t *testing.T) {
+	listed := &grabber.Chapter{Title: "Chapter 0001"}
+	m := newProgressModel("Series", "1-2", true, false, false, true)
+	next, _ := m.Update(chapterFetchingMsg{listed: listed})
+	if m = next.(progressModel); len(m.states) != 0 {
+		t.Errorf("bundle got %d rows from fetching", len(m.states))
+	}
+
+	m = newProgressModel("Series", "", false, false, false, true)
+	v := &core.Volume{Number: 1, Chapters: grabber.Filterables{listed}}
+	next, _ = m.Update(volumeStartMsg{volume: v, chCount: 1})
+	next, _ = next.Update(chapterFetchingMsg{listed: listed})
+	if m = next.(progressModel); len(m.states) != 0 {
+		t.Errorf("volume chapter got %d rows from fetching", len(m.states))
+	}
+}
+
+// The fetched chapter's title can differ from the listing's, and the row shows it.
+func TestChapterRowTakesFetchedTitle(t *testing.T) {
+	listed := &grabber.Chapter{Title: "Market"}
+	fetched := &grabber.Chapter{Title: "Chapter 0001 Market", PagesCount: 10}
+	m := newProgressModel("Series", "", false, false, false, true)
+	m.width = 80
+	for _, msg := range []tea.Msg{chapterFetchingMsg{listed: listed}, chapterFetchedMsg{listed: listed, chapter: fetched}} {
+		next, _ := m.Update(msg)
+		m = next.(progressModel)
+	}
+	if row := ansi.Strip(m.renderChapterRow(m.states[fetched])); !strings.Contains(row, "Series - Chapter 0001 Market") {
+		t.Errorf("row %q, want the fetched chapter's title", row)
 	}
 }

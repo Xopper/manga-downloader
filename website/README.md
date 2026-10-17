@@ -27,8 +27,11 @@ pnpm preview   # serve dist/
 - **Supported sites**: parsed at build time from the `## Supported sites`
   section of the repo's [`README.md`](../README.md) (`build/sites.ts`, wired in
   by the `site-data` plugin in `vite.config.ts`), so the list never drifts.
-  Items marked `\*` get the "browser" tag. Its test checks the parsed count
-  against the README's "Show all N supported sites" line.
+  The section is a table (`Site | Notes | Last verified`); rows marked `\*` get
+  the "browser" tag, and the last-verified state becomes a small line under each item
+  (`sites.verified.*` in the locales; the date is formatted per language at build
+  time, and `—` rows read "not checked"). Its test
+  checks the parsed count against the README's "Show all N supported sites" line.
 - **Download button**: `src/release.ts` (pure, tested) detects the OS and
   matches it against the assets of the latest GitHub release. If the API fails
   or the release has no matching desktop app file, it links to the releases
@@ -47,13 +50,28 @@ pnpm preview   # serve dist/
   and `public/` (favicons, `opengraph.png`). Don't redraw them.
 - **Terminal GIFs**: referenced from `assets/demos/` on `master` via raw GitHub URLs,
   lazy-loaded. Each GIF has a `-light` twin (`download-light.gif`), shown in light
-  mode; the plain GIF is the dark one, shown when the system is in dark mode.
+  mode; the plain GIF is the dark one, shown when the theme is dark.
+
+## Theme
+
+The page follows the OS (`prefers-color-scheme`) unless a visitor picks Light
+or Dark in the switch, shown in the desktop app section and the footer (hidden
+without JavaScript). The choice is kept in `localStorage` (`md:theme`) and sets
+`data-theme` on `<html>`, which the colour tokens in `src/styles.css` honour
+both ways. An inline script in `<head>` (`themeScript` in `src/theme.ts`)
+applies it before first paint, and `main.ts` rewrites the `media` of the
+light/dark `<picture>` sources and `theme-color` metas so images follow the
+choice too.
+
+Known limitation: with a forced theme opposite to the OS, the browser's preload
+scanner may fetch the OS variant of the header logo and hero mark too (two small
+extra requests, no visible flash measured).
 
 ## Screenshots
 
 The desktop app section shows five captures from `src/assets/screenshots/`,
 each in a light and a dark version. A `<picture>` swaps the dark ones in with
-`prefers-color-scheme`, and Vite fingerprints them into `dist`. WebP only, which
+`prefers-color-scheme` (or the theme switch), and Vite fingerprints them into `dist`. WebP only, which
 every browser the site cares about reads, so there are no PNG fallbacks.
 
 - `app-overview` is the full window (`02-loaded-{light,dark}.png`), at 1000 and
@@ -62,8 +80,10 @@ every browser the site cares about reads, so there are no PNG fallbacks.
   2000 px originals in the repo's [`assets/screenshots/`](../assets/screenshots/),
   at 600 and 1000 px wide.
   They are cut to the part that matters, so they stay readable at the
-  ~500 px they are shown at. Each gets the window's rounded corners and a soft
-  shadow on a transparent margin of 56 px.
+  ~500 px they are shown at. `language-selector` keeps the window's rounded
+  corners; the others are cut to the panel's own 1 px border box and radius
+  (24 px on the original), so no window background shows around them. Each
+  gets a soft shadow on a transparent margin of 56 px.
 
 The files are converted offline and committed, so the build needs no image tools.
 The crop script is [`build/crop-screenshots.sh`](build/crop-screenshots.sh). The
@@ -71,15 +91,15 @@ geometry is `WxH+X+Y` on the 2000x1390 original, with the window's top-left at
 (85,56), so `03-language-selector-*.png` crops to `740x960+85+56`, the
 left-hand part of the window with the Language dropdown open, stopping short of
 the range box. The
-`finished-run` crop starts at x=1245, between the chapter list and the Activity
-panel, so no edge of the list shows in it:
+panel crops start on the panel's border (`finished-run` at x=1259, the Activity
+panel's left edge, so no edge of the list shows in it):
 
 | Crop                | Original                                | Geometry            |
 | ------------------- | --------------------------------------- | ------------------- |
 | `language-selector` | `03-language-selector-{light,dark}.png` | `740x960+85+56`     |
-| `chapter-list`      | `04-downloading-{light,dark}.png`       | `1150x885+100+390`  |
-| `volumes`           | `07-volumes-{light,dark}.png`           | `1150x885+100+390`  |
-| `finished-run`      | `05-done-{light,dark}.png`              | `670x830+1245+390`  |
+| `chapter-list`      | `04-downloading-{light,dark}.png`       | `1118x787+117+405`  |
+| `volumes`           | `07-volumes-{light,dark}.png`           | `1118x787+117+405`  |
+| `finished-run`      | `05-done-{light,dark}.png`              | `624x787+1259+405`  |
 
 To regenerate from the originals, run it with the repo's originals folder and an
 output folder, from `website/`:

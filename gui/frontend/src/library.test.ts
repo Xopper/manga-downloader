@@ -116,7 +116,7 @@ describe('sortFollowed and totals', () => {
 });
 
 describe('chapters of a followed series', () => {
-  const chapters: Chapter[] = [7, 8, 9, 10].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0 }));
+  const chapters: Chapter[] = [7, 8, 9, 10].map((number, index) => ({ index, number, title: '', language: '', group: '', volume: 0, locked: false }));
   it('lists as new what came out since the follow and is not saved', () => {
     expect(newIndices(chapters, followed({}))).toEqual([2, 3]);
     expect(newIndices(chapters, followed({ everSaved: [1, 2, 3, 4, 5, 6, 7, 8, 9] }))).toEqual([3]);

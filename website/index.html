@@ -8,6 +8,7 @@
     <meta name="description" content="{{a:meta.description:others}}" />
     <link rel="canonical" href="%PAGE_URL%" />
     <!-- i18n:alternates -->
+    <!-- theme:init -->
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#F6F2FF" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#16132A" media="(prefers-color-scheme: dark)" />
@@ -192,7 +193,7 @@
                   <source type="image/webp" srcset="/src/assets/screenshots/chapter-list-light-600.webp 600w, /src/assets/screenshots/chapter-list-light-1000.webp 1000w"
                           sizes="(min-width: 821px) 45vw, 92vw" />
                   <img src="/src/assets/screenshots/chapter-list-light-1000.webp" srcset="/src/assets/screenshots/chapter-list-light-600.webp 600w, /src/assets/screenshots/chapter-list-light-1000.webp 1000w"
-                       sizes="(min-width: 821px) 45vw, 92vw" width="1000" height="799" alt="{{a:desktop.chapterListAlt}}" loading="lazy" />
+                       sizes="(min-width: 821px) 45vw, 92vw" width="1000" height="743" alt="{{a:desktop.chapterListAlt}}" loading="lazy" />
                 </picture>
               </figure>
             </article>
@@ -209,7 +210,7 @@
                   <source type="image/webp" srcset="/src/assets/screenshots/volumes-light-600.webp 600w, /src/assets/screenshots/volumes-light-1000.webp 1000w"
                           sizes="(min-width: 821px) 45vw, 92vw" />
                   <img src="/src/assets/screenshots/volumes-light-1000.webp" srcset="/src/assets/screenshots/volumes-light-600.webp 600w, /src/assets/screenshots/volumes-light-1000.webp 1000w"
-                       sizes="(min-width: 821px) 45vw, 92vw" width="1000" height="799" alt="{{a:desktop.volumesAlt}}" loading="lazy" />
+                       sizes="(min-width: 821px) 45vw, 92vw" width="1000" height="743" alt="{{a:desktop.volumesAlt}}" loading="lazy" />
                 </picture>
               </figure>
             </article>
@@ -237,6 +238,12 @@
                 <p>{{t:desktop.watchText}}</p>
                 <h3>{{t:desktop.themeTitle}}</h3>
                 <p>{{t:desktop.themeText}}</p>
+                <fieldset class="theme-switch" data-theme-switch hidden>
+                  <legend class="visually-hidden">{{t:theme.label}}</legend>
+                  <label><input type="radio" name="theme-section" value="system" /><span>{{t:theme.system}}</span></label>
+                  <label><input type="radio" name="theme-section" value="light" /><span>{{t:theme.light}}</span></label>
+                  <label><input type="radio" name="theme-section" value="dark" /><span>{{t:theme.dark}}</span></label>
+                </fieldset>
               </div>
               <figure class="shot">
                 <picture>
@@ -245,7 +252,7 @@
                   <source type="image/webp" srcset="/src/assets/screenshots/finished-run-light-600.webp 600w, /src/assets/screenshots/finished-run-light-1000.webp 1000w"
                           sizes="(min-width: 821px) 45vw, 92vw" />
                   <img src="/src/assets/screenshots/finished-run-light-1000.webp" srcset="/src/assets/screenshots/finished-run-light-600.webp 600w, /src/assets/screenshots/finished-run-light-1000.webp 1000w"
-                       sizes="(min-width: 821px) 45vw, 92vw" width="1000" height="1191" alt="{{a:desktop.finishedAlt}}" loading="lazy" />
+                       sizes="(min-width: 821px) 45vw, 92vw" width="1000" height="1206" alt="{{a:desktop.finishedAlt}}" loading="lazy" />
                 </picture>
               </figure>
             </article>
@@ -262,7 +269,12 @@
               <section class="platform" aria-labelledby="dl-windows">
                 <h4 id="dl-windows">Windows</h4>
                 <!-- stats:windows -->
-                <p class="platform-kind">{{t:common.desktopApp}}</p>
+                <p class="platform-kind">{{t:downloads.windowsInstaller}}</p>
+                <ul>
+                  <li><a href="https://github.com/elboletaire/manga-downloader/releases/latest" data-asset="gui-windows-amd64-installer.exe">x64</a></li>
+                  <li><a href="https://github.com/elboletaire/manga-downloader/releases/latest" data-asset="gui-windows-arm64-installer.exe">ARM64</a></li>
+                </ul>
+                <p class="platform-kind">{{t:downloads.windowsPortable}}</p>
                 <ul>
                   <li><a href="https://github.com/elboletaire/manga-downloader/releases/latest" data-asset="gui-windows-amd64.zip">x64</a></li>
                   <li><a href="https://github.com/elboletaire/manga-downloader/releases/latest" data-asset="gui-windows-arm64.zip">ARM64</a></li>
@@ -335,16 +347,12 @@
               <p>{{t:cli.brewText}}</p>
               <div class="code" data-copy><pre><code>brew install elboletaire/tap/manga-downloader</code></pre></div>
               <p class="card-foot">{{t:cli.brewFoot}}</p>
+              <div class="code" data-copy><pre><code>brew install --cask elboletaire/tap/manga-downloader-app</code></pre></div>
             </article>
             <article class="card install-card">
               <h4>Docker</h4>
               <p>{{t:cli.dockerText}}</p>
               <div class="code" data-copy><pre><code>docker run --rm -it -v "$PWD:/downloads" elboletaire/manga-downloader [url] [chapters]</code></pre></div>
-            </article>
-            <article class="card install-card">
-              <h4>Go</h4>
-              <p>{{t:cli.goText}}</p>
-              <div class="code" data-copy><pre><code>go install github.com/elboletaire/manga-downloader@latest</code></pre></div>
             </article>
           </div>
 
@@ -514,27 +522,31 @@
               <summary><span>{{t:faq.gatekeeperQ}}</span></summary>
               <p>{{t:faq.gatekeeperA}}</p>
             </details>
-            <details>
+            <details id="faq-exe">
               <summary><span>{{t:faq.exeQ}}</span></summary>
               <p>{{t:faq.exeA}}</p>
             </details>
-            <details>
+            <details id="faq-paywall">
               <summary><span>{{t:faq.paywallQ}}</span></summary>
               <p>{{t:faq.paywallA}}</p>
             </details>
-            <details>
+            <details id="faq-old">
               <summary><span>{{t:faq.oldQ}}</span></summary>
               <p>{{t:faq.oldA}}</p>
             </details>
-            <details>
+            <details id="faq-browser">
               <summary><span>{{t:faq.browserQ}}</span></summary>
               <p>{{t:faq.browserA}}</p>
             </details>
-            <details>
+            <details id="faq-nobrowser">
+              <summary><span>{{t:faq.nobrowserQ}}</span></summary>
+              <p>{{t:faq.nobrowserA}}</p>
+            </details>
+            <details id="faq-ereader">
               <summary><span>{{t:faq.ereaderQ}}</span></summary>
               <p>{{t:faq.ereaderA}}</p>
             </details>
-            <details>
+            <details id="faq-unsupported">
               <summary><span>{{t:faq.unsupportedQ}}</span></summary>
               <p>{{t:faq.unsupportedA}}</p>
             </details>
@@ -553,6 +565,12 @@
           <p>{{t:footer.license}}</p>
           <p>{{t:footer.madeBy}}</p>
         </div>
+        <fieldset class="theme-switch" data-theme-switch hidden>
+          <legend class="visually-hidden">{{t:theme.label}}</legend>
+          <label><input type="radio" name="theme-footer" value="system" /><span>{{t:theme.system}}</span></label>
+          <label><input type="radio" name="theme-footer" value="light" /><span>{{t:theme.light}}</span></label>
+          <label><input type="radio" name="theme-footer" value="dark" /><span>{{t:theme.dark}}</span></label>
+        </fieldset>
         <nav class="footer-nav" aria-label="{{a:footer.nav}}">
           <ul>
             <li><a href="https://github.com/elboletaire/manga-downloader">GitHub</a></li>

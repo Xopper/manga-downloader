@@ -69,6 +69,8 @@
     "title": "Todas las descargas",
     "intro": "Última versión <a href=\"{{repo}}/releases/latest\" data-release-tag>en GitHub</a>. ¿No sabes cuál elegir? La mayoría de los PC son x64; para Mac, la app universal.",
     "legacy32": "32 bits (antiguo)",
+    "windowsInstaller": "Aplicación de escritorio: instalador",
+    "windowsPortable": "Aplicación de escritorio: zip portable",
     "bit32": "32 bits",
     "appleSilicon": "Chip de Apple",
     "foot": "Los ejecutables no están firmados, así que Windows y macOS te avisarán la primera vez. <a href=\"#faq-smartscreen\">Así puedes saltarte el aviso</a>."
@@ -82,9 +84,8 @@
     "binaryText": "Descarga el archivo comprimido para tu sistema desde <a href=\"#downloads\">las descargas</a>, descomprímelo y ejecuta el programa:",
     "binaryFoot": "Muévelo a una carpeta de tu <code>PATH</code>, como <code>/usr/local/bin</code>, para ejecutarlo desde cualquier sitio.",
     "brewText": "En macOS y Linux, desde el tap <code>elboletaire/tap</code>. <code>brew upgrade</code> lo mantiene al día.",
-    "brewFoot": "Esto instala solo la herramienta de línea de comandos. En macOS, instala la app de escritorio con <code>brew install --cask elboletaire/tap/manga-downloader-app</code>.",
+    "brewFoot": "Esto instala solo la herramienta de línea de comandos. En macOS, instala la app de escritorio con:",
     "dockerText": "Los archivos se guardan en la carpeta montada. Usa la imagen <code>:browser</code> para los sitios marcados como <span class=\"site-badge\">navegador</span>.",
-    "goText": "Si tienes Go instalado, compílalo desde el código fuente con un solo comando:",
     "useTitle": "Úsalo",
     "example1": "Pásale la página principal de un manga e indica qué capítulos quieres:",
     "example2": "Solo los capítulos en español, agrupados en un único archivo (CBZ por defecto):",
@@ -134,6 +135,11 @@
       "label": "navegador",
       "srPrefix": "necesita un",
       "title": "Necesita Chrome, Chromium, Brave o Edge"
+    },
+    "verified": {
+      "on": "Verificado el {{date}}",
+      "failing": "Falla desde el {{date}}",
+      "unknown": "Sin comprobar"
     }
   },
   "faq": {
@@ -150,11 +156,19 @@
     "oldQ": "Faltan capítulos antiguos, o un aviso dice que el rango empieza antes del primer capítulo",
     "oldA": "Los sitios suelen borrar capítulos antiguos. manga downloader solo puede descargar los capítulos que el sitio sigue mostrando.",
     "browserQ": "Se abre una ventana del navegador",
-    "browserA": "Es lo normal en los sitios marcados como <span class=\"site-badge\">navegador</span> en la <a href=\"#sites\">lista</a>. La ventana se abre cuando el sitio muestra un desafío de Cloudflare o un captcha propio, y se te avisa cuando puede necesitarte. Las casillas se marcan solas, pero algunos desafíos necesitan que los resuelvas tú; luego la descarga sigue sola.",
+    "browserA": "Es lo normal en los sitios marcados como <span class=\"site-badge\">navegador</span> en la <a href=\"#sites\">lista</a>. La ventana se abre cuando el sitio muestra un desafío de Cloudflare o un captcha propio, y se te avisa cuando puede necesitarte. Las casillas se marcan solas, pero algunos desafíos necesitan que los resuelvas tú; luego la descarga sigue sola. En la app, una alerta avisa de que el navegador te necesita, con <em>Show the browser window</em> para traer la ventana al frente y <em>Dismiss</em> para ocultar la alerta. Para abrir la ventana desde el principio, usa <code>--browser-visible</code>, o <em>Show the browser window</em> en <em>Options › Advanced</em> de la app.",
+    "nobrowserQ": "No se encuentra ningún navegador",
+    "nobrowserA": "Los sitios marcados como <span class=\"site-badge\">navegador</span> necesitan Google Chrome, Chromium, Brave o Edge instalado en una de sus ubicaciones habituales. Para usar otro navegador basado en Chromium, define <code>MANGA_DOWNLOADER_BROWSER</code> con la ruta completa de su ejecutable (o un comando de tu <code>PATH</code>), por ejemplo <code>MANGA_DOWNLOADER_BROWSER=/usr/bin/brave-browser</code>. Funciona tanto en la línea de comandos como en la app; para la app, defínela en el entorno que la inicia.",
     "ereaderQ": "Las páginas no se ven en mi e-reader",
-    "ereaderA": "Seguramente el sitio sirve imágenes WebP. Vuelve a descargar los capítulos con <code>--convert-images avif,webp</code>.",
+    "ereaderA": "Seguramente el sitio sirve imágenes WebP. Vuelve a descargar los capítulos con <code>--convert-images avif,webp</code>. En la app, marca <em>WebP</em> en <em>Convert to JPEG</em>.",
     "unsupportedQ": "Mi sitio no es compatible",
     "unsupportedA": "Pruébalo igualmente: los sitios hechos con las mismas plataformas que los de la lista suelen funcionar. Si no va, <a href=\"{{repo}}/issues\">abre una incidencia</a> o envía una pull request."
+  },
+  "theme": {
+    "label": "Tema",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro"
   },
   "footer": {
     "license": "Libre y de código abierto, bajo la <a href=\"{{repo}}/blob/master/LICENSE\">licencia AGPL-3.0</a>.",

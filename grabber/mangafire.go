@@ -141,11 +141,12 @@ func (m *Mangafire) FetchChapter(f Filterable) (*Chapter, error) {
 		}
 	}
 	if len(pages) == 0 {
-		return nil, fmt.Errorf("no pages found for chapter %s (it may be premium/locked)", f.GetTitle())
+		return nil, fmt.Errorf("no pages found for chapter %s (it may be premium/locked)", ChapterLabel(f))
 	}
 
 	chapter := &Chapter{
 		Title:      f.GetTitle(),
+		Label:      labelOf(f),
 		Number:     f.GetNumber(),
 		Language:   mchap.Language,
 		ID:         mchap.ID,
@@ -248,16 +249,13 @@ func (m *Mangafire) load() error {
 		feedPrefix += "?language=" + lang.code + "&"
 	}
 	for _, c := range parseMangafireChapters(responses, feedPrefix) {
-		title := c.Name
-		if title == "" {
-			title = "Chapter " + strconv.FormatFloat(c.Number, 'f', -1, 64)
-		}
 		listed := &MangafireChapter{
 			Chapter: Chapter{
 				Number:   c.Number,
-				Title:    title,
+				Title:    c.Name,
 				Language: c.Language,
 				ID:       strconv.FormatInt(c.Id, 10),
+				Label:    Label{Style: LabelNumbered},
 			},
 			URL: fmt.Sprintf("%s/chapter/%d", m.readerBase, c.Id),
 			Id:  c.Id,
@@ -442,7 +440,7 @@ func parseMangafireDropdown(raw json.RawMessage) (mangafireDropdown, error) {
 }
 
 // mangafireOptions turns the dropdown into the language options: the codes
-// --language takes, in the site's order, with the label shown by default as
+// --language takes, as the site lists them, with the label shown by default as
 // Current. A label without a code in mangafireLangs can't be typed, so it's
 // left out.
 func mangafireOptions(d mangafireDropdown) FilterOptions {

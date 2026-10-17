@@ -69,6 +69,8 @@
     "title": "Totes les descàrregues",
     "intro": "Última versió <a href=\"{{repo}}/releases/latest\" data-release-tag>a GitHub</a>. No saps quina triar? La majoria d'ordinadors són x64; per a Mac, l'aplicació universal.",
     "legacy32": "32 bits (antic)",
+    "windowsInstaller": "Aplicació d'escriptori: instal·lador",
+    "windowsPortable": "Aplicació d'escriptori: zip portàtil",
     "bit32": "32 bits",
     "appleSilicon": "Xip d'Apple",
     "foot": "Els executables no estan signats, així que el Windows i el macOS t'avisaran la primera vegada. <a href=\"#faq-smartscreen\">Així pots saltar-te l'avís</a>."
@@ -82,9 +84,8 @@
     "binaryText": "Descarrega l'arxiu comprimit per al teu sistema des de <a href=\"#downloads\">les descàrregues</a>, descomprimeix-lo i executa el programa:",
     "binaryFoot": "Mou-lo a una carpeta del teu <code>PATH</code>, com ara <code>/usr/local/bin</code>, per executar-lo des de qualsevol lloc.",
     "brewText": "A macOS i Linux, des del tap <code>elboletaire/tap</code>. <code>brew upgrade</code> el manté al dia.",
-    "brewFoot": "Això només instal·la l'eina de línia d'ordres. A macOS, instal·la l'aplicació d'escriptori amb <code>brew install --cask elboletaire/tap/manga-downloader-app</code>.",
+    "brewFoot": "Això només instal·la l'eina de línia d'ordres. A macOS, instal·la l'aplicació d'escriptori amb:",
     "dockerText": "Els fitxers es desen a la carpeta muntada. Fes servir la imatge <code>:browser</code> per als llocs marcats com a <span class=\"site-badge\">navegador</span>.",
-    "goText": "Si tens Go instal·lat, compila'l des del codi font amb una sola ordre:",
     "useTitle": "Fes-lo servir",
     "example1": "Passa-li la pàgina principal d'un manga i indica quins capítols vols:",
     "example2": "Només els capítols en català, agrupats en un sol fitxer (CBZ per defecte):",
@@ -134,6 +135,11 @@
       "label": "navegador",
       "srPrefix": "necessita un",
       "title": "Necessita Chrome, Chromium, Brave o Edge"
+    },
+    "verified": {
+      "on": "Verificat el {{date}}",
+      "failing": "Falla des del {{date}}",
+      "unknown": "Sense comprovar"
     }
   },
   "faq": {
@@ -150,11 +156,19 @@
     "oldQ": "Falten capítols antics, o un avís diu que l'interval comença abans del primer capítol",
     "oldA": "Els llocs sovint esborren capítols antics. manga downloader només pot descarregar els capítols que el lloc encara mostra.",
     "browserQ": "S'obre una finestra del navegador",
-    "browserA": "És normal en els llocs marcats com a <span class=\"site-badge\">navegador</span> a la <a href=\"#sites\">llista</a>. La finestra s'obre quan el lloc mostra un repte de Cloudflare o un captcha propi, i se t'avisa quan et pot necessitar. Les caselles es marquen soles, però alguns reptes necessiten que els resolguis tu; després la descàrrega continua sola.",
+    "browserA": "És normal en els llocs marcats com a <span class=\"site-badge\">navegador</span> a la <a href=\"#sites\">llista</a>. La finestra s'obre quan el lloc mostra un repte de Cloudflare o un captcha propi, i se t'avisa quan et pot necessitar. Les caselles es marquen soles, però alguns reptes necessiten que els resolguis tu; després la descàrrega continua sola. A l'aplicació, una alerta t'avisa que el navegador et necessita, amb <em>Show the browser window</em> per portar la finestra al davant i <em>Dismiss</em> per amagar l'alerta. Per obrir la finestra des del principi, fes servir <code>--browser-visible</code>, o <em>Show the browser window</em> a <em>Options › Advanced</em> de l'aplicació.",
+    "nobrowserQ": "No es troba cap navegador",
+    "nobrowserA": "Els llocs marcats com a <span class=\"site-badge\">navegador</span> necessiten Google Chrome, Chromium, Brave o Edge instal·lat en una de les seves ubicacions habituals. Per fer servir un altre navegador basat en Chromium, defineix <code>MANGA_DOWNLOADER_BROWSER</code> amb la ruta completa del seu executable (o una ordre del teu <code>PATH</code>), per exemple <code>MANGA_DOWNLOADER_BROWSER=/usr/bin/brave-browser</code>. Funciona tant a la línia d'ordres com a l'aplicació; per a l'aplicació, defineix-la a l'entorn que l'inicia.",
     "ereaderQ": "Les pàgines no es veuen al meu lector electrònic",
-    "ereaderA": "Segurament el lloc serveix imatges WebP. Torna a descarregar els capítols amb <code>--convert-images avif,webp</code>.",
+    "ereaderA": "Segurament el lloc serveix imatges WebP. Torna a descarregar els capítols amb <code>--convert-images avif,webp</code>. A l'aplicació, marca <em>WebP</em> a <em>Convert to JPEG</em>.",
     "unsupportedQ": "El meu lloc no és compatible",
     "unsupportedA": "Prova-ho igualment: els llocs fets amb les mateixes plataformes que els de la llista solen funcionar. Si no va, <a href=\"{{repo}}/issues\">obre una incidència</a> o envia una pull request."
+  },
+  "theme": {
+    "label": "Tema",
+    "system": "Sistema",
+    "light": "Clar",
+    "dark": "Fosc"
   },
   "footer": {
     "license": "Lliure i de codi obert, amb la <a href=\"{{repo}}/blob/master/LICENSE\">llicència AGPL-3.0</a>.",

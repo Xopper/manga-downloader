@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -118,20 +117,7 @@ func (q *Qimanga) FetchChapters() (chapters Filterables, errs []error) {
 			return
 		}
 
-		for _, c := range feed.Data {
-			title := c.Title
-			if title == "" {
-				title = "Chapter " + strconv.FormatFloat(c.Number, 'f', -1, 64)
-			}
-			chapters = append(chapters, &QimangaChapter{
-				Chapter{
-					Number: c.Number,
-					Title:  title,
-					ID:     c.Slug,
-				},
-				c.Slug,
-			})
-		}
+		chapters = append(chapters, feed.chapters()...)
 
 		if page >= feed.TotalPages {
 			return
@@ -165,6 +151,7 @@ func (q Qimanga) FetchChapter(f Filterable) (*Chapter, error) {
 
 	chapter := &Chapter{
 		Title:    f.GetTitle(),
+		Label:    labelOf(f),
 		Number:   f.GetNumber(),
 		Language: "en",
 		ID:       qchap.Slug,
@@ -202,6 +189,26 @@ type qimangaChaptersFeed struct {
 		Slug   string  `json:"slug"`
 		Number float64 `json:"number"`
 		Title  string  `json:"title"`
+		// true while the chapter is paid (becameFreeAt is set once it frees)
+		RequiresPurchase bool `json:"requiresPurchase"`
 	} `json:"data"`
 	TotalPages int `json:"totalPages"`
+}
+
+// chapters turns a feed page into chapters, locked when the site asks for a
+// purchase
+func (f qimangaChaptersFeed) chapters() (chapters Filterables) {
+	for _, c := range f.Data {
+		chapters = append(chapters, &QimangaChapter{
+			Chapter{
+				Number: c.Number,
+				Title:  c.Title,
+				ID:     c.Slug,
+				Locked: c.RequiresPurchase,
+				Label:  Label{Style: LabelNumbered},
+			},
+			c.Slug,
+		})
+	}
+	return
 }

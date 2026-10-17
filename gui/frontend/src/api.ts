@@ -3,7 +3,7 @@
 // them in a plain browser, so the UI can be worked on without the Go app.
 
 import * as app from '../wailsjs/go/main/App';
-import { BrowserOpenURL, ClipboardSetText, EventsOn } from '../wailsjs/runtime/runtime';
+import { BrowserOpenURL, ClipboardGetText, ClipboardSetText, EventsOn } from '../wailsjs/runtime/runtime';
 import type { CatalogInfo, Chapter, Followed, Hit, LogLine, Options, SiteInfo, State } from './types';
 
 export type Unsubscribe = () => void;
@@ -37,8 +37,12 @@ export interface Api {
   revealSaved(url: string): Promise<void>;
   /** Opens the URL in the system's browser, never in the window */
   openURL(url: string): void;
+  /** The clipboard's text, for the Paste button; rejects when the runtime isn't there */
+  readClipboard(): Promise<string>;
   start(): Promise<void>;
   cancel(): Promise<void>;
+  /** Downloads and runs the installer, then quits; rejects with the reason (also logged) when it can't */
+  update(): Promise<void>;
   /** Brings the browser window to the front again */
   showBrowser(): Promise<void>;
   /** Hides browserAlert; the window and the load waiting for it go on */
@@ -129,8 +133,11 @@ export function createWailsApi(): Api {
     openFolder: () => app.OpenFolder(),
     revealSaved: (url) => app.RevealSaved(url),
     openURL: (url) => BrowserOpenURL(url),
+    // async, so a missing runtime rejects rather than throwing into the click
+    readClipboard: async () => ClipboardGetText(),
     start: () => app.Start(),
     cancel: () => app.Cancel(),
+    update: () => app.Update(),
     showBrowser: () => app.ShowBrowser(),
     dismissBrowserAlert: () => app.DismissBrowserAlert(),
     search: (query, site) => app.Search(query, site),

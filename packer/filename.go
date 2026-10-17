@@ -5,6 +5,7 @@ package packer
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
@@ -18,8 +19,12 @@ type FilenameTemplateParts struct {
 	Series string
 	// Number represents the chapter number (e.g. "1.0")
 	Number string
-	// Title represents the chapter title (e.g. "The Beginning")
+	// Title is the chapter's label (e.g. "The Beginning", or "Chapter 12" when
+	// the site gives no title), see grabber.ChapterLabel
 	Title string
+	// SiteTitle is the site's own chapter title, empty when it gives none or
+	// for a volume or bundle
+	SiteTitle string
 	// Group is the scanlation group that made the release (e.g. "Alpha"). For a
 	// volume or a bundle, the group its chapters share, empty when they differ
 	// or name none. Several groups of one release are joined with ", "
@@ -53,19 +58,44 @@ func MigrateFilenameTemplate(templ string) string {
 	return templ
 }
 
+// isDefaultTemplate reports whether templ is a chapter default: blank, the
+// current default or the legacy one
+func isDefaultTemplate(templ string) bool {
+	templ = strings.TrimSpace(templ)
+	return templ == "" || templ == FilenameTemplateDefault || templ == filenameTemplateLegacyDefault
+}
+
+// templateNamesFile matches an action that reads a field telling files apart,
+// however it is spaced, trimmed or piped
+var templateNamesFile = regexp.MustCompile(`\{\{-?\s*[^}]*\.(Number|Title|SiteTitle|Volume)\b`)
+
+// TemplateWarning returns a warning when a per-chapter templ names no number,
+// title or volume, so files only differ by a version suffix; "" when it's
+// fine or blank (the default)
+func TemplateWarning(templ string) string {
+	if strings.TrimSpace(templ) == "" || templateNamesFile.MatchString(templ) {
+		return ""
+	}
+	return "This template has no {{.Number}}, {{.Title}}, {{.SiteTitle}} or {{.Volume}}, so files only differ by a version suffix."
+}
+
 // VolumeTemplate returns the template volume files are named with: the
 // volume default when the filename template is a chapter default (or
 // unset), the user's own template otherwise
 func VolumeTemplate(templ string) string {
-	if templ == "" || templ == FilenameTemplateDefault || templ == filenameTemplateLegacyDefault {
+	if isDefaultTemplate(templ) {
 		return FilenameVolumeTemplateDefault
 	}
 	return templ
 }
 
-// NewFilenameFromTemplate returns a new filename from a series title, a chapter and a template
+// NewFilenameFromTemplate returns a new filename from a series title, a chapter and a template.
+// A blank template is the default.
 func NewFilenameFromTemplate(templ string, parts FilenameTemplateParts) (string, error) {
-	tmpl, err := template.New("filename").Parse(templ)
+	if strings.TrimSpace(templ) == "" {
+		templ = FilenameTemplateDefault
+	}
+	tmpl, err := template.New("filename").Funcs(template.FuncMap{"pad": padNumber}).Parse(templ)
 	if err != nil {
 		return "", err
 	}
@@ -76,14 +106,26 @@ func NewFilenameFromTemplate(templ string, parts FilenameTemplateParts) (string,
 	return buffer.String(), err
 }
 
+// padNumber is the template's pad: number with its whole part zero-padded to
+// width digits and its decimals kept ({{pad .Number 4}} is "0010.5" for 10.5)
+func padNumber(number any, width int) string {
+	s := fmt.Sprint(number)
+	digits := len(s) - len(strings.TrimLeft(s, "0123456789"))
+	if digits == 0 || digits >= width {
+		return s
+	}
+	return strings.Repeat("0", width-digits) + s
+}
+
 // NewChapterFileTemplateParts returns a new FilenameTemplateParts from a title and a chapter
 func NewChapterFileTemplateParts(title string, chapter *grabber.Chapter) FilenameTemplateParts {
 	return FilenameTemplateParts{
-		Series: SanitizeFilename(title),
-		Number: strings.Replace(fmt.Sprintf("%.1f", chapter.GetNumber()), ".0", "", 1),
-		Title:  SanitizeFilename(chapter.GetTitle()),
-		Group:  SanitizeFilename(chapter.Group),
-		Volume: chapter.Volume,
+		Series:    SanitizeFilename(title),
+		Number:    strings.Replace(fmt.Sprintf("%.1f", chapter.GetNumber()), ".0", "", 1),
+		Title:     SanitizeFilename(grabber.ChapterLabel(chapter)),
+		SiteTitle: SanitizeFilename(chapter.GetTitle()),
+		Group:     SanitizeFilename(chapter.Group),
+		Volume:    chapter.Volume,
 	}
 }
 

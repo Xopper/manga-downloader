@@ -16,8 +16,9 @@ import (
 )
 
 // tanstackComic is the shared implementation for the TanStack Start comic
-// platform behind hivetoons.org, vortexscans.org and azorafly.com. Their series pages only
-// server-render the ~20 most recent chapters as DOM rows (the rest sits behind
+// platform behind en-hijala.com, hivetoons.org, vortexscans.org and
+// azorafly.com. Their series pages only server-render the ~20 most recent
+// chapters as DOM rows (the rest sits behind
 // a client-side "Load more"), but the FULL chapter list ships in the page's
 // seroval stream: an `initialChapters:$R[n]=[...]` literal followed by
 // `,totalChapterCount:N`. Reader pages are fully server rendered too: page
@@ -47,6 +48,9 @@ type tanstackChapter struct {
 	Number float64 `json:"number"`
 	Slug   string  `json:"slug"`
 	Title  string  `json:"title"`
+	// IsLocked is the site's own lock summary (coins, early access, short link)
+	IsLocked          bool `json:"isLocked"`
+	IsShortLinkLocked bool `json:"isShortLinkLocked"`
 }
 
 var (
@@ -105,8 +109,12 @@ func (t *tanstackComic) FetchChapters() (chapters Filterables, errs []error) {
 		chapters = append(chapters, &TanstackChapter{
 			Chapter{
 				Number: c.Number,
-				Title:  chapterTitleOrDefault(c.Title, c.Number),
+				Title:  strings.TrimSpace(c.Title),
 				ID:     c.Slug,
+				Label:  Label{Style: LabelNumbered},
+				// a short-link lock may still open to a reader (none is live to
+				// check), so only the other locks fail a chapter unfetched
+				Locked: c.IsLocked && !c.IsShortLinkLocked,
 			},
 			c.Slug,
 		})
@@ -144,9 +152,11 @@ func (t *tanstackComic) FetchChapter(f Filterable) (*Chapter, error) {
 
 	chapter := &Chapter{
 		Title:    f.GetTitle(),
+		Label:    labelOf(f),
 		Number:   f.GetNumber(),
 		Language: "en",
 		ID:       tchap.Slug,
+		Locked:   tchap.Locked,
 	}
 
 	doc.Find("img[data-reader-page-image]").Each(func(i int, s *goquery.Selection) {

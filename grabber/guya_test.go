@@ -143,7 +143,7 @@ func TestGuyaFetchChaptersPerGroup(t *testing.T) {
 	got := map[float64][]release{}
 	for _, c := range chapters {
 		gc := c.(*GuyaChapter)
-		got[gc.Number] = append(got[gc.Number], release{gc.ID, gc.Group, gc.Title})
+		got[gc.Number] = append(got[gc.Number], release{gc.ID, gc.Group, ChapterLabel(gc)})
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FetchChapters() = %v, want %v", got, want)
@@ -164,6 +164,27 @@ func TestGuyaFetchChaptersPerGroup(t *testing.T) {
 		}
 		if len(chapter.Pages) != 2 || !strings.Contains(chapter.Pages[0].URL, "/0001_abc/1/01.png") {
 			t.Errorf("FetchChapter() pages = %+v, want the group's two files", chapter.Pages)
+		}
+	}
+}
+
+func TestGuyaTestByAPI(t *testing.T) {
+	server := guyaServer(t)
+
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"/read/manga/Series/", true},
+		{"/read/manga/Series/1/3/", true},
+		{"/read/manga/Missing/", false},
+		{"/manga/Series/", false},
+	}
+	for _, c := range cases {
+		g := Guya{Grabber: &Grabber{URL: server.URL + c.path, Settings: &Settings{}}}
+		got, err := g.Test()
+		if err != nil || got != c.want {
+			t.Errorf("Test(%q) = %v, %v, want %v", c.path, got, err, c.want)
 		}
 	}
 }

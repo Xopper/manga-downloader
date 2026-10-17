@@ -275,8 +275,8 @@ func TestParseManganeloChaptersPage(t *testing.T) {
 		if first.Number != c.wantFirst {
 			t.Errorf("%s: first number = %v, want %v", c.name, first.Number, c.wantFirst)
 		}
-		if first.Title != c.wantTitle {
-			t.Errorf("%s: first title = %q, want %q", c.name, first.Title, c.wantTitle)
+		if ChapterLabel(first) != c.wantTitle {
+			t.Errorf("%s: first title = %q, want %q", c.name, ChapterLabel(first), c.wantTitle)
 		}
 		if first.Slug != c.wantSlug {
 			t.Errorf("%s: first slug = %q, want %q", c.name, first.Slug, c.wantSlug)
@@ -403,5 +403,24 @@ func TestManganeloResolveSeriesURL(t *testing.T) {
 				t.Errorf("got %q, want %q", m.URL, c.wanted)
 			}
 		})
+	}
+}
+
+func TestManganeloGetMaxConcurrency(t *testing.T) {
+	for _, c := range []struct{ set, want MaxConcurrency }{
+		{MaxConcurrency{Chapters: 5, Pages: 10}, manganeloMaxConcurrency},
+		{MaxConcurrency{Chapters: 1, Pages: 1}, MaxConcurrency{Chapters: 1, Pages: 1}},
+	} {
+		m := NewManganelo(&Grabber{Settings: &Settings{MaxConcurrency: c.set}})
+		if got := m.GetMaxConcurrency(); got != c.want {
+			t.Errorf("GetMaxConcurrency() with %+v = %+v, want %+v", c.set, got, c.want)
+		}
+	}
+}
+
+func TestManganeloIsPagePacer(t *testing.T) {
+	var site Site = NewManganelo(&Grabber{})
+	if _, ok := site.(PagePacer); !ok {
+		t.Fatal("*Manganelo doesn't implement PagePacer")
 	}
 }

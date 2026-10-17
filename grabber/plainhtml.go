@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
@@ -20,6 +21,17 @@ import (
 // This list is used by both Test() (to identify sites on series pages) and
 // resolveSeriesURL() (to test chapter URLs and find working series pages).
 var plainHTMLSelectors = []SiteSelector{
+	// lelscanfr.com (French): the series page lists its chapters in
+	// #chapters-list, split over ?page=N (One Piece: six pages). The reader
+	// renders every page in #chapter-container, lazy ones in data-src.
+	{
+		Title:      "h2.text-2xl",
+		TitleNoise: "span",
+		Rows:       "#chapters-list a[href*=\"/manga/\"]",
+		Chapter:    "div.flex.gap-2 span",
+		Image:      "#chapter-container img.chapter-image",
+		Paginated:  true,
+	},
 	// rizzfables.com: its #chapterlist markup is shared with several themes
 	// (en-thunderscans below, and the #readerarea one), which would match
 	// first and read the reader's avatar and banner <img>s. Rows are
@@ -50,6 +62,9 @@ var plainHTMLSelectors = []SiteSelector{
 		Chapter:      "span.font-medium",
 		ChapterTitle: "span.font-medium",
 		Image:        "img[data-page-index]",
+		// early_access_until can be a past date on a free chapter, so only
+		// is_premium counts
+		LockedIsland: func(c map[string]any) bool { return c["is_premium"] == true },
 	},
 	// sanascans.com: same Astro-based reader template family as
 	// asurascans.com, but chapter URLs use "/chapter-N" (hyphen) instead
@@ -66,6 +81,9 @@ var plainHTMLSelectors = []SiteSelector{
 		Chapter:      "span.font-medium",
 		ChapterTitle: "span.font-medium",
 		Image:        "img[data-reader-page-image]",
+		LockedIsland: func(c map[string]any) bool {
+			return c["isLocked"] == true && c["isShortLinkLocked"] != true
+		},
 	},
 	// zonatmo.org (TuMangaOnline, former zonatmo.com). A chapter row lists
 	// each upload in its own sub-row, with the uploader's group in a badge
@@ -92,14 +110,16 @@ var plainHTMLSelectors = []SiteSelector{
 		Image:      "img.js-page",
 		SeriesLink: `a[data-hotkey="m"]`,
 	},
-	// demonicscans.org: reader page embeds the real (non-lazy) image
-	// src directly, no JS variable needed
+	// demonicscans.org and komikmanga.com share the list markup; the latter
+	// has .reader-page images, no reader <h1> (.reader-back) and rows that
+	// end in the release date.
 	{
-		Title:      "h1",
-		Rows:       "#chapters-list li",
-		Link:       "a",
-		Image:      "img.imgholder",
-		SeriesLink: "h1 a",
+		Title:             "h1",
+		Rows:              "#chapters-list li",
+		Link:              "a",
+		Image:             "img.imgholder, .reader-page img",
+		SeriesLink:        "h1 a, a.reader-back",
+		ChapterTitleStrip: `\s*\d{4}-\d{2}-\d{2}$`,
 	},
 	// mangakatana.com: reader page images never land in the HTML as real
 	// <img src>/data-src (they stay as data-src="#" placeholders), they
@@ -149,12 +169,42 @@ var plainHTMLSelectors = []SiteSelector{
 	// page with HTTP 200); the list is still complete for what's
 	// downloadable, so nothing to work around here.
 	{
-		Title:        "h1",
+		// scoped: some themes add a summary <h1> that would join the title
+		Title:        ".post-title h1",
+		TitleNoise:   ".manga-title-badges",
 		Rows:         "li.wp-manga-chapter",
 		Chapter:      "a",
 		ChapterTitle: "a",
 		Link:         "a",
 		Image:        "div.reading-content img",
+		// paid rows carry Madara's login lock
+		Locked: "span.required-login",
+		// a reader page lists the chapters but not the series title
+		SeriesLink:       `.c-breadcrumb a[href*="/manga/"]`,
+		FollowSeriesLink: true,
+	},
+	// mangas-origines.fr: Madara-derived theme with its own chapter list (the
+	// ajax endpoint is walled) under /oeuvre/. Reader images lazy-load
+	// through data-src.
+	{
+		Title:        "h1.ori-sr-title",
+		Rows:         "div.ori-chl-row",
+		Chapter:      ".ori-chl-nom-long",
+		ChapterTitle: ".ori-chl-nom-long",
+		Link:         "a.ori-chl-corps",
+		Image:        "img.wp-manga-chapter-img",
+	},
+	// nyraxmanga.com: themesia markup (below) whose paid rows carry a "PLUS"
+	// badge and no images logged out. Rows are scoped to the site's own
+	// links so Locked can't flag another themesia site.
+	{
+		Title:        `h1[itemprop="name"]`,
+		Rows:         `#chapterlist li:has(.chapternum):has(a[href*="nyraxmanga.com/"])`,
+		Chapter:      ".chapternum",
+		ChapterTitle: ".chapternum",
+		Link:         "a",
+		Image:        "#readerarea img",
+		Locked:       ".plus-badge",
 	},
 	// mangastream/themesia WordPress themes reachable over plain HTTP
 	// (same markup as the cloudflare-gated sushiscan.net in
@@ -172,12 +222,16 @@ var plainHTMLSelectors = []SiteSelector{
 	// itemprop because some of these (violetscans) also render decorative
 	// <h1> stat labels (Type/Status/Views).
 	{
-		Title:        `h1[itemprop="name"]`,
+		// kombatch.cc prints the title in a span instead of an h1
+		Title:        `h1[itemprop="name"], span.entry-title`,
 		Rows:         "#chapterlist li:has(.chapternum):has(a[href])",
 		Chapter:      ".chapternum",
 		ChapterTitle: ".chapternum",
 		Link:         "a",
 		Image:        "#readerarea img",
+		// the coin icon rokaricomics.com draws on its paid rows; the svg keeps
+		// a bare text-gold colour class on another theme from flagging a row
+		Locked: "span.text-gold svg",
 	},
 	// furyosociety.com: French scanlation site on the FoOlSlide engine.
 	// Each chapter is listed twice (a desktop <div> and a mobile <a>);
@@ -197,14 +251,15 @@ var plainHTMLSelectors = []SiteSelector{
 	// renders the current page's <img class="open">, but embeds every
 	// page's URL in a `var pages = [...]` JSON blob (see
 	// getPlainHTMLImageURL), so the Image selector below is just a
-	// fallback/documentation of what a single rendered page looks like.
+	// fallback/documentation of what a single rendered page looks like
+	// (noranofansub.com renders empty img.page-N placeholders instead).
 	{
 		Title:        "h1.title",
 		Rows:         ".list .element",
 		Chapter:      ".title a",
 		ChapterTitle: ".title a",
 		Link:         ".title a",
-		Image:        "img.open",
+		Image:        `img.open, img[class^="page-"]`,
 		SeriesLink:   "h1.tbtitle a",
 	},
 	// madarascans.net (formerly .com/.org, which now 301-redirect to .net):
@@ -248,6 +303,7 @@ var plainHTMLSelectors = []SiteSelector{
 		Image:            `[x-data*="immersiveReader"]`,
 		SeriesLink:       `a.group[href*="/series/"]`,
 		FollowSeriesLink: true,
+		Locked:           ".chapter-lock-badge",
 	},
 	// writerscans.com & mistscans.com (meowing.org platform): each chapter
 	// row is a plain <a> direct child of #chapters (the number in a child
@@ -267,6 +323,8 @@ var plainHTMLSelectors = []SiteSelector{
 		Image:            "img.myImage, #pages img",
 		SeriesLink:       `h1 a[href^="/series/"]`,
 		FollowSeriesLink: true,
+		// paid rows overlay a lock icon (lock-open is a different icon)
+		Locked: `img[src*="material-symbols:lock.svg"]`,
 	},
 	// en-thunderscans.com: mangastream/themesia theme (reader page uses
 	// ts_reader.run, already handled generically). Some recent chapters
@@ -339,13 +397,17 @@ var plainHTMLSelectors = []SiteSelector{
 	// so the number comes from the "chapitre-25" URL. The reader keeps the
 	// real page in data-src, padded with spaces, behind a placeholder src
 	// (getPlainHTMLImageURL trims it).
+	// The same CMS runs anzmanga25.com, kangaryu-team.fr and onma.top: their
+	// URLs are /manga/{slug}/{number} and each theme puts the series title in
+	// its own element. The rows' download links go through an ad shortener.
 	{
-		Title:        `h2[style*="inline-block"]`,
+		Title:        `h2[style*="inline-block"], .titre-projets, .panel-heading`,
 		Rows:         "h5.chapter-title-rtl",
 		Link:         "a",
 		Chapter:      "a",
 		ChapterTitle: "em",
 		Image:        "img.img-responsive",
+		NumberRe:     `/manga/[^/]+/(\d+(?:\.\d+)?)/?$`,
 	},
 	// uzaymanga.com, eldermanga.com, eskimangalar.com and limonmanga.com:
 	// one Turkish manga platform, chapter URLs are /manga/{slug}/{n}-bolum-oku.
@@ -395,14 +457,16 @@ var plainHTMLSelectors = []SiteSelector{
 	// is hosted on the site itself and is left out by the host filter.
 	// The reader also renders a short chapter list (.series-chapterlist);
 	// #chapnav holds the link back to the full series page.
+	// oremanga.net (Thai) runs the same series theme: its reader keeps the
+	// pages in .reader-area-main and links the series from the side menu.
 	{
 		Title:            ".series-titlex h2",
 		Rows:             ".series-chapterlist li",
 		Link:             "a",
 		Chapter:          "a",
 		ChapterTitle:     "a",
-		Image:            `.reader-area img[data-lazy-src]:not([data-lazy-src*="maid.my.id"])`,
-		SeriesLink:       `#chapnav a[href*="/manga/"]`,
+		Image:            `.reader-area img[data-lazy-src]:not([data-lazy-src*="maid.my.id"]), .reader-area-main img`,
+		SeriesLink:       `#chapnav a[href*="/manga/"], .coverz a[href*="/series/"]`,
 		FollowSeriesLink: true,
 	},
 }
@@ -434,6 +498,9 @@ type SiteSelector struct {
 	// fetched (e.g. "style=list" for readers that render one page at a time
 	// unless asked for the whole list)
 	ChapterQuery string
+	// TitleNoise is a selector for elements inside Title to leave out, such as
+	// a "[Manga]" type badge nested in the heading
+	TitleNoise string
 	// ChapterTitleStrip is a regexp removing site-specific noise from a
 	// sanitized chapter title (e.g. "^#?\d+\s*\.?\s*Bölüm$" for a bare number)
 	ChapterTitleStrip string
@@ -459,6 +526,19 @@ type SiteSelector struct {
 	// IDRe is a regexp whose first group captures a release's ID from its
 	// URL. Without it, or when it doesn't match, the ID is the URL's path.
 	IDRe string
+	// NumberRe is a regexp whose first group captures the chapter number from
+	// a row's link, tried before the row's text, for URLs that carry it.
+	NumberRe string
+	// Locked is a CSS selector searched inside each row: a match means the
+	// listing marks the chapter as paid (Chapter.Locked)
+	Locked string
+	// Paginated, when set, reads the chapter list's pages after the first
+	// (?page=N) until one has no rows, for series listings split over pages.
+	Paginated bool
+	// LockedIsland is for Astro sites that state the lock only in the series
+	// page's island props: it reports whether a chapter object there (one with
+	// a "number" and a "slug") is paid; rows with that number become Locked.
+	LockedIsland func(chapter map[string]any) bool
 }
 
 // PlainHTMLChapter represents a PlainHTML Chapter
@@ -591,10 +671,35 @@ func (m *PlainHTML) testCandidateSeriesURL(candidateURL string) bool {
 	return false
 }
 
+// numberRegexps caches the compiled SiteSelector.NumberRe patterns, which are
+// checked once per row.
+var numberRegexps sync.Map
+
+func numberRe(pattern string) *regexp.Regexp {
+	if re, ok := numberRegexps.Load(pattern); ok {
+		return re.(*regexp.Regexp)
+	}
+	re := regexp.MustCompile(pattern)
+	numberRegexps.Store(pattern, re)
+	return re
+}
+
 // checkRowChapterNumber is a helper that reads chapter numbers from a row,
 // given an explicit selector (rather than relying on m.site).
 // This is used by testCandidateSeriesURL to avoid relying on m.site being set.
 func checkRowChapterNumber(s *goquery.Selection, selector SiteSelector) (float64, bool) {
+	if selector.NumberRe != "" {
+		u := s.AttrOr("href", "")
+		if selector.Link != "" {
+			u = s.Find(selector.Link).AttrOr("href", "")
+		}
+		if m := numberRe(selector.NumberRe).FindStringSubmatch(u); m != nil {
+			if n, err := strconv.ParseFloat(m[1], 64); err == nil {
+				return n, true
+			}
+		}
+	}
+
 	chapterText := textWithoutNoise(s)
 	if selector.Chapter != "" {
 		chapterText = textWithoutNoise(s.Find(selector.Chapter))
@@ -626,7 +731,12 @@ func (m PlainHTML) rowChapterNumber(s *goquery.Selection) (float64, bool) {
 
 // Ttitle returns the manga title
 func (m PlainHTML) FetchTitle() (string, error) {
-	return sanitizeTitle(textWithoutNoise(m.doc.Find(m.site.Title))), nil
+	title := m.doc.Find(m.site.Title)
+	if m.site.TitleNoise != "" {
+		title = title.Clone()
+		title.Find(m.site.TitleNoise).Remove()
+	}
+	return sanitizeTitle(textWithoutNoise(title)), nil
 }
 
 // textWithoutNoise returns a selection's text with common non-title noise
@@ -831,6 +941,9 @@ var urlChapterNumberRe = regexp.MustCompile(`(?i)chap(?:ter|itre)[-_](\d+\.?\d*)
 var turkishChapterNumberRe = regexp.MustCompile(`(?i)b[öo]l[üu]m\.?\s*(\d+\.?\d*)`)
 var turkishSuffixChapterNumberRe = regexp.MustCompile(`(?i)#?(\d+\.?\d*)\s*\.?\s*b[öo]l[üu]m`)
 
+// thaiChapterNumberRe matches the Thai "ตอนที่ 12" ("ตอน 12" too).
+var thaiChapterNumberRe = regexp.MustCompile(`ตอน(?:ที่)?\s*(\d+\.?\d*)`)
+
 // parseChapterNumber extracts the chapter number from a chapter title, falling
 // back to a volume number. Returns false if no number could be found (these
 // are usually site announcements rather than actual chapters).
@@ -841,6 +954,9 @@ func parseChapterNumber(text string) (float64, bool) {
 	}
 	if len(match) == 0 {
 		match = turkishSuffixChapterNumberRe.FindStringSubmatch(text)
+	}
+	if len(match) == 0 {
+		match = thaiChapterNumberRe.FindStringSubmatch(text)
 	}
 	if len(match) == 0 {
 		// only checked as fallback so "Vol.2 Chapter 15" still prefers the chapter
@@ -868,64 +984,176 @@ func (m PlainHTML) FetchChapters() (chapters Filterables, errs []error) {
 	if m.site.IDRe != "" {
 		idRe = regexp.MustCompile(m.site.IDRe)
 	}
-	m.rows.Each(func(i int, s *goquery.Selection) {
-		// an empty Chapter/ChapterTitle selector means the row itself carries
-		// the text (i.e. mangapill, where each chapter row is a plain <a>
-		// with no dedicated child element for the chapter number)
-		chapterText := textWithoutNoise(s)
-		if m.site.Chapter != "" {
-			chapterText = textWithoutNoise(s.Find(m.site.Chapter))
-		}
-
-		number, ok := m.rowChapterNumber(s)
-		if !ok {
-			return
-		}
-
-		title := chapterText
-		if m.site.ChapterTitle != "" {
-			title = textWithoutNoise(s.Find(m.site.ChapterTitle))
-		}
-		title = sanitizeTitle(title)
-		title = stripSeriesTitle(title, seriesTitle)
-		if strip != nil {
-			title = sanitizeTitle(strip.ReplaceAllString(title, ""))
-		}
-		if title == "" || chapterOnlyTitleRe.MatchString(title) {
-			// nothing left but the number, so the filename gets a real label
-			title = "Chapter " + strconv.FormatFloat(number, 'f', -1, 64)
-		}
-
-		for _, upload := range m.rowUploads(s) {
-			u := m.resolveURL(upload.href)
-			if !strings.HasPrefix(u, "http") {
-				u = m.BaseUrl() + u
+	lockedNumbers := m.islandLockedNumbers()
+	lists := []*goquery.Selection{m.rows}
+	if m.site.Paginated {
+		more, listErrs := m.listingPages()
+		lists = append(lists, more...)
+		errs = append(errs, listErrs...)
+	}
+	for _, rows := range lists {
+		rows.Each(func(i int, s *goquery.Selection) {
+			// an empty Chapter/ChapterTitle selector means the row itself carries
+			// the text (i.e. mangapill, where each chapter row is a plain <a>
+			// with no dedicated child element for the chapter number)
+			chapterText := textWithoutNoise(s)
+			if m.site.Chapter != "" {
+				chapterText = textWithoutNoise(s.Find(m.site.Chapter))
 			}
-			// the ID is read before ChapterQuery is appended, so it never
-			// carries the query
-			id := releaseID(u, idRe)
-			if m.site.ChapterQuery != "" {
-				sep := "?"
-				if strings.Contains(u, "?") {
-					sep = "&"
+
+			number, ok := m.rowChapterNumber(s)
+			if !ok {
+				return
+			}
+
+			title := chapterText
+			if m.site.ChapterTitle != "" {
+				title = textWithoutNoise(s.Find(m.site.ChapterTitle))
+			}
+			title = sanitizeTitle(title)
+			title = stripSeriesTitle(title, seriesTitle)
+			if strip != nil {
+				title = sanitizeTitle(strip.ReplaceAllString(title, ""))
+			}
+			if chapterOnlyTitleRe.MatchString(title) {
+				// nothing left but the number, which the label already gives
+				title = ""
+			}
+
+			locked := lockedNumbers[number] || (m.site.Locked != "" && s.Find(m.site.Locked).Length() > 0)
+			for _, upload := range m.rowUploads(s) {
+				u := m.resolveURL(upload.href)
+				if !strings.HasPrefix(u, "http") {
+					u = m.BaseUrl() + u
 				}
-				u += sep + m.site.ChapterQuery
-			}
-			chapter := &PlainHTMLChapter{
-				Chapter{
-					Number: number,
-					Title:  title,
-					ID:     id,
-				},
-				u,
-			}
-			chapter.SetGroups(upload.groups...)
+				// the ID is read before ChapterQuery is appended, so it never
+				// carries the query
+				id := releaseID(u, idRe)
+				if m.site.ChapterQuery != "" {
+					sep := "?"
+					if strings.Contains(u, "?") {
+						sep = "&"
+					}
+					u += sep + m.site.ChapterQuery
+				}
+				chapter := &PlainHTMLChapter{
+					Chapter{
+						Number: number,
+						Title:  title,
+						ID:     id,
+						Locked: locked,
+						Label:  Label{Style: LabelNumbered},
+					},
+					u,
+				}
+				chapter.SetGroups(upload.groups...)
 
-			chapters = append(chapters, chapter)
-		}
-	})
+				chapters = append(chapters, chapter)
+			}
+		})
+	}
 
 	return
+}
+
+// maxListingPages caps the ?page=N walk of a Paginated chapter list
+const maxListingPages = 100
+
+// listingPages fetches the chapter list's pages after the first, as ?page=N,
+// until one has no rows. It returns each page's rows.
+func (m PlainHTML) listingPages() (pages []*goquery.Selection, errs []error) {
+	base, err := url.Parse(m.URL)
+	if err != nil {
+		return nil, []error{err}
+	}
+	for page := 2; page <= maxListingPages; page++ {
+		u := *base
+		query := u.Query()
+		query.Set("page", strconv.Itoa(page))
+		u.RawQuery = query.Encode()
+
+		body, err := http.Get(http.RequestParams{URL: u.String()})
+		if err != nil {
+			return pages, append(errs, err)
+		}
+		doc, err := goquery.NewDocumentFromReader(body)
+		body.Close()
+		if err != nil {
+			return pages, append(errs, err)
+		}
+		rows := doc.Find(m.site.Rows)
+		if rows.Length() == 0 {
+			break
+		}
+		pages = append(pages, rows)
+	}
+
+	return pages, errs
+}
+
+// islandLockedNumbers returns the numbers of the chapters LockedIsland marks
+// as paid in the page's Astro islands (nil without the hook)
+func (m PlainHTML) islandLockedNumbers() map[float64]bool {
+	if m.site.LockedIsland == nil || m.doc == nil {
+		return nil
+	}
+	locked := map[float64]bool{}
+	m.doc.Find("astro-island[props]").Each(func(_ int, s *goquery.Selection) {
+		var props any
+		if json.Unmarshal([]byte(s.AttrOr("props", "")), &props) != nil {
+			return
+		}
+		walkAstroProps(astroUnwrap(props), func(obj map[string]any) {
+			number, ok := obj["number"].(float64)
+			if _, hasSlug := obj["slug"]; ok && hasSlug && m.site.LockedIsland(obj) {
+				locked[number] = true
+			}
+		})
+	})
+	return locked
+}
+
+// astroUnwrap drops Astro's props encoding: every value is a [type, payload]
+// pair, with type 0 a plain value and 1 a list of such pairs
+func astroUnwrap(v any) any {
+	switch t := v.(type) {
+	case []any:
+		if len(t) == 2 {
+			if kind, ok := t[0].(float64); ok {
+				if kind == 1 {
+					list, _ := t[1].([]any)
+					out := make([]any, len(list))
+					for i, e := range list {
+						out[i] = astroUnwrap(e)
+					}
+					return out
+				}
+				return astroUnwrap(t[1])
+			}
+		}
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, e := range t {
+			out[k] = astroUnwrap(e)
+		}
+		return out
+	}
+	return v
+}
+
+// walkAstroProps calls fn for every object nested in v
+func walkAstroProps(v any, fn func(map[string]any)) {
+	switch t := v.(type) {
+	case map[string]any:
+		fn(t)
+		for _, e := range t {
+			walkAstroProps(e, fn)
+		}
+	case []any:
+		for _, e := range t {
+			walkAstroProps(e, fn)
+		}
+	}
 }
 
 // plainHTMLUpload is one release a chapter row lists: the link it's read
@@ -1033,6 +1261,8 @@ func (m PlainHTML) FetchChapter(f Filterable) (*Chapter, error) {
 		return nil, err
 	}
 
+	authorizeMadaradex(doc)
+
 	return m.chapterFromDoc(f, doc), nil
 }
 
@@ -1043,6 +1273,7 @@ func (m PlainHTML) chapterFromDoc(f Filterable, doc *goquery.Document) *Chapter 
 
 	chapter := &Chapter{
 		Title:      f.GetTitle(),
+		Label:      labelOf(f),
 		Number:     f.GetNumber(),
 		PagesCount: int64(pcount),
 		Language:   "en",
@@ -1057,7 +1288,10 @@ func (m PlainHTML) chapterFromDoc(f Filterable, doc *goquery.Document) *Chapter 
 	for i, img := range pimages {
 		if img == "" {
 			// this error is not critical and is not from our side, so just log it out
-			notice.Warn("page %d of %s has no URL to fetch from 😕 (will be ignored)", i, chapter.GetTitle())
+			notice.Warn("page %d of %s has no URL to fetch from 😕 (will be ignored)", i, ChapterLabel(chapter))
+			continue
+		}
+		if isThemeImage(img) {
 			continue
 		}
 		if !strings.HasPrefix(img, "http") {
@@ -1065,13 +1299,26 @@ func (m PlainHTML) chapterFromDoc(f Filterable, doc *goquery.Document) *Chapter 
 		}
 
 		page := Page{
-			Number: int64(i),
-			URL:    img,
+			Number:     int64(i),
+			URL:        img,
+			RetryFlaky: m.retryFlaky(),
 		}
 		chapter.Pages = append(chapter.Pages, page)
 	}
 
 	return chapter
+}
+
+// isSVGPlaceholder reports whether src is a lazy-load spinner (an .svg) with
+// the real image in data-src; pages are never SVG.
+func isSVGPlaceholder(src string, s *goquery.Selection) bool {
+	return strings.HasSuffix(strings.ToLower(src), ".svg") && s.AttrOr("data-src", "") != ""
+}
+
+// isThemeImage reports whether u is a promo or "to be continued" image from
+// the theme's own folder, which Madara clones pad chapters with.
+func isThemeImage(u string) bool {
+	return strings.Contains(u, "/wp-content/themes/")
 }
 
 // canonicalHost returns the host of the page's canonical link, without the
@@ -1086,6 +1333,14 @@ func canonicalHost(doc *goquery.Document) string {
 }
 
 func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
+	// Madara sites using the chapter images protection plugin ship no <img>
+	if urls, ok, err := wpMangaProtectorImages(doc); ok {
+		if err != nil {
+			notice.Warn("could not decode the protected pages: %s", err)
+		}
+		return urls
+	}
+
 	// Check for chapImages JavaScript variable first
 
 	html, _ := doc.Html()
@@ -1299,7 +1554,7 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 			return
 		}
 		src := s.AttrOr("src", "")
-		if src == "" || strings.HasPrefix(src, "data:image") {
+		if src == "" || strings.HasPrefix(src, "data:image") || isSVGPlaceholder(src, s) {
 			src = s.AttrOr("data-src", "")
 		}
 		if src == "" {

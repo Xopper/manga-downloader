@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/elboletaire/manga-downloader/browser"
@@ -83,6 +83,28 @@ const manganeloChaptersLimit = 9999
 // or misbehaving response) rather than genuinely paginating — without a bound
 // that appends the same page forever.
 const manganeloMaxChapterPages = 100
+
+// manganeloMaxConcurrency caps the user's concurrency, as natomanga's image
+// host answers 429 to bursts; every family domain runs the same platform.
+var manganeloMaxConcurrency = MaxConcurrency{Chapters: 1, Pages: 2}
+
+// manganeloPagePacer spaces page requests evenly. It's shared by every
+// Manganelo instance because the limit is per IP, not per download.
+var manganeloPagePacer = &pacer{interval: time.Second / 4}
+
+// GetMaxConcurrency caps the configured concurrency at what the image host
+// tolerates; lower settings are kept.
+func (m *Manganelo) GetMaxConcurrency() MaxConcurrency {
+	mc := m.Grabber.GetMaxConcurrency()
+	mc.Chapters = min(mc.Chapters, manganeloMaxConcurrency.Chapters)
+	mc.Pages = min(mc.Pages, manganeloMaxConcurrency.Pages)
+	return mc
+}
+
+// WaitPage paces page downloads to the image host's rate limit (PagePacer)
+func (m *Manganelo) WaitPage() {
+	manganeloPagePacer.wait()
+}
 
 // Test returns true if the URL hostname is one of the manganelo family
 // domains. It only checks the hostname (no fetch) so it can be tried early
@@ -240,6 +262,7 @@ func (m *Manganelo) FetchChapter(f Filterable) (*Chapter, error) {
 
 	chapter := &Chapter{
 		Title:      f.GetTitle(),
+		Label:      labelOf(f),
 		Number:     f.GetNumber(),
 		PagesCount: int64(len(images)),
 		Language:   "en",
@@ -300,15 +323,12 @@ func parseManganeloChaptersPage(body string) (chapters Filterables, hasMore bool
 		// chapter titles need sanitizing too, not just series titles: the
 		// API happily returns names padded with stray whitespace, which
 		// would otherwise leak straight into the cbz filename
-		title := sanitizeTitle(c.Name)
-		if title == "" {
-			title = "Chapter " + strconv.FormatFloat(c.Number, 'f', -1, 64)
-		}
 		chapters = append(chapters, &ManganeloChapter{
 			Chapter{
 				Number: c.Number,
-				Title:  title,
+				Title:  sanitizeTitle(c.Name),
 				ID:     c.Slug,
+				Label:  Label{Style: LabelNumbered},
 			},
 			c.Slug,
 		})

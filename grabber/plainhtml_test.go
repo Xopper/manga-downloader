@@ -39,7 +39,9 @@ func TestParseChapterNumber(t *testing.T) {
 		{"375.1. Bölüm", 375.1, true}, // turkish decimal
 		{"#124 .Bölüm", 124, true},    // turkish, number first (trmanga)
 		{"İlk Bölüm", 0, false},       // turkish, no number
-		{"Notice", 0, false},          // announcements have no number
+		{"ตอนที่ 362", 362, true},     // thai (oremanga)
+		{"ตอน 12.5", 12.5, true},
+		{"Notice", 0, false}, // announcements have no number
 		{"", 0, false},
 	}
 
@@ -311,6 +313,45 @@ func TestFetchChaptersSkipsLockedRowsAndSanitizesTitles(t *testing.T) {
 	}
 }
 
+// TestNyraxFlagsPlusRowsLocked checks that only nyraxmanga.com's PLUS rows are
+// flagged, and that the same markup on another host isn't claimed by the entry.
+func TestNyraxFlagsPlusRowsLocked(t *testing.T) {
+	var entry SiteSelector
+	for _, sel := range plainHTMLSelectors {
+		if strings.Contains(sel.Rows, "nyraxmanga.com") {
+			entry = sel
+		}
+	}
+	if entry.Rows == "" {
+		t.Fatal("no nyraxmanga.com entry")
+	}
+
+	row := func(host, class, num, badge string) string {
+		return `<li class="` + class + `" data-num="` + num + `"><div class="chbox"><div class="eph-num">` +
+			`<a href="https://` + host + `/series-chapter-` + num + `/"><span class="chapternum">Chapter ` + num + `</span>` +
+			`<span class="` + badge + `-badge">X</span></a></div></div></li>`
+	}
+	page := func(host string) string {
+		return `<html><body><div id="chapterlist"><ul>` +
+			row(host, "chapter-is-locked", "2", "plus") + row(host, "", "1", "free") +
+			`</ul></div></body></html>`
+	}
+
+	m := PlainHTML{Grabber: &Grabber{URL: "https://nyraxmanga.com/manga/series/"}, doc: docFromHTML(t, page("nyraxmanga.com")), site: entry}
+	m.rows = m.doc.Find(m.site.Rows)
+	chapters, errs := m.FetchChapters()
+	if len(errs) != 0 || len(chapters) != 2 {
+		t.Fatalf("chapters = %d, errs = %v", len(chapters), errs)
+	}
+	if !LockedOf(chapters[0]) || LockedOf(chapters[1]) {
+		t.Errorf("locked = [%v %v], want [true false]", LockedOf(chapters[0]), LockedOf(chapters[1]))
+	}
+
+	if n := docFromHTML(t, page("example.com")).Find(entry.Rows).Length(); n != 0 {
+		t.Errorf("entry matches %d rows of another host", n)
+	}
+}
+
 // TestFetchTitleStripsNoise covers mangahub.io-style h1 headings that nest a
 // "Hot" badge and a huge <small> block of alternate-script/language titles,
 // which must not end up in the fetched title (it would blow past filesystem
@@ -453,9 +494,33 @@ func TestFetchChaptersTitles(t *testing.T) {
 		t.Fatalf("expected %d chapters, got %d", len(want), len(chapters))
 	}
 	for i, c := range chapters {
-		if got := c.GetTitle(); got != want[i] {
+		if got := ChapterLabel(c); got != want[i] {
 			t.Errorf("chapter %d title = %q, want %q", i, got, want[i])
 		}
+	}
+}
+
+// TestFetchChaptersStripsReleaseDate covers the shared demonicscans/komikmanga
+// entry, whose chapter rows end in the release date.
+func TestFetchChaptersStripsReleaseDate(t *testing.T) {
+	html := `<html><body><h1>Series</h1><div id="chapters-list">
+		<li><a href="https://example.com/chapter/1">Chapter 52.1 <span>2026-06-02</span></a></li>
+		</div></body></html>`
+	var site SiteSelector
+	for _, s := range plainHTMLSelectors {
+		if s.Rows == "#chapters-list li" {
+			site = s
+		}
+	}
+	m := PlainHTML{doc: docFromHTML(t, html), site: site}
+	m.rows = m.doc.Find(site.Rows)
+
+	chapters, errs := m.FetchChapters()
+	if len(errs) != 0 || len(chapters) != 1 {
+		t.Fatalf("got %d chapters, errors %v", len(chapters), errs)
+	}
+	if got := chapters[0].GetTitle(); got != "Chapter 52.1" {
+		t.Errorf("title = %q, want %q", got, "Chapter 52.1")
 	}
 }
 
@@ -478,6 +543,16 @@ func TestSeriesURLCandidates(t *testing.T) {
 			},
 			check: func(candidates []string) bool {
 				return len(candidates) > 0 && strings.Contains(candidates[0], "/series/slug/")
+			},
+		},
+		{
+			name:    "FoOlSlide reader with placeholder pages finds its series",
+			pageURL: "https://example.com/lector/read/slug/es/1/3/",
+			html: `<html><body><h1 class="tbtitle"><a href="https://example.com/lector/series/slug/">Slug</a></h1>` +
+				`<a href="https://example.com/lector/">Home</a><img class="page-0" src=""></body></html>`,
+			selectors: plainHTMLSelectors,
+			check: func(candidates []string) bool {
+				return len(candidates) > 0 && candidates[0] == "https://example.com/lector/series/slug/"
 			},
 		},
 		{
@@ -981,5 +1056,121 @@ func TestRowUploadsFallsBackToRowLink(t *testing.T) {
 	chap := chapters[0].(*PlainHTMLChapter)
 	if chap.URL != "https://example.com/read/7" || chap.Number != 7 {
 		t.Errorf("chapter = %v %q, want 7 %q", chap.Number, chap.URL, "https://example.com/read/7")
+	}
+}
+
+// fetchLockedFlags lists the HTML's chapters with the shipped entry whose
+// Rows selector is given, returning each chapter's Locked by number
+func fetchLockedFlags(t *testing.T, html, rows string) map[float64]bool {
+	t.Helper()
+	var site *SiteSelector
+	for i := range plainHTMLSelectors {
+		if plainHTMLSelectors[i].Rows == rows {
+			site = &plainHTMLSelectors[i]
+		}
+	}
+	if site == nil {
+		t.Fatalf("no entry with Rows %q", rows)
+	}
+	m := PlainHTML{Grabber: &Grabber{URL: "https://example.com/series/s"}, doc: docFromHTML(t, html), site: *site}
+	m.rows = m.doc.Find(m.site.Rows)
+	chapters, _ := m.FetchChapters()
+	flags := map[float64]bool{}
+	for _, c := range chapters {
+		flags[c.GetNumber()] = LockedOf(c)
+	}
+	return flags
+}
+
+func TestPlainHTMLLockedRows(t *testing.T) {
+	cases := []struct {
+		name, rows, html string
+	}{
+		{"ritharscans", "#chapters div.chapter-card a", `<h1>S</h1><div id="chapters">
+			<div class="chapter-card"><a href="/read/a"><span class="text-sm truncate">Chapter 24</span>
+			<div class="chapter-lock-badge"><img alt="Coin"></div></a></div>
+			<div class="chapter-card"><a href="/read/b"><span class="text-sm truncate">Chapter 23</span></a></div></div>`},
+		{"meowing.org platform", "#chapters a", `<h1>S</h1><div id="chapters">
+			<a href="/chapter/a/"><img src="https://api.iconify.design/material-symbols:lock.svg?color=white"><span class="text-sm truncate">Chapter 24</span></a>
+			<a href="/chapter/b/"><img src="https://api.iconify.design/material-symbols:lock-open-right.svg"><span class="text-sm truncate">Chapter 23</span></a></div>`},
+		{"themesia coin", "#chapterlist li:has(.chapternum):has(a[href])", `<h1 itemprop="name">S</h1><ul id="chapterlist">
+			<li data-num="24"><div class="chbox"><a href="https://example.com/s-chapter-24/"><span class="chapternum">Chapter 24</span></a>
+			<span class="d-flex text-gold"><svg viewBox="0 0 512 512"></svg>50</span></div></li>
+			<li data-num="23"><div class="chbox"><a href="https://example.com/s-chapter-23/"><span class="chapternum">Chapter 23</span></a></div></li></ul>`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			flags := fetchLockedFlags(t, c.html, c.rows)
+			if len(flags) != 2 || !flags[24] || flags[23] {
+				t.Errorf("locked = %v, want 24 only", flags)
+			}
+		})
+	}
+}
+
+// the island props are trimmed copies of the live series pages
+func TestPlainHTMLLockedIsland(t *testing.T) {
+	asura := `<h1>S</h1><astro-island props="{&quot;chapters&quot;:[1,[[0,{&quot;number&quot;:[0,31],&quot;slug&quot;:[0,&quot;chapter-31&quot;],&quot;is_premium&quot;:[0,true],&quot;early_access_until&quot;:[0,&quot;2026-10-16T01:43:36Z&quot;]}],[0,{&quot;number&quot;:[0,30],&quot;slug&quot;:[0,&quot;chapter-30&quot;],&quot;is_premium&quot;:[0,false],&quot;early_access_until&quot;:[0,&quot;2026-10-11T02:51:19Z&quot;]}]]]}"></astro-island>
+		<a data-astro-prefetch href="/comics/s/chapter/31"><span class="font-medium">Chapter 31</span></a>
+		<a data-astro-prefetch href="/comics/s/chapter/30"><span class="font-medium">Chapter 30</span></a>`
+	sana := `<h1 itemprop="name">S</h1><astro-island props="{&quot;initialChap&quot;:[1,[[0,{&quot;number&quot;:[0,11],&quot;slug&quot;:[0,&quot;chapter-11&quot;],&quot;isLocked&quot;:[0,true],&quot;isShortLinkLocked&quot;:[0,false]}],[0,{&quot;number&quot;:[0,7],&quot;slug&quot;:[0,&quot;chapter-7&quot;],&quot;isLocked&quot;:[0,false],&quot;isShortLinkLocked&quot;:[0,false]}],[0,{&quot;number&quot;:[0,6],&quot;slug&quot;:[0,&quot;chapter-6&quot;],&quot;isLocked&quot;:[0,true],&quot;isShortLinkLocked&quot;:[0,true]}]]]}"></astro-island>
+		<a data-astro-prefetch href="/series/s/chapter-11"><span class="font-medium">Chapter 11</span></a>
+		<a data-astro-prefetch href="/series/s/chapter-7"><span class="font-medium">Chapter 7</span></a>
+		<a data-astro-prefetch href="/series/s/chapter-6"><span class="font-medium">Chapter 6</span></a>`
+
+	flags := fetchLockedFlags(t, asura, `a[data-astro-prefetch][href*="/chapter/"]`)
+	if len(flags) != 2 || !flags[31] || flags[30] {
+		t.Errorf("asura locked = %v, want 31 only", flags)
+	}
+	flags = fetchLockedFlags(t, sana, `a[data-astro-prefetch][href*="/chapter-"]`)
+	if len(flags) != 3 || !flags[11] || flags[7] || flags[6] {
+		t.Errorf("sana locked = %v, want 11 only", flags)
+	}
+}
+
+// the selectors' regexps compile with MustCompile at run time, so a typo
+// would panic on the first site that reaches it
+func TestPlainHTMLSelectorRegexps(t *testing.T) {
+	for _, s := range plainHTMLSelectors {
+		for _, pattern := range []string{s.NumberRe, s.IDRe, s.ChapterTitleStrip} {
+			if pattern == "" {
+				continue
+			}
+			if _, err := regexp.Compile(pattern); err != nil {
+				t.Errorf("selector %q: %v", s.Rows, err)
+			}
+		}
+	}
+}
+
+func TestPlainHTMLLazySVGAndThemeImages(t *testing.T) {
+	doc := docFromHTML(t, `<div class="reading-content">
+<img src="/wp-content/themes/x/loading.svg" data-src="https://cdn.example/a.jpg">
+<img src="/wp-content/themes/x/loading.svg" data-src="https://cdn.example/wp-content/themes/m/promo.webp">
+<img src="https://cdn.example/b.jpg" data-src="https://cdn.example/other.jpg"></div>`)
+	m := PlainHTML{site: SiteSelector{Image: ".reading-content img"}}
+	ch := m.chapterFromDoc(&PlainHTMLChapter{}, doc)
+	var got []string
+	for _, p := range ch.Pages {
+		got = append(got, p.URL)
+	}
+	want := []string{"https://cdn.example/a.jpg", "https://cdn.example/b.jpg"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("pages = %v, want %v", got, want)
+	}
+}
+
+func TestRetryFlakyOptIn(t *testing.T) {
+	for url, want := range map[string]bool{
+		"https://mangazin.org/manga/x/":     true,
+		"https://www.mangazin.org/manga/x/": true,
+		"https://example.com/manga/x/":      false,
+	} {
+		if got := (&Grabber{URL: url}).retryFlaky(); got != want {
+			t.Errorf("retryFlaky(%s) = %v, want %v", url, got, want)
+		}
+	}
+	if (*Grabber)(nil).retryFlaky() {
+		t.Error("a nil grabber must not opt in")
 	}
 }

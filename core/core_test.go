@@ -184,6 +184,12 @@ func TestReleaseLabel(t *testing.T) {
 	if got := ReleaseLabel(ungrouped, false, true); got != "Chapter 5" {
 		t.Errorf("ungrouped ReleaseLabel() = %q, want %q", got, "Chapter 5")
 	}
+
+	// a title that numbers its own chapters gets the real number named too
+	ownNumbering := &grabber.Chapter{Title: "111. Dong-a-jul", Number: 186, Group: "Group A"}
+	if got, want := ReleaseLabel(ownNumbering, false, true), "Chapter 186 (111. Dong-a-jul) [Group A]"; got != want {
+		t.Errorf("own numbering ReleaseLabel() = %q, want %q", got, want)
+	}
 }
 
 func TestAllChaptersRangeIncludesChapterZero(t *testing.T) {
@@ -310,7 +316,7 @@ func TestOpenListsEveryGroupWhateverIsSelected(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Open(%q) error = %v", scanlator, err)
 		}
-		want := &grabber.FilterOptions{Values: []string{"Delta", "Alpha"}, All: true}
+		want := &grabber.FilterOptions{Values: []string{"Alpha", "Delta"}, All: true}
 		if !reflect.DeepEqual(series.Scanlators, want) {
 			t.Errorf("Open(%q) Scanlators = %+v, want %+v", scanlator, series.Scanlators, want)
 		}
@@ -329,7 +335,7 @@ func TestOpenUnknownGroupListsTheAvailableOnes(t *testing.T) {
 	}
 	// the load's error still names the groups, for the window's selector
 	languages, scanlators := FilterOptionsOf(newGroupedSite(), err)
-	if languages != nil || scanlators == nil || !reflect.DeepEqual(scanlators.Values, []string{"Delta", "Alpha"}) || !scanlators.All {
+	if languages != nil || scanlators == nil || !reflect.DeepEqual(scanlators.Values, []string{"Alpha", "Delta"}) || !scanlators.All {
 		t.Errorf("FilterOptionsOf after the error = %+v, %+v", languages, scanlators)
 	}
 }
@@ -387,6 +393,26 @@ func TestFilterOptionsOfSurvivesNoChapters(t *testing.T) {
 	if scanlators == nil || !reflect.DeepEqual(scanlators.Values, []string{"Alpha"}) {
 		t.Errorf("scanlators = %+v", scanlators)
 	}
+}
+
+// the options a front end offers come out sorted, whatever order the site lists
+func TestFilterOptionsOfSorts(t *testing.T) {
+	languages, _ := FilterOptionsOf(unsortedSite{}, nil)
+	if !reflect.DeepEqual(languages.Values, []string{"en", "es", "pt-br"}) {
+		t.Errorf("languages = %v, want them sorted", languages.Values)
+	}
+
+	err := &grabber.UnavailableFilterError{Filter: "scanlator", Value: "x", Available: []string{"Zed", "alpha"}}
+	_, scanlators := FilterOptionsOf(unsortedSite{}, err)
+	if !reflect.DeepEqual(scanlators.Values, []string{"alpha", "Zed"}) {
+		t.Errorf("scanlators = %v, want them sorted", scanlators.Values)
+	}
+}
+
+type unsortedSite struct{ listedSite }
+
+func (unsortedSite) LanguageOptions() grabber.FilterOptions {
+	return grabber.FilterOptions{Values: []string{"pt-br", "en", "es"}}
 }
 
 // countingSite counts the times its chapter list is fetched

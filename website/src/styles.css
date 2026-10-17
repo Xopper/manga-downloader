@@ -29,6 +29,7 @@
   --on-accent: #ffffff;
   --accent-soft: #eee9fd;
   --success-text: var(--mint-deep);
+  --danger-text: #b3261e;
   --ring: color-mix(in srgb, var(--violet) 55%, transparent);
   --disc: #ebe4fe;
   --glow-mint: rgb(79 216 176 / 30%);
@@ -51,7 +52,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: var(--night);
     --bg-tint: #1b1733;
     --surface: #211c3d;
@@ -66,6 +67,7 @@
     --on-accent: var(--night);
     --accent-soft: rgb(169 147 255 / 15%);
     --success-text: #5ee0b8;
+    --danger-text: #ff9a94;
     --disc: rgb(169 147 255 / 13%);
     --glow-mint: rgb(79 216 176 / 14%);
     --glow-pink: rgb(255 143 179 / 12%);
@@ -73,6 +75,35 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px -12px rgb(0 0 0 / 50%);
     --shadow-lg: 0 2px 4px rgb(0 0 0 / 30%), 0 24px 48px -24px rgb(0 0 0 / 70%);
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: var(--night);
+  --bg-tint: #1b1733;
+  --surface: #211c3d;
+  --surface-2: #1b1733;
+  --border: #322b57;
+  --border-strong: #463d75;
+  --text: var(--moon);
+  --muted: #bdb5dc;
+  --accent: var(--violet-soft);
+  --accent-hover: #bba9ff;
+  --accent-text: #bcaaff;
+  --on-accent: var(--night);
+  --accent-soft: rgb(169 147 255 / 15%);
+  --success-text: #5ee0b8;
+  --danger-text: #ff9a94;
+  --disc: rgb(169 147 255 / 13%);
+  --glow-mint: rgb(79 216 176 / 14%);
+  --glow-pink: rgb(255 143 179 / 12%);
+  --code-bg: #0f0d1f;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px -12px rgb(0 0 0 / 50%);
+  --shadow-lg: 0 2px 4px rgb(0 0 0 / 30%), 0 24px 48px -24px rgb(0 0 0 / 70%);
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 /* base ------------------------------------------------------------------ */
@@ -941,6 +972,11 @@ code {
   margin-top: auto;
 }
 
+/* a second box (the Homebrew cask) sits right under its foot text */
+.install-card .code ~ .code {
+  margin-top: 0;
+}
+
 .install-card .card-foot {
   font-size: 0.88rem;
 }
@@ -1161,9 +1197,13 @@ code {
 }
 
 @media (prefers-color-scheme: dark) {
-  .feature:nth-child(4n + 3) .feature-icon {
+  :root:not([data-theme='light']) .feature:nth-child(4n + 3) .feature-icon {
     color: var(--pink);
   }
+}
+
+:root[data-theme='dark'] .feature:nth-child(4n + 3) .feature-icon {
+  color: var(--pink);
 }
 
 .feature h3 {
@@ -1279,7 +1319,7 @@ code {
 .site {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 1px;
   min-height: 60px;
   padding: 10px 16px;
@@ -1313,6 +1353,31 @@ code {
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.4;
+}
+
+.site-verified {
+  margin-top: auto;
+  padding-top: 2px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.site-mark {
+  font-weight: 700;
+}
+
+.site-verified[data-verified='ok'] .site-mark {
+  color: var(--success-text);
+}
+
+.site-verified[data-verified='failing'] {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+
+.site-verified[data-verified='unknown'] {
+  opacity: 0.8;
 }
 
 .site-badge {
@@ -1392,6 +1457,12 @@ code {
   white-space: nowrap;
 }
 
+/* A long inline command in an answer wraps instead of widening the page. */
+.faq details p code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .faq summary::-webkit-details-marker {
   display: none;
 }
@@ -1461,6 +1532,73 @@ code {
 .footer-nav a:hover {
   color: var(--accent-text);
   text-decoration: underline;
+}
+
+/* theme switch ---------------------------------------------------------- */
+
+.theme-switch {
+  display: inline-flex;
+  gap: 4px;
+  margin: 20px 0 0;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.theme-switch[hidden] {
+  display: none;
+}
+
+.theme-switch label {
+  position: relative;
+  display: block;
+}
+
+.theme-switch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.theme-switch span {
+  display: block;
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 550;
+  line-height: 1.3;
+}
+
+.theme-switch input:checked + span {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.theme-switch input:not(:checked):hover + span {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.theme-switch input:focus-visible + span {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.site-footer .theme-switch {
+  /* Lines the pill's centre up with the logo row of the top-aligned nav. */
+  margin-top: -7px;
+  align-self: flex-start;
+}
+
+@media (max-width: 400px) {
+  .theme-switch span {
+    padding: 7px 12px;
+  }
 }
 
 /* motion ------------------------------------------------------------------ */

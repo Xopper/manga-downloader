@@ -72,7 +72,7 @@ func TestBloggerChapters(t *testing.T) {
 		t.Fatalf("got %d chapters, want 1", len(chapters))
 	}
 	c := chapters[0].(*BloggerChapter)
-	if c.Number != 1196 || c.Title != "Chapter 1196" || c.Language != "es" || c.URL != entries[0].URL {
+	if c.Number != 1196 || ChapterLabel(c) != "Chapter 1196" || c.Language != "es" || c.URL != entries[0].URL {
 		t.Errorf("chapter = %+v (%s), want number 1196 in es", c.Chapter, c.URL)
 	}
 
@@ -80,8 +80,8 @@ func TestBloggerChapters(t *testing.T) {
 	if len(chapters) != 2 {
 		t.Fatalf("got %d Blue Lock chapters, want 2", len(chapters))
 	}
-	if part := chapters[0].(*BloggerChapter); part.Title != "Chapter 364 Part 2" || part.Number != 364 {
-		t.Errorf("part chapter = %q (%v), want %q (364)", part.Title, part.Number, "Chapter 364 Part 2")
+	if part := chapters[0].(*BloggerChapter); ChapterLabel(part) != "Chapter 364 Part 2" || part.Title != "" || part.Number != 364 {
+		t.Errorf("part chapter = %q %q (%v), want %q (364)", ChapterLabel(part), part.Title, part.Number, "Chapter 364 Part 2")
 	}
 }
 
@@ -136,6 +136,21 @@ func TestBloggerPages(t *testing.T) {
 	}
 	if pages[1].URL != "https://www.animeallstar1.com/img/p2.jpg" || pages[1].Number != 2 {
 		t.Errorf("page 2 = %+v", pages[1])
+	}
+}
+
+func TestBloggerPagesTextarea(t *testing.T) {
+	const post = `<html><body><textarea id='zeist-raw-data' style='display:none;'><div class="separator"><a href="https://x/1.jpg"><img alt="" src="https://x/1.jpg"/></a></div><img alt="" src="https://x/2.jpg"/></textarea></body></html>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(post))
+	if err != nil {
+		t.Fatal(err)
+	}
+	postURL, _ := url.Parse("https://blog.example/2026/10/a-chapter-1.html")
+
+	pages := bloggerPages(doc, postURL)
+	if len(pages) != 2 || pages[1].URL != "https://x/2.jpg" || pages[1].Number != 2 {
+		t.Fatalf("pages = %+v", pages)
 	}
 }
 
@@ -228,5 +243,36 @@ func TestStripBlogName(t *testing.T) {
 		if got := stripBlogName(in); got != want {
 			t.Errorf("stripBlogName(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestBloggerSeriesPost(t *testing.T) {
+	const page = `<html><head><meta content='Aldo no Isekai Tensei' property='og:title'/><title>Aldo no Isekai Tensei</title></head></html>`
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(page))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b := &Blogger{Grabber: &Grabber{URL: "https://www.re-yume.my.id/2026/04/aldo-no-isekai-tensei.html"}, doc: doc}
+	if err := b.resolveSeriesURL(); err != nil || b.query != "Aldo no Isekai Tensei" {
+		t.Errorf("resolveSeriesURL() = %q, %v", b.query, err)
+	}
+
+	tagged, _ := goquery.NewDocumentFromReader(strings.NewReader(`<html><head><meta content='Leer Aldo no Isekai Tensei [Español] - ReYume' property='og:title'/></head></html>`))
+	b = &Blogger{Grabber: &Grabber{URL: "https://x.example/2026/04/a.html"}, doc: tagged}
+	if err := b.resolveSeriesURL(); err != nil || b.query != "Aldo no Isekai Tensei" {
+		t.Errorf("tagged series post = %q, %v", b.query, err)
+	}
+
+	chapter, _ := goquery.NewDocumentFromReader(strings.NewReader(`<html><head><meta content='Aldo no Isekai Tensei Chapter 05' property='og:title'/></head></html>`))
+	b = &Blogger{Grabber: &Grabber{URL: "https://x.example/2026/04/a.html"}, doc: chapter}
+	if err := b.resolveSeriesURL(); err != nil || b.query != "Aldo no Isekai Tensei" {
+		t.Errorf("chapter post = %q, %v", b.query, err)
+	}
+
+	empty, _ := goquery.NewDocumentFromReader(strings.NewReader(`<html></html>`))
+	b = &Blogger{Grabber: &Grabber{URL: "https://x.example/2026/04/a.html"}, doc: empty}
+	if err := b.resolveSeriesURL(); err == nil {
+		t.Error("a post with no title should not resolve")
 	}
 }

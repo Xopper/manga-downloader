@@ -51,6 +51,7 @@ export namespace main {
 	    language: string;
 	    group: string;
 	    volume: number;
+	    locked: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ChapterDTO(source);
@@ -64,6 +65,7 @@ export namespace main {
 	        this.language = source["language"];
 	        this.group = source["group"];
 	        this.volume = source["volume"];
+	        this.locked = source["locked"];
 	    }
 	}
 	export class FilterDTO {
@@ -303,6 +305,7 @@ export namespace main {
 	export class UpdateDTO {
 	    latest: string;
 	    url: string;
+	    oneClick: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateDTO(source);
@@ -312,6 +315,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.latest = source["latest"];
 	        this.url = source["url"];
+	        this.oneClick = source["oneClick"];
 	    }
 	}
 	export class VolumesDTO {
@@ -385,6 +389,8 @@ export namespace main {
 	    browserAlert: string;
 	    catalog: CatalogDTO;
 	    library: LibraryDTO;
+	    filenameTemplateDefault: string;
+	    filenameTemplateWarning: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new State(source);
@@ -420,6 +426,8 @@ export namespace main {
 	        this.browserAlert = source["browserAlert"];
 	        this.catalog = this.convertValues(source["catalog"], CatalogDTO);
 	        this.library = this.convertValues(source["library"], LibraryDTO);
+	        this.filenameTemplateDefault = source["filenameTemplateDefault"];
+	        this.filenameTemplateWarning = source["filenameTemplateWarning"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

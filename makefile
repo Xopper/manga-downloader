@@ -36,6 +36,14 @@ build/unix:
 build/win:
 	GOOS=windows $(GOBUILD) -o manga-downloader.exe .
 
+# the binary the VHS tapes in assets/demos run: it serves their series from the
+# fake data in demo/series (see demo/README.md), so release builds never carry
+# them. Named like build/unix, which is where the tapes look for it.
+build/demo: GOTAGS = -tags $(BUILD_TAGS),demo
+build/demo:
+	$(GOBUILD) -o manga-downloader .
+	@echo "demo build: serves demo/series and never touches the network"
+
 # what the release builds for each GOOS/GOARCH (from the environment, the host's
 # by default): manga-downloader, or manga-downloader.exe for windows
 build/release:
@@ -122,10 +130,15 @@ catalog/smoke-suwayomi:
 	test -s /tmp/catalog-smoke-suwayomi/weebcentral.com.json
 	test -s /tmp/catalog-smoke-suwayomi/sources.json
 
+# the demo build's fake grabber is only built with the demo tag (see demo/README.md)
+test/demo:
+	go test -tags $(BUILD_TAGS),demo -count=1 ./demo/
+
 # one dependency per line, alphabetically sorted (grabber/html deliberately
 # last), so parallel site-support branches never edit the same line
 grabber: \
 	grabber/3asq \
+	grabber/anikiga \
 	grabber/animeallstar1 \
 	grabber/animeallstar30 \
 	grabber/apothecary \
@@ -134,32 +147,55 @@ grabber: \
 	grabber/azorafly \
 	grabber/baozimh \
 	grabber/bigsolo \
+	grabber/blackcloveronline \
 	grabber/bluesolo \
 	grabber/chainsawman \
+	grabber/chainsawmannmanga \
+	grabber/comicaction \
+	grabber/comicdays \
+	grabber/comicearthstar \
+	grabber/comicgardo \
+	grabber/comicogyaaa \
+	grabber/comicseasons \
+	grabber/comictrail \
+	grabber/comicyours \
+	grabber/comiczenon \
 	grabber/comix \
 	grabber/danke \
+	grabber/dragonballmangaa \
 	grabber/drakecomic \
 	grabber/elftoon \
 	grabber/fanfox \
+	grabber/feelweb \
 	grabber/flamecomics \
 	grabber/fmteam \
 	grabber/gdscans \
 	grabber/genztoon \
+	grabber/globalcomix \
 	grabber/guya \
+	grabber/hachirumi \
 	grabber/heavenlydelusion \
+	grabber/heavenmanga \
 	grabber/hijala \
 	grabber/hivetoons \
+	grabber/ichicomi \
 	grabber/inmanga \
 	grabber/jestful \
 	grabber/jojolands \
+	grabber/jujutsukaisenmanga \
 	grabber/kaynscan \
+	grabber/ksgroupscans \
+	grabber/kuragebunch \
 	grabber/leercapitulo \
+	grabber/lelscans \
 	grabber/lilymanga \
 	grabber/luascans \
+	grabber/magcomi \
 	grabber/mangaball \
 	grabber/mangabats \
 	grabber/mangadenizi \
 	grabber/mangadex \
+	grabber/mangadelsiglotvmanga \
 	grabber/mangafire \
 	grabber/mangahere \
 	grabber/mangak \
@@ -170,26 +206,38 @@ grabber: \
 	grabber/mangaplus \
 	grabber/mangasushi \
 	grabber/mangataro \
+	grabber/mangatimesquare \
 	grabber/mangatown \
 	grabber/mangitto \
+	grabber/manhwatop \
 	grabber/mgeko \
 	grabber/mkissa \
+	grabber/nijitranslations \
+	grabber/ourfeel \
 	grabber/projectsuki \
 	grabber/qimanga \
+	grabber/re-yume \
 	grabber/roliascan \
 	grabber/sacachispa \
+	grabber/shonenjumpplus \
 	grabber/stonescape \
+	grabber/sundaywebry \
 	grabber/taiyo \
 	grabber/tcb \
 	grabber/teamshadowi \
 	grabber/templetoons \
+	grabber/tonarinoyj \
 	grabber/tortugaceviri \
+	grabber/turkcemanga \
+	grabber/tvymanga3 \
 	grabber/tritinia \
 	grabber/utoon \
 	grabber/vortexscans \
 	grabber/weebcentral \
+	grabber/webtoonia \
 	grabber/webtoons \
 	grabber/witchtoons \
+	grabber/yurionair \
 	grabber/html
 
 grabber/inmanga:
@@ -278,11 +326,32 @@ grabber/tcb:
 # changes needed: same ajax/chapters endpoint and reading-content markup)
 grabber/mangasushi:
 	go run . https://mangasushi.org/manga/lonely-attack-on-the-different-world/ 324
+# a Madara site whose reader encrypts the page list (wp-manga-chapter-images-protection)
+grabber/gourmetsupremacy:
+	go run . https://gourmetsupremacy.com/project/hikikomori-princess-marriage/ 10,10.5
 # another Madara/wp-manga site, handled by the same Tcb grabber; this one
 # groups chapters under "Volume N" wrappers (exercises the wp-manga-chapter
 # scoping fix)
 grabber/gdscans:
 	go run . https://gdscans.com/manga/a-rank-boukensha-no-slow-life/ 50
+# a Madara site whose ajax/chapters answers with the series page, so the Tcb
+# grabber reads the list through admin-ajax.php (Arabic)
+grabber/nijitranslations:
+	go run . https://niji-translations.com/manga/adachi-and-shimamura/ 41
+# another Madara site, handled by the Tcb grabber; its one-shots have no number
+grabber/anikiga:
+	go run . https://anikiga.com/manga/alma/ 5
+
+# Madara and themesia sites whose series URLs PlainHTML claims (chapter URLs
+# can go through Tcb), no code of their own
+grabber/apollcomics:
+	go run . https://apollcomics.es/manga/las-manos-sanadoras-del-doctor/ 40-41
+grabber/fbsquadx:
+	go run . https://fbsquadx.com/manga/minmotion-syndrome/ 60-61
+grabber/kombatch:
+	go run . https://kombatch.cc/manga/secret-class/ 318-319
+grabber/mundomanhwa:
+	go run . https://mundomanhwa.com/manga/primavera-para-blossom/ 28-29
 
 # another Madara wordpress site (Turkish). Its series page lists every row
 # under "<title> N" titles, which the PlainHTML li.wp-manga-chapter entry
@@ -317,6 +386,32 @@ grabber/animeallstar30:
 grabber/animeallstar1:
 	go run . "https://www.animeallstar1.com/search?q=One+Piece" 1188-1189
 
+# WordPress category clones of animeallstar30 (plain HTTP): a chapter post
+# resolves to its series, so the URL is a post a few behind the newest.
+grabber/blackcloveronline:
+	go run . https://blackcloveronline.com/manga/black-clover-chapter-100/ 100
+
+grabber/chainsawmannmanga:
+	go run . https://chainsawmannmanga.com/chainsaw-man-manga-chapter-100/ 100
+
+grabber/dragonballmangaa:
+	go run . https://dragonballmangaa.com/category/all-chapters/ 10
+
+grabber/jujutsukaisenmanga:
+	go run . https://jujutsukaisenmanga.pro/jujutsu-kaisen-chapter-100/ 100
+
+grabber/tvymanga3:
+	go run . https://tvymanga3.com/chainsaw-man-100/ 100
+
+# Blogger blog, series search by title as for animeallstar1
+grabber/mangadelsiglotvmanga:
+	go run . "https://www.mangadelsiglotvmanga.com.mx/search?q=Kagurabachi" 130
+
+# Blogger blog whose chapter posts keep the pages in a hidden textarea
+# (script-rendered reader); a chapter post resolves to its series.
+grabber/re-yume:
+	go run . https://www.re-yume.my.id/2026/09/shangri-la-frontier-chapter-281.html 280-281
+
 # Madara wordpress site whose series URLs live under /gl/ instead of /manga/;
 # the generic Tcb grabber matches them through the same ajax/chapters endpoint.
 # Chapter 2 is not the newest (6 episodes), and it sits in the list-style reader.
@@ -342,12 +437,18 @@ grabber/jojolands:
 grabber/heavenlydelusion:
 	go run . https://heavenly-delusion.com 83
 
+grabber/heavenmanga:
+	go run . https://heavenmanga.com/manga/black-clover 388
+
 grabber/weebcentral:
 	go run . https://weebcentral.com/series/01J76XYDXH7KT6AABVG3JAT3ZP/Shangri-La-Frontier 274
 
 # plain HTTP only, the reader renders every page in the markup (no browser)
 grabber/leercapitulo:
 	go run . https://www.leercapitulo.co/manga/0cj9hhn6di/kingdom/ 883
+
+grabber/lelscans:
+	go run . https://lelscans.net/lecture-en-ligne-one-piece 1100
 
 grabber/guya:
 	go run . https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/ 281
@@ -373,6 +474,9 @@ grabber/vortexscans:
 # same guyamoe platform as guya.moe, different instance/domain
 grabber/danke:
 	go run . https://danke.moe/read/manga/100-girlfriends/ 251
+# recognised by its series API, not its domain
+grabber/hachirumi:
+	go run . https://hachirumi.com/read/manga/a-boy-and-his-crossdressing-older-brother/ 1
 # chapter pages are hosted on imgchest.com, not bigsolo.org itself
 grabber/bigsolo:
 	go run . https://bigsolo.org/wind-breaker 222
@@ -381,7 +485,11 @@ grabber/fmteam:
 # note: the newest 1-2 chapters can be "early access" (locked behind coins),
 # pick a chapter a bit behind the tip if this starts 404ing on pages
 grabber/genztoon:
-	go run . https://genzupdates.com/series/the-return-of-the-legendary-genius-ranker/ 33
+	go run . https://genztoons.org/series/the-return-of-the-legendary-genius-ranker/ 33
+# licensed comics over a JSON API; paid issues are listed as locked, so the target
+# uses a free series (10 is a short 13-page issue)
+grabber/globalcomix:
+	go run . https://globalcomix.com/c/acts-one-nine 10
 # drakecomic.org moved wholesale to drakecomic.net (same RSC platform as
 # witchtoons.net/kaynscans.com); the old domain still 301s /manga/{slug}/
 # here and the grabber remaps old URLs in code. No browser needed anymore.
@@ -414,6 +522,44 @@ grabber/roliascan:
 	go run . https://roliascan.com/manga/no-marriage/ 77
 grabber/sacachispa:
 	go run . https://sacachispa.site/manga/3ba3f7c1-4655-488f-87c5-bf1d797007c1/tsutte-tabetai-gal-sawa-san 19
+# GigaViewer: an episode URL downloads its whole series, episode 2 is free
+grabber/shonenjumpplus:
+	go run . https://shonenjumpplus.com/episode/17107419589696004710 2
+# GigaViewer hosts, served by the grabber of shonenjumpplus
+grabber/tonarinoyj:
+	go run . https://tonarinoyj.jp/episode/12207421984093802437 1
+grabber/comicdays:
+	go run . https://comic-days.com/episode/10834108156628505403 1
+grabber/kuragebunch:
+	go run . https://kuragebunch.com/episode/10834108156628843112 1
+grabber/magcomi:
+	go run . https://magcomi.com/episode/12207421984022901697 56
+grabber/comicgardo:
+	go run . https://comic-gardo.com/episode/10044607041200756622 1
+grabber/comiczenon:
+	go run . https://comic-zenon.com/episode/12207421984318179863 695
+grabber/comicaction:
+	go run . https://comic-action.com/episode/10044607041217599247 3
+grabber/comictrail:
+	go run . https://comic-trail.com/episode/12207421984031179174 45
+grabber/comicearthstar:
+	go run . https://comic-earthstar.com/episode/12207421983368356635 1
+grabber/comicogyaaa:
+	go run . https://comic-ogyaaa.com/episode/12207421984209269805 7
+grabber/sundaywebry:
+	go run . https://www.sunday-webry.com/episode/12207421983409579527 1
+grabber/comicseasons:
+	go run . https://comic-seasons.com/episode/12207421983368290655 0
+grabber/comicyours:
+	go run . https://comic-y-ours.com/episode/12207421983368565943 56
+grabber/ourfeel:
+	go run . https://ourfeel.jp/episode/12207421983347996105 1
+grabber/feelweb:
+	go run . https://feelweb.jp/episode/10044607041223436639 1
+grabber/ichicomi:
+	go run . https://ichicomi.com/episode/12207421983348275548 2
+grabber/mangatimesquare:
+	go run . https://mangatime-square.com/episode/12207421983656601022 1
 grabber/teamshadowi:
 	go run . https://www.team-shadowi.com/series/the-regressed-mercenary-has-a-plan 98
 grabber/taiyo:
@@ -463,7 +609,7 @@ grabber/toongod:
 	go run . --browser-visible https://www.toongod.org/webtoon/solo-leveling/ 200
 
 grabber/asmotoon:
-	go run . --browser-visible https://asmotoon.com/series/official-adultery/ 1
+	go run . --browser-visible https://asmotoon.com/tadaima-taikichuu-nitsuki 1-2
 
 grabber/dragontea:
 	go run . --browser-visible https://dragontea.ink/novel/it-all-starts-with-trillions-of-nether-currency/ 290
@@ -501,39 +647,103 @@ grabber/setsuscans:
 grabber/mangapark:
 	go run . https://mangapark.cc/manga/shonan-junai-gumi 266-267
 
+# ksgroupscans, manhwatop, turkcemanga and yurionair are Madara sites matched
+# by the generic Tcb grabber (same ajax/chapters endpoint)
+grabber/ksgroupscans:
+	go run . https://ksgroupscans.com/manga/buta-kizoku-wa-mirai-wo-kiri-hiraku-you-desu/ 20
+grabber/manhwatop:
+	go run . https://manhwatop.com/manga/defense-breaker/ 60
+grabber/turkcemanga:
+	go run . https://turkcemanga.com/manga/the-lady-with-a-mask/ 50
+grabber/yurionair:
+	go run . https://yurionair.top/manga/adachi-to-shimamura/ 46
+
+# adonisfansub, nyraxmanga and rackusreads run the themesia theme. nyraxmanga
+# marks paid chapters with a PLUS badge: chapters 116-122 of this series are
+# (the CLI leaves them out), so 110 is a free one
+grabber/adonisfansub:
+	go run . https://manga.adonisfansub.com/manga/tensei-shitara-ken-deshita/ 26
+grabber/nyraxmanga:
+	go run . https://nyraxmanga.com/manga/for-my-lost-love/ 110
+grabber/rackusreads:
+	go run . https://rackusreads.com/manga/vs-hankeunbit/ 21
+# mangaeclipse, mangawow and ruyamanga2 are Madara sites with the chapter list
+# in the series page. ruyamanga2 skips chapters 41-61 of this series
+grabber/mangaeclipse:
+	go run . https://mangaeclipse.com/manga/great-heaven-sovereign/ 54
+grabber/mangawow:
+	go run . https://mangawow.org/manga/eleceed/ 220
+grabber/ruyamanga2:
+	go run . https://www.ruyamanga2.com/manga/felaket-buyucusu/ 70
+grabber/natsuone:
+	go run . https://natsu.one/manga/ao-ashi/ 400
+# FoOlSlide readers. Lilyreader restarts the chapter numbers in every volume
+# of the long series, so this smaller one has unique numbers
+grabber/noranofansub:
+	go run . https://www.noranofansub.com/lector/series/your-royal-highness-is-happy/ 38
+grabber/smuglo:
+	go run . https://manga.smuglo.li/series/aikatsu-secret-story/ 4
+
 grabber/html: \
+	grabber/adonisfansub \
+	grabber/anzmanga25 \
+	grabber/apollcomics \
 	grabber/arenascan \
 	grabber/asura \
+	grabber/decadencescans \
 	grabber/deathtollscans \
 	grabber/demonicscans \
 	grabber/dynastyscans \
+	grabber/eldermanga \
+	grabber/eskimangalar \
 	grabber/evascans \
+	grabber/fbsquadx \
 	grabber/furyosociety \
 	grabber/kingofshojo \
+	grabber/kombatch \
 	grabber/komikindo \
+	grabber/komikmanga \
 	grabber/komikstation \
+	grabber/gourmetsupremacy \
 	grabber/lagoonscans \
 	grabber/lelmanga \
+	grabber/lelscanfr \
+	grabber/limonmanga \
+	grabber/madaradex \
 	grabber/madarascans \
 	grabber/maid \
 	grabber/mangaberri \
+	grabber/mangaeclipse \
 	grabber/mangakatana \
+	grabber/mangalami \
 	grabber/mangapill \
 	grabber/mangaread \
+	grabber/mangasorigines \
 	grabber/mangasusuku \
 	grabber/mangavault \
 	grabber/mangaworld \
+	grabber/mangawow \
+	grabber/mangazin \
 	grabber/manhuaplus \
 	grabber/manhwaonline \
 	grabber/mistscans \
+	grabber/mundomanhwa \
+	grabber/natsuone \
+	grabber/noranofansub \
+	grabber/nyraxmanga \
+	grabber/onma \
+	grabber/oremanga \
+	grabber/rackusreads \
 	grabber/ravenscans \
 	grabber/rawkuma \
 	grabber/ritharscans \
 	grabber/rizzfables \
 	grabber/rokaricomics \
+	grabber/ruyamanga2 \
 	grabber/sanascans \
 	grabber/scanvf \
 	grabber/silentquill \
+	grabber/smuglo \
 	grabber/tcbscans \
 	grabber/thunderscans \
 	grabber/trmanga \
@@ -564,6 +774,16 @@ grabber/trmanga:
 grabber/uzaymanga:
 	go run . https://uzaymanga.com/manga/kunlun-daginin-seytani-ustasi 10
 
+# eldermanga, eskimangalar and limonmanga share uzaymanga's platform
+grabber/eldermanga:
+	go run . https://eldermanga.com/manga/agac-olarak-yeniden-dogdum 10
+
+grabber/eskimangalar:
+	go run . https://eskimangalar.com/manga/alemlerin-otesindeki-olumsuz 10
+
+grabber/limonmanga:
+	go run . https://limonmanga.com/manga/en-guclu-suikastci-baska-dunyada 10
+
 grabber/manhwaonline:
 	go run . https://manhwaonline.org/manga/a-wonderful-new-world/ 150
 
@@ -586,10 +806,19 @@ grabber/dynastyscans:
 	go run . https://dynasty-scans.com/series/please_bully_me_miss_villainess 162
 grabber/mangaread:
 	go run . https://www.mangaread.org/manga/one-piece/ 1188
+grabber/mangasorigines:
+	go run . https://mangas-origines.fr/oeuvre/girl-crush/ 30-31
+# its image CDN caches random origin 404s, so pages opt into the cache-busting retry
+grabber/mangazin:
+	go run . https://mangazin.org/manga/the-cold-blooded-warrior/ 75-76
 grabber/manhuaplus:
 	go run . https://manhuaplus.com/manga/tales-of-demons-and-gods01/ 522.6
 grabber/silentquill:
 	go run . https://silentquill.net/series/i-was-invited-to-join-the-country-as-an-otherworldly-warrior-but-i-refused-and-decided-to-start-as-a-soldier/ 59
+grabber/decadencescans:
+	go run . https://reader.decadencescans.com/manga/ashi-girl/ 1
+grabber/mangalami:
+	go run . https://mangalami.com/chainsaw-man-%e0%b8%95%e0%b8%ad%e0%b8%99%e0%b8%97%e0%b8%b5%e0%b9%88-202/ 200-201
 grabber/deathtollscans:
 	go run . https://reader.deathtollscans.net/series/kakushigoto/ 30
 grabber/evascans:
@@ -600,6 +829,8 @@ grabber/furyosociety:
 # old domain still 301s /manga/{slug}/ and the grabber remaps old URLs in code
 grabber/elftoon:
 	go run . https://elftoon.net/series/comic/god-level-assassin-im-the-shadow 123
+grabber/madaradex:
+	go run . https://madaradex.org/title/boss-give-me-your-daughter-uncensored/ 70
 grabber/madarascans:
 	go run . https://madarascans.net/series/my-disciples-are-all-big-villains/ 481
 grabber/maid:
@@ -610,6 +841,8 @@ grabber/kingofshojo:
 	go run . https://kingofshojo.com/manga/although-i-was-a-condemned-witch-everyone-dotes-on-me-after-regressing/ 14
 grabber/komikindo:
 	go run . https://komikindo.ch/komik/155895-nano-machine/ 98
+grabber/komikmanga:
+	go run . https://komikmanga.com/manga/Unrivaled-Spear-Demon 55
 grabber/komikstation:
 	go run . https://komikstation.org/manga/boukun-wo-teki-ni-mawashita-akujo-desu-ga-bankaisa-sete-itadakimasu/ 10
 grabber/mangavault:
@@ -620,6 +853,8 @@ grabber/lagoonscans:
 	go run . https://lagoonscans.com/manga/crimson-reset/ 52
 grabber/lelmanga:
 	go run . https://www.lelmanga.com/manga/one-piece 1100
+grabber/lelscanfr:
+	go run . https://www.lelscanfr.com/manga/one-piece 700
 grabber/mangasusuku:
 	go run . https://mangasusuku.com/komik/get-out/ 10
 grabber/rizzfables:
@@ -633,6 +868,13 @@ grabber/sanascans:
 	go run . https://sanascans.com/series/my-beloved-daughter-is-a-villainess 11
 grabber/scanvf:
 	go run . https://www.scan-vf.net/jujutsu-kaisen-modulo 10
+# same CMS as scan-vf.net, with plain-number chapter URLs
+grabber/anzmanga25:
+	go run . https://www.anzmanga25.com/manga/1cfg7v-kagurabachi 100
+grabber/onma:
+	go run . https://onma.top/manga/black-clover 300
+grabber/oremanga:
+	go run . https://www.oremanga.net/series/blue-lock/ 300
 grabber/thunderscans:
 	go run . https://en-thunderscans.com/comics/full-time-awakening/ 108
 grabber/violetscans:
@@ -641,6 +883,10 @@ grabber/violetscans:
 # list is paginated, so this also walks the whole episode list
 grabber/webtoons:
 	go run . 'https://www.webtoons.com/en/fantasy/tower-of-god/list?title_no=95' 2
+# former diamondfansub.com (which redirects here): Madara under /seri/, matched by
+# the generic Tcb grabber
+grabber/webtoonia:
+	go run . https://webtoonia.fun/seri/ask-bagimlisi/ 5
 # witchscans.com rebranded to witchtoons.net: new platform (Next.js, chapters
 # and pages in the RSC payload), so it has its own grabber instead of a
 # plainhtml selector entry
@@ -652,3 +898,24 @@ grabber/writerscans:
 # release; pick a chapter a few behind the latest one to keep it free
 grabber/mistscans:
 	go run . https://mistscans.com/series/i-was-thrown-into-an-unfamiliar-manga/ 33
+
+# runs the given smoke targets (names without "grabber/") and records their
+# results in the README's "Last verified" column, e.g.
+#   make site-status TARGETS="toonily toongod"
+# A target passes when it exits 0 and tools/verify-cbz accepts the new archives
+# (found with -print0, as their names hold spaces).
+site-status:
+	@test -n "$(TARGETS)" || { echo "usage: make site-status TARGETS=\"toonily toongod\""; exit 2; }
+	@results=$$(mktemp); stamp=$$(mktemp); \
+	for t in $(TARGETS); do \
+		touch $$stamp; sleep 1; \
+		if $(MAKE) grabber/$$t && find . -maxdepth 1 -name '*.cbz' -newer $$stamp -print0 | xargs -0 go run ./tools/verify-cbz; then \
+			echo "$$t pass" >> $$results; \
+		else \
+			echo "$$t fail" >> $$results; \
+		fi; \
+		find . -maxdepth 1 -name '*.cbz' -newer $$stamp -delete; \
+	done; \
+	cat $$results; \
+	go run ./tools/site-status -results $$results -date $$(date -u +%F); \
+	rm -f $$results $$stamp

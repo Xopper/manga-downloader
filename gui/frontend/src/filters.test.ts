@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterControl, filtersIdentified, filterOptions, languageName, shownSelection } from './filters';
+import { sameScanlator, typedValue, filterControl, filtersIdentified, filterOptions, languageName, shownSelection } from './filters';
 import type { FilterChoice } from './types';
 
 const choice = (over: Partial<FilterChoice>): FilterChoice => ({
@@ -41,6 +41,14 @@ describe('filterOptions', () => {
 
     const groups = filterOptions(choice({ values: ['Alpha'], all: true, selected: 'all' }), 'scanlator');
     expect(groups[0]).toEqual({ value: 'all', label: 'All groups' });
+  });
+
+  it('keeps the backend order and slots in an unlisted selection alphabetically', () => {
+    const options = filterOptions(choice({ values: ['Dawn', 'Écarlate', 'Fable', 'Zed'], selected: 'Ecru' }), 'scanlator');
+    expect(options.map((o) => o.value)).toEqual(['Dawn', 'Écarlate', 'Ecru', 'Fable', 'Zed']);
+
+    const accented = filterOptions(choice({ values: ['Dawn', 'Fable', 'Zed'], selected: 'Écarlate' }), 'scanlator');
+    expect(accented.map((o) => o.value)).toEqual(['Dawn', 'Écarlate', 'Fable', 'Zed']);
   });
 
   it('has no All option where the site has none', () => {
@@ -111,5 +119,19 @@ describe('filterControl', () => {
   it('is a selector whenever the site listed values, loaded or not', () => {
     expect(filterControl({ loaded: true, loadError: '' }, listed)).toBe('select');
     expect(filterControl({ loaded: false, loadError: 'network down' }, listed)).toBe('select');
+  });
+});
+
+describe('typedValue and sameScanlator', () => {
+  it('shows "all" in any case as empty, and other values as they are', () => {
+    expect(typedValue('all')).toBe('');
+    expect(typedValue('ALL')).toBe('');
+    expect(typedValue('es')).toBe('es');
+    expect(typedValue('')).toBe('');
+  });
+
+  it('treats "" and "all" as one scanlator filter', () => {
+    expect(sameScanlator('', 'all')).toBe(true);
+    expect(sameScanlator('Delta', 'all')).toBe(false);
   });
 });

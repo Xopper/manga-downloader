@@ -492,6 +492,7 @@ export function App({ api }: { api: Api }) {
         open={logOpen}
         onToggle={() => setLogOpen((o) => !o)}
         onOpenURL={(url) => api.openURL(url)}
+        onUpdate={() => api.update()}
       />
     </div>
   );

@@ -30,6 +30,8 @@ type fakeChapter struct {
 	gone map[int]bool
 	// volume is the volume the site lists the chapter under, 0 for none
 	volume int
+	// locked lists the chapter as locked
+	locked bool
 }
 
 // listing is a chapter as listed by the fake site
@@ -37,8 +39,10 @@ type listing struct {
 	number float64
 	title  string
 	volume int
+	locked bool
 }
 
+func (l listing) GetLocked() bool    { return l.locked }
 func (l listing) GetNumber() float64 { return l.number }
 func (l listing) GetVolume() int     { return l.volume }
 func (l listing) GetTitle() string   { return l.title }
@@ -71,7 +75,7 @@ func (f *fakeSite) FetchChapters() (grabber.Filterables, []error) {
 		return out, nil
 	}
 	for _, c := range f.chapters {
-		out = append(out, listing{number: c.number, title: fmt.Sprintf("Chapter %g", c.number), volume: c.volume})
+		out = append(out, listing{number: c.number, title: fmt.Sprintf("Chapter %g", c.number), volume: c.volume, locked: c.locked})
 	}
 	return out, nil
 }
@@ -725,7 +729,7 @@ func TestEventsNameTheReleaseWhenCopiesNeedAGroup(t *testing.T) {
 			}
 			// the log keeps the whole label
 			log := c.Log()
-			if got, want := log[len(log)-1].Text, "error downloading chapter "+tt.wantLabel+": boom"; got != want {
+			if got, want := log[len(log)-1].Text, "error downloading "+tt.wantLabel+": boom"; got != want {
 				t.Errorf("log = %q, want %q", got, want)
 			}
 		})
@@ -843,4 +847,165 @@ func TestLoadOfAnotherSeriesDropsTheFilters(t *testing.T) {
 		t.Error("the last series' languages are still listed")
 	}
 	_ = c.FinishLoad("https://example.com/manga/other")
+}
+
+// a chapter the listing marks as locked is never selected, by any path
+func TestLockedChaptersCannotBeSelected(t *testing.T) {
+	list := chapters(5, 1)
+	list[1].locked = true
+	list[3].locked = true
+	c, _, _ := newTestController(t, false, nil, list...)
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.SetSelected(1, true); err != nil || c.IsSelected(1) {
+		t.Errorf("SetSelected selected a locked chapter (err %v)", err)
+	}
+	if err := c.SetSelectedMany([]int{0, 1, 2, 3}, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := c.SelectedIndices(); len(got) != 2 || got[0] != 0 || got[1] != 2 {
+		t.Errorf("SetSelectedMany selected %v, want [0 2]", got)
+	}
+	c.SetAll(false)
+	c.SetAll(true)
+	if got := c.SelectedCount(); got != 3 {
+		t.Errorf("SetAll(true) selected %d, want 3", got)
+	}
+	c.SetAll(false)
+	n, err := c.SelectRange("1-5")
+	if err != nil || n != 3 || c.IsSelected(1) || c.IsSelected(3) {
+		t.Errorf("SelectRange = %d, %v; want 3 without the locked ones", n, err)
+	}
+}
+
+func TestStaleTreatsScanlatorAllAsEmpty(t *testing.T) {
+	c, _, _ := newTestController(t, false, nil, chapters(1, 1)...)
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Configure(func(s *grabber.Settings) { s.Scanlator = "all" }); err != nil {
+		t.Fatal(err)
+	}
+	if c.Stale() {
+		t.Error(`scanlator "all" over a loaded "" reported as stale`)
+	}
+	if err := c.Configure(func(s *grabber.Settings) { s.Language = "all" }); err != nil {
+		t.Fatal(err)
+	}
+	if !c.Stale() {
+		t.Error(`language "all" over a loaded "" must stay stale`)
+	}
+}
+
+// A chapter has its row from the moment its page list is being fetched, and
+// the same row goes on downloading.
+func TestFetchingRowBecomesTheDownloadingOne(t *testing.T) {
+	gate := make(chan struct{})
+	c, site, _ := newTestController(t, false, gate, chapters(1, 2)...)
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	c.SetAll(true)
+	if err := c.Start(); err != nil {
+		t.Fatal(err)
+	}
+	// the fetch is blocked, so the row can only come from Fetching
+	<-site.entered
+	jobs := c.Jobs()
+	if len(jobs) != 1 || jobs[0].State != JobFetching || jobs[0].Status == "" || jobs[0].Done != 0 {
+		t.Fatalf("jobs while fetching = %+v, want one fetching row with a status", jobs)
+	}
+	close(gate)
+
+	if s := waitFinished(t, c); s.Saved != 1 {
+		t.Errorf("summary = %+v, want 1 saved", s)
+	}
+	jobs = c.Jobs()
+	if len(jobs) != 1 || jobs[0].State != JobDone || jobs[0].Status != "" || jobs[0].Total != 2*(core.DownloadWeight+core.ArchiveWeight) {
+		t.Errorf("jobs after the run = %+v, want the one row done with its page total", jobs)
+	}
+}
+
+// A chapter that ends before it starts ends its fetching row, not a second one.
+func TestFetchingRowEndsBeforeStarted(t *testing.T) {
+	newRun := func() (*Controller, events) {
+		c := NewController(&grabber.Settings{}, nil)
+		c.byChap = map[*grabber.Chapter]*Job{}
+		c.fetching = map[grabber.Filterable]*Job{}
+		return c, events{c}
+	}
+	listed := &grabber.Chapter{Title: "Chapter 5", Number: 5}
+
+	t.Run("fetch failed", func(t *testing.T) {
+		c, e := newRun()
+		e.Fetching(listed)
+		e.FetchFailed(listed, errors.New("boom"))
+		jobs := c.Jobs()
+		if len(jobs) != 1 || jobs[0].State != JobFailed || jobs[0].Reason != "boom" || jobs[0].Status != "" {
+			t.Errorf("jobs = %+v, want one failed row", jobs)
+		}
+	})
+	t.Run("skipped", func(t *testing.T) {
+		c, e := newRun()
+		fetched := &grabber.Chapter{Title: "Chapter 5", Number: 5}
+		e.Fetching(listed)
+		e.Fetched(listed, fetched)
+		e.Skipped(fetched)
+		if jobs := c.Jobs(); len(jobs) != 1 || jobs[0].State != JobSkipped {
+			t.Errorf("jobs = %+v, want one skipped row", jobs)
+		}
+	})
+	t.Run("filename failed", func(t *testing.T) {
+		c, e := newRun()
+		fetched := &grabber.Chapter{Title: "Chapter 5", Number: 5}
+		e.Fetching(listed)
+		e.Fetched(listed, fetched)
+		e.FilenameFailed(fetched, errors.New("bad"))
+		if jobs := c.Jobs(); len(jobs) != 1 || jobs[0].State != JobFailed || jobs[0].Reason != "filename: bad" {
+			t.Errorf("jobs = %+v, want one failed row", jobs)
+		}
+	})
+}
+
+// The fetched chapter's title can differ from the listing's, and the row takes it.
+func TestFetchedRowTakesFetchedTitle(t *testing.T) {
+	c := NewController(&grabber.Settings{}, nil)
+	c.byChap = map[*grabber.Chapter]*Job{}
+	c.fetching = map[grabber.Filterable]*Job{}
+	e := events{c}
+	listed := &grabber.Chapter{Title: "Market", Number: 1}
+	fetched := &grabber.Chapter{Title: "Chapter 0001 Market", Number: 1}
+	e.Fetching(listed)
+	e.Fetched(listed, fetched)
+	if jobs := c.Jobs(); len(jobs) != 1 || jobs[0].Title != "Chapter 0001 Market" {
+		t.Errorf("jobs = %+v, want the fetched chapter's title", jobs)
+	}
+}
+
+// Cancelling while a chapter's page list is being fetched can't stop the fetch,
+// so the chapter's row must still leave "fetching".
+func TestCancelWhileFetchingEndsTheRow(t *testing.T) {
+	gate := make(chan struct{})
+	c, site, _ := newTestController(t, false, gate, chapters(1, 1)...)
+	if err := c.Load("https://example.com/manga/test"); err != nil {
+		t.Fatal(err)
+	}
+	c.SetAll(true)
+	if err := c.Start(); err != nil {
+		t.Fatal(err)
+	}
+	<-site.entered
+	if jobs := c.Jobs(); len(jobs) != 1 || jobs[0].State != JobFetching {
+		t.Fatalf("jobs while fetching = %+v, want one fetching row", jobs)
+	}
+	c.Cancel()
+	close(gate)
+	waitFinished(t, c)
+
+	jobs := c.Jobs()
+	if len(jobs) != 1 || (jobs[0].State != JobDone && jobs[0].State != JobFailed) || jobs[0].Status != "" {
+		t.Errorf("jobs after the cancel = %+v, want one finished row", jobs)
+	}
 }

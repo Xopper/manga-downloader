@@ -136,7 +136,7 @@ func Run(cmd *cobra.Command, args []string) {
 	// ranges argument is not provided
 	if len(args) == 1 {
 		prompt := promptui.Prompt{
-			Label:     fmt.Sprintf("Do you want to download all %d chapters", len(chapters)),
+			Label:     allChaptersLabel(chapters),
 			IsConfirm: true,
 		}
 
@@ -170,6 +170,16 @@ func Run(cmd *cobra.Command, args []string) {
 
 	if len(chapters) == 0 {
 		yellow("No chapters found for the specified ranges")
+		exit(1)
+	}
+
+	// locked chapters can't be read logged out: leave them out instead of failing each
+	chapters, lockedNote := skipLocked(chapters)
+	if lockedNote != "" {
+		yellow("%s", lockedNote)
+	}
+	if len(chapters) == 0 {
+		yellow("Every chapter matched by the specified ranges is locked")
 		exit(1)
 	}
 
@@ -358,7 +368,7 @@ func init() {
 	rootCmd.Flags().Uint8VarP(&settings.MaxConcurrency.Pages, "concurrency-pages", "C", 10, "number of concurrent page downloads, hard-limited to 10")
 	rootCmd.Flags().StringVarP(&settings.Language, "language", "l", "", `only download the specified language ("all" downloads every language, on sites listing several)`)
 	rootCmd.Flags().StringVarP(&settings.Scanlator, "scanlator", "s", "", `only download the releases of the specified scanlation group, for sites hosting several groups' versions of the same chapters (the default, and "all", keep every group's)`)
-	rootCmd.Flags().StringVarP(&settings.FilenameTemplate, "filename-template", "t", packer.FilenameTemplateDefault, "template for the resulting filename: {{.Series}}, {{.Number}}, {{.Title}}, {{.Group}}, {{.Volume}} and {{.Version}}")
+	rootCmd.Flags().StringVarP(&settings.FilenameTemplate, "filename-template", "t", packer.FilenameTemplateDefault, "template for the resulting filename: {{.Series}}, {{.Number}}, {{.Title}}, {{.SiteTitle}}, {{.Group}}, {{.Volume}} and {{.Version}}; {{pad .Number 4}} zero-pads a number")
 	rootCmd.Flags().StringVarP(&settings.Format, "format", "f", packer.FormatCBZ, "output format: cbz, raw (a folder with the images) or epub")
 	rootCmd.Flags().StringVar(&settings.ReadingDirection, "reading-direction", packer.ReadingDirectionRTL, `direction pages turn in epub files: "rtl" for manga, "ltr" for webtoons and western comics`)
 	rootCmd.Flags().StringVar(&settings.ConvertImages, "convert-images", grabber.ConvertImagesDefault, `comma-separated source image formats to convert to jpeg for e-reader compatibility: "avif", "webp" or "none"`)
@@ -468,4 +478,30 @@ func toMetaFunc(c *color.Color) func(string) string {
 	return func(s string) string {
 		return c.Sprint(s)
 	}
+}
+
+// allChaptersLabel is the prompt for downloading every listed chapter, which
+// says how many of them the listing marks as locked
+func allChaptersLabel(chapters grabber.Filterables) string {
+	label := fmt.Sprintf("Do you want to download all %d chapters", len(chapters))
+	locked := 0
+	for _, c := range chapters {
+		if grabber.LockedOf(c) {
+			locked++
+		}
+	}
+	if locked > 0 {
+		label += fmt.Sprintf(" (%d locked, skipped)", locked)
+	}
+	return label
+}
+
+// skipLocked drops the chapters the listing marks as locked, returning the rest
+// and the line that says which were left out ("" when none were)
+func skipLocked(chapters grabber.Filterables) (grabber.Filterables, string) {
+	open, locked := core.SplitLocked(chapters)
+	if len(locked) == 0 {
+		return chapters, ""
+	}
+	return open, core.LockedMessage(locked)
 }

@@ -148,15 +148,15 @@ type Series struct {
 // (err is the load's error), so a front end can still offer the values that exist.
 func FilterOptionsOf(site grabber.Site, err error) (languages, scanlators *grabber.FilterOptions) {
 	if l, ok := site.(grabber.LanguageLister); ok {
-		options := l.LanguageOptions()
+		options := l.LanguageOptions().Sorted()
 		languages = &options
 	}
 
 	var unavailable *grabber.UnavailableFilterError
 	if errors.As(err, &unavailable) && unavailable.Filter == "scanlator" {
-		scanlators = &grabber.FilterOptions{Values: unavailable.Available, All: true}
+		scanlators = &grabber.FilterOptions{Values: grabber.SortedValues(unavailable.Available), All: true}
 	} else if s, ok := site.(grabber.ScanlatorLister); ok {
-		options := s.ScanlatorOptions()
+		options := s.ScanlatorOptions().Sorted()
 		scanlators = &options
 	}
 
@@ -330,11 +330,10 @@ func HasGroupDuplicates(chapters grabber.Filterables) bool {
 	return false
 }
 
-// ReleaseLabel names a release: its title, then its language and group in
-// brackets when showLang and showGroup ask for them and it has them. Messages
-// and the app's activity use it too, so a line says which release it means.
+// ReleaseLabel names a release: its chapter name (grabber.ChapterName), then its
+// language and group in brackets when showLang and showGroup ask for them.
 func ReleaseLabel(f grabber.Filterable, showLang, showGroup bool) string {
-	return f.GetTitle() + ReleaseTags(f, showLang, showGroup)
+	return grabber.ChapterName(f) + ReleaseTags(f, showLang, showGroup)
 }
 
 // ReleaseTags is the bracketed part of ReleaseLabel: " [en] [Group A]", or ""

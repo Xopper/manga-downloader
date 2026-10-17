@@ -15,7 +15,9 @@ permissions:
 # TAG; `wails build` adds the desktop,production tags and -s -w itself.
 # The wailsjs/ bindings are committed, so the build doesn't need a webview to
 # generate them (-skipbindings). Windows arm64 is built too, so ARM Windows
-# doesn't run the amd64 build emulated.
+# doesn't run the amd64 build emulated. Each Windows arch also gets an NSIS
+# installer (gui/build/windows/installer/project.nsi) next to its zip. The last
+# job publishes the SHA-256 of every GUI asset for the app's one-click update.
 jobs:
   linux:
     name: Linux ${{ matrix.goarch }}
@@ -98,25 +100,35 @@ jobs:
         node-version: 22
         cache: pnpm
         cache-dependency-path: gui/frontend/pnpm-lock.yaml
+    - name: Install NSIS
+      run: sudo apt-get update && sudo apt-get install -y nsis
     - name: Install the Wails CLI
       run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
     - name: Build and package
       working-directory: gui
       run: |
         set -euo pipefail
-        # the Windows version resource and the bundle's Info.plist take the version from wails.json
+        # the installer's VIProductVersion only takes X.Y.Z
+        if ! [[ "${TAG#v}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::the tag $TAG isn't a numeric X.Y.Z version, which the Windows installer needs"
+          exit 1
+        fi
+        # the Windows version resource, the installer's version and the bundle's Info.plist take the version from wails.json
         sed "s/\"productVersion\": \"0.0.0\"/\"productVersion\": \"${TAG#v}\"/" wails.json > wails.json.new && mv wails.json.new wails.json
         # wails embeds the icon and manifest from build/windows into the exe,
         # and links it as a GUI app (no console window)
         tags="$(make -s -C .. --no-print-directory print-GUI_TAGS)"
         ldflags="$(make -s -C .. --no-print-directory print-GUI_LDFLAGS)"
         wails build -platform windows/${{ matrix.goarch }} -tags "$tags" -trimpath -skipbindings \
-          -m -nosyncgomod -ldflags "$ldflags"
+          -m -nosyncgomod -nsis -ldflags "$ldflags"
         name="manga-downloader-gui-$TAG-windows-${{ matrix.goarch }}"
         rm -rf "stage/$name" && mkdir -p "stage/$name"
         cp build/bin/manga-downloader-gui.exe ../LICENSE "stage/$name/"
         (cd stage && zip -qr "../$name.zip" "$name")
-        gh release upload "$TAG" "$name.zip" --clobber
+        # the in-app updater looks the installer up by this name
+        installer="$name-installer.exe"
+        mv "build/bin/manga-downloader-gui-${{ matrix.goarch }}-installer.exe" "$installer"
+        gh release upload "$TAG" "$name.zip" "$installer" --clobber
 
   macos:
     name: macOS universal
@@ -157,6 +169,34 @@ jobs:
         name="manga-downloader-gui-$TAG-darwin-universal"
         ditto -c -k --keepParent "build/bin/Manga Downloader.app" "$name.zip"
         gh release upload "$TAG" "$name.zip" --clobber
+
+  checksums:
+    name: Checksums
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+    # the app's one-click update verifies what it downloads against this file
+    - name: Publish the checksums of the GUI assets
+      run: |
+        set -euo pipefail
+        mkdir assets
+        gh release download "$TAG" -p "manga-downloader-gui-$TAG-*" -D assets
+        sums="manga-downloader-gui-$TAG-SHA256SUMS.txt"
+        # a re-run finds the previous file among the assets
+        rm -f "assets/$sums"
+        for arch in amd64 arm64; do
+          for want in "linux-$arch.tar.gz" "windows-$arch.zip" "windows-$arch-installer.exe"; do
+            [ -f "assets/manga-downloader-gui-$TAG-$want" ] || { echo "::error::missing GUI asset manga-downloader-gui-$TAG-$want"; exit 1; }
+          done
+        done
+        [ -f "assets/manga-downloader-gui-$TAG-darwin-universal.zip" ] || { echo "::error::missing GUI asset manga-downloader-gui-$TAG-darwin-universal.zip"; exit 1; }
+        (cd assets && sha256sum -- * > "../$sums")
+        cat "$sums"
+        gh release upload "$TAG" "$sums" --clobber
 
   homebrew:
     name: Update the Homebrew cask

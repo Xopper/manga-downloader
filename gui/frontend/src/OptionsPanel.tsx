@@ -8,7 +8,7 @@ import { browserSwitchOf } from './browserVisible';
 import { AVIF_EPUB_HINT, avifSwitchOf, convertFlagsOf, convertValueOf } from './convertImages';
 import { Check, Segmented, Switch, TextField } from './fields';
 import { errorMessage, shortPath } from './format';
-import { FolderIcon } from './icons';
+import { FolderIcon, RefreshIcon } from './icons';
 import type { Options, PackAs, State } from './types';
 
 export const PACK_HINTS: Record<PackAs, string> = {
@@ -189,18 +189,39 @@ export function MoreOptions({ state, onOptions, onError }: Omit<Props, 'onChoose
           <TextField
             label="Filename template"
             value={o.filenameTemplate}
+            placeholder={state.filenameTemplateDefault}
             mono
             disabled={locked}
             hint={
               <>
                 Uses <code>{'{{.Series}}'}</code>, <code>{'{{.Number}}'}</code>, <code>{'{{.Title}}'}</code>,{' '}
-                <code>{'{{.Group}}'}</code>, <code>{'{{.Volume}}'}</code> and <code>{'{{.Version}}'}</code>. Left as is, volumes are named{' '}
+                <code>{'{{.SiteTitle}}'}</code>, <code>{'{{.Group}}'}</code>, <code>{'{{.Volume}}'}</code> and <code>{'{{.Version}}'}</code>;{' '}
+                <code>{'{{pad .Number 4}}'}</code> zero-pads a number. Left as is, volumes are named{' '}
                 <code>Series Vol. 01</code>, or <code>Series Vol. 01 [Group]</code> when their chapters share a group.
               </>
+            }
+            action={
+              o.filenameTemplate !== state.filenameTemplateDefault && (
+                <button
+                  type="button"
+                  className="btn ghost small icon-only"
+                  aria-label="Use default template"
+                  title="Use default template"
+                  disabled={locked}
+                  onClick={() => set({ filenameTemplate: state.filenameTemplateDefault })}
+                >
+                  <RefreshIcon />
+                </button>
+              )
             }
             onCommit={(filenameTemplate) => onOptions({ filenameTemplate })}
             onError={onError}
           />
+          {state.filenameTemplateWarning && (
+            <p className="hint warn-text" role="status">
+              {state.filenameTemplateWarning}
+            </p>
+          )}
           <Switch
             label="Show the browser window"
             description={browser.hint}

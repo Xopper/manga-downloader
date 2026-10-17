@@ -7,18 +7,22 @@
 // loaded, stale, running, bundle, cancelling, done, update, check, volumes
 // (loaded, packing by volume, with three volumes and a half selected) or
 // volumes-running (a run by volume in progress). update is loaded too, as a
-// release build (v1.16.1 with &shot, v1.12.0 without) with a newer release
-// (v1.17.0 with &shot, v1.13.0 without): the status bar shows the yellow "!".
+// release build (v1.17.0 with &shot, v1.12.0 without) with a newer release
+// (v1.18.0 with &shot, v1.13.0 without): the status bar shows the yellow "!".
 // check is loading a site that needs the browser window, with the alert asking
 // the user to look at it; loading a URL with "check" in it does the same (and
 // one with "slow" in it just takes 3 s) until
 // the load ends. &freeze stops the simulated run from moving (stable
 // screenshots), &dupes lists some numbers twice in two languages, &chapters=N
 // shows the newest N chapters, &novolumes lists no volumes (the series
-// otherwise files its chapters by their real One Piece volume), &fail makes
+// otherwise files its chapters by their real One Piece volume), &locked marks
+// some chapters locked (see below), &fail makes
 // the fourth chapter fail halfway and &skip makes the sixth one come out
 // skipped, every page excluded by --skip-pages (both off by default; every run
-// saves every chapter without them), &epub starts the output as EPUB, &shot
+// saves every chapter without them), &fetching has each chapter's row spend its
+// first few ticks fetching its page list (frozen, the newest rows are still
+// fetching), &epub starts the output as EPUB, &prompt
+// (with update) makes the update one-click and opens its prompt on load, &shot
 // uses production release versions and a macOS output path (for screenshots),
 // and VITE_MOCK=1 at build time includes the mock in production builds (e.g.
 // for the screenshot capture build; set via Wails frontend env).
@@ -32,12 +36,25 @@
 // group the series doesn't list falls back on load, as the backend does: typed
 // "xx" under multi loads "all", under plus the edition the URL points at.
 // Typed values match ignoring case, and take the spelling the series lists.
+// &locked lists every 50th chapter as locked: the list shows its lock
+// and never selects it, as the backend does.
 
 import type { Api, Unsubscribe } from './api';
 import { newIndices, urlKey } from './library';
 import type { CatalogInfo, Chapter, FilterChoice, Followed, Hit, Job, LibraryInfo, LogLine, Options, SiteInfo, State, Summary } from './types';
 import { groupChapters, parseVolumes, siteVolumes } from './volumes';
 import { OP_CHAPTERS } from './mock-onepiece';
+
+const TEMPLATE_DEFAULT =
+  '{{.Series}} {{.Number}} - {{.Title}}{{if .Group}} [{{.Group}}]{{end}}{{if gt .Version 1}} v{{.Version}}{{end}}';
+const TEMPLATE_WARNING =
+  'This template has no {{.Number}}, {{.Title}}, {{.SiteTitle}} or {{.Volume}}, so files only differ by a version suffix.';
+
+/** Mirrors packer.TemplateWarning */
+export function templateWarning(templ: string): string {
+  const t = templ.trim();
+  return t === '' || /\{\{-?\s*[^}]*\.(Number|Title|SiteTitle|Volume)\b/.test(t) ? '' : TEMPLATE_WARNING;
+}
 
 /** Total chapters in the Catalan One Piece feed (MangaDex, ch 598-1194) */
 const CHAPTERS = OP_CHAPTERS.length; // 597
@@ -86,14 +103,20 @@ export interface MockSetup {
   fail: boolean;
   /** The sixth chapter comes out skipped (every page excluded by --skip-pages) */
   skip: boolean;
+  /** Every 50th chapter is listed as locked */
+  locked: boolean;
   /** Use production release versions and a macOS output path (for screenshots) */
   shot: boolean;
+  /** Chapter rows start fetching their page list before they download */
+  fetching: boolean;
   /** Start with EPUB as the output format */
   epub: boolean;
   /** Start without any search catalog on disk */
   nocatalog: boolean;
   /** Start with nothing followed */
   nolibrary: boolean;
+  /** With the update scenario: one-click update, its prompt open on load */
+  prompt: boolean;
 }
 
 /** What the mock series offers for each filter; null when the site lists none */
@@ -121,9 +144,9 @@ const MOCK_ALERT =
 
 const REPO = 'https://github.com/elboletaire/manga-downloader';
 const RELEASE_VERSION_DEV = 'v1.12.0';
-const RELEASE_VERSION_SHOT = 'v1.16.1';
+const RELEASE_VERSION_SHOT = 'v1.18.0';
 const UPDATE_VERSION_DEV = 'v1.13.0';
-const UPDATE_VERSION_SHOT = 'v1.17.0';
+const UPDATE_VERSION_SHOT = 'v1.19.0';
 
 function siteFrom(search: string): MockSite {
   const value = new URLSearchParams(search).get('site');
@@ -148,10 +171,13 @@ export function mockSetupFrom(search: string): MockSetup {
     novolumes: params.has('novolumes'),
     fail: params.has('fail'),
     skip: params.has('skip'),
+    locked: params.has('locked'),
     shot: params.has('shot'),
+    fetching: params.has('fetching'),
     epub: params.has('epub'),
     nocatalog: params.has('nocatalog'),
     nolibrary: params.has('nolibrary'),
+    prompt: params.has('prompt'),
   };
 }
 
@@ -245,7 +271,7 @@ function defaultOptions(shot: boolean, epub: boolean): Options {
     scanlator: '',
     convertImages: 'avif',
     skipPages: '',
-    filenameTemplate: '{{.Series}} {{.Number}} - {{.Title}}{{if .Group}} [{{.Group}}]{{end}}{{if gt .Version 1}} v{{.Version}}{{end}}',
+    filenameTemplate: TEMPLATE_DEFAULT,
     browserVisible: false,
   };
 }
@@ -255,19 +281,28 @@ function defaultOptions(shot: boolean, epub: boolean): Options {
  * Volume 0 means not yet collected. With withLanguages, some chapters also
  * appear in English to simulate a multi-language listing.
  */
-function mockChapters(count: number, withLanguages: boolean, withVolumes = true): Chapter[] {
+function mockChapters(count: number, withLanguages: boolean, withVolumes = true, withLocked = false): Chapter[] {
   const list: Chapter[] = [];
   const source =
     count >= OP_CHAPTERS.length ? OP_CHAPTERS : OP_CHAPTERS.slice(OP_CHAPTERS.length - count);
 
   for (const [number, catTitle, vol] of source) {
     const volume = withVolumes ? vol : 0;
-    list.push({ index: list.length, number, title: catTitle, language: withLanguages ? 'ca' : '', group: '', volume });
+    const locked = withLocked && isMockLocked(number);
+    list.push({ index: list.length, number, title: catTitle, language: withLanguages ? 'ca' : '', group: '', volume, locked });
     if (withLanguages && number % 5 === 0) {
-      list.push({ index: list.length, number, title: catTitle, language: 'en', group: '', volume });
+      list.push({ index: list.length, number, title: catTitle, language: 'en', group: '', volume, locked });
     }
   }
   return list;
+}
+
+/** The error a locked chapter fails with, as core.ErrLocked says it */
+const LOCKED_REASON = 'locked chapter';
+
+/** Every 50th chapter is locked (a listing's coin lock), so a few show in dev. */
+function isMockLocked(number: number): boolean {
+  return number % 50 === 0;
 }
 
 /** Every chapter by Alpha, and every fifth again by Delta, so a number repeats in one language. */
@@ -310,10 +345,13 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     novolumes,
     fail,
     skip,
+    locked,
     shot,
+    fetching,
     epub,
     nocatalog,
     nolibrary,
+    prompt,
   } = {
     scenario: 'empty' as Scenario,
     freeze: false,
@@ -323,10 +361,13 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     novolumes: false,
     fail: false,
     skip: false,
+    locked: false,
     shot: false,
+    fetching: false,
     epub: false,
     nocatalog: false,
     nolibrary: false,
+    prompt: false,
     ...(typeof setup === 'string' ? { scenario: setup } : setup),
   };
   const offers = OFFERS[site];
@@ -468,12 +509,19 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     version: reportsRelease ? releaseVersion : 'v0.0.0-mock',
     releaseURL: reportsRelease ? `${REPO}/releases/tag/${releaseVersion}` : '',
     update: isReleaseBuild(scenario)
-      ? { latest: shot ? UPDATE_VERSION_SHOT : UPDATE_VERSION_DEV, url: `${REPO}/releases/latest` }
+      ? {
+          latest: shot ? UPDATE_VERSION_SHOT : UPDATE_VERSION_DEV,
+          url: `${REPO}/releases/latest`,
+          oneClick: !shot || prompt,
+          ...(prompt && { prompt: true }),
+        }
       : null,
     browserVisibleAuto: browserAuto,
     browserAlert,
     catalog: catalogInfo(),
     library: libraryInfo(),
+    filenameTemplateDefault: TEMPLATE_DEFAULT,
+    filenameTemplateWarning: options.packAs === 'chapters' ? templateWarning(options.filenameTemplate) : '',
   });
   const push = () => stateBus.emit(snapshot());
 
@@ -484,7 +532,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     fallbackFor('language', 'language');
     fallbackFor('scanlator', 'scanlation group');
     title = 'One Piece';
-    chapters = mockChapters(chapterCount, dupes || url.includes('dupes') || options.language === 'all', !novolumes);
+    chapters = mockChapters(chapterCount, dupes || url.includes('dupes') || options.language === 'all', !novolumes, locked);
     if (offers.scanlator !== null) {
       chapters = groupedChapters(chapters);
     }
@@ -572,6 +620,9 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
   let runNumbers: number[] = [];
   // how many chapters each volume row of the run holds, by title
   let volumeChapters = new Map<string, number>();
+  // with &fetching, the ticks a chapter's row has left fetching its page list
+  const fetchLeft = new Map<string, number>();
+  const FETCH_TICKS = 4;
 
   /** A tick's steps: the pace it had when a page was two steps, scaled to STEPS_PER_PAGE. */
   function ticks(n: number): number {
@@ -626,6 +677,19 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       };
     });
 
+    jobs = jobs.map((j) => {
+      const left = fetchLeft.get(j.title);
+      if (j.state !== 'fetching' || left === undefined) {
+        return j;
+      }
+      if (left > 1) {
+        fetchLeft.set(j.title, left - 1);
+        return j;
+      }
+      fetchLeft.delete(j.title);
+      return { ...j, state: 'downloading', total: PAGES * STEPS_PER_PAGE, status: '' };
+    });
+
     jobs = jobs.map((j, idx) => {
       if (j.volume || (j.state !== 'downloading' && j.state !== 'archiving')) {
         return j;
@@ -639,9 +703,33 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       return { ...j, done, state };
     });
 
-    const active = jobs.filter((j) => !j.volume && (j.state === 'downloading' || j.state === 'archiving')).length;
+    const active = jobs.filter(
+      (j) => !j.volume && (j.state === 'fetching' || j.state === 'downloading' || j.state === 'archiving'),
+    ).length;
     if (!cancelling && active < 3 && pending.length > 0) {
       const c = pending.shift()!;
+      if (c.locked) {
+        // as the backend's FetchFailed: a listed lock fails before any fetch,
+        // with a row unless the run is a bundle
+        if (!runBundle) {
+          jobs = [
+            ...jobs,
+            {
+              title: c.title,
+              tags: '',
+              number: c.number,
+              total: 0,
+              done: 0,
+              state: 'failed',
+              reason: LOCKED_REASON,
+              status: '',
+              volume: false,
+            },
+          ];
+        }
+        pushLog('error', `error fetching ${c.title}: ${LOCKED_REASON}`);
+        return true;
+      }
       if (skip && jobs.filter((j) => !j.volume).length === 5) {
         // as the backend's Skipped event: a row with nothing to download
         jobs = [
@@ -661,24 +749,28 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         pushLog('warn', `skipping ${c.title}: every page is excluded by --skip-pages`);
         return true;
       }
+      if (fetching) {
+        fetchLeft.set(c.title, FETCH_TICKS);
+      }
       jobs = [
         ...jobs,
         {
           title: c.title,
           tags: '',
           number: c.number,
-          total: PAGES * STEPS_PER_PAGE,
+          total: fetching ? 0 : PAGES * STEPS_PER_PAGE,
           done: 0,
-          state: 'downloading',
+          state: fetching ? 'fetching' : 'downloading',
           reason: '',
-          status: '',
+          status: fetching ? 'Fetching pages...' : '',
           volume: false,
         },
       ];
     }
 
     return (
-      jobs.some((j) => j.state === 'downloading' || j.state === 'archiving') || (!cancelling && pending.length > 0)
+      jobs.some((j) => j.state === 'fetching' || j.state === 'downloading' || j.state === 'archiving') ||
+      (!cancelling && pending.length > 0)
     );
   }
 
@@ -692,6 +784,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     summary = null;
     pending = [...list];
     volumeChapters = new Map();
+    fetchLeft.clear();
     runRows = runBundle ? 1 : list.length;
     if (runVolumes) {
       // the backend makes a row per volume up front, and runs the chapters
@@ -778,11 +871,10 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
   } else if (scenario !== 'empty') {
     url = 'https://example.com/manga/one-piece';
     finishLoad();
-    for (const c of chapters.slice(0, 12)) {
-      selected.add(c.index);
-    }
-    for (const c of chapters.slice(40, 52)) {
-      selected.add(c.index);
+    for (const c of [...chapters.slice(0, 12), ...chapters.slice(40, 52)]) {
+      if (!c.locked) {
+        selected.add(c.index);
+      }
     }
     selectionBus.emit(selectionOf());
   }
@@ -810,7 +902,12 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
   if (scenario === 'volumes' || scenario === 'volumes-running') {
     options.packAs = 'volumes';
     // three volumes and a half: the first 32 chapters (598-629) span volumes 61-64
-    selected = new Set(chapters.slice(0, Math.min(32, chapters.length)).map((c) => c.index));
+    selected = new Set(
+      chapters
+        .slice(0, Math.min(32, chapters.length))
+        .filter((c) => !c.locked)
+        .map((c) => c.index),
+    );
     selectionBus.emit(selectionOf());
   }
   if (scenario === 'volumes-running') {
@@ -939,9 +1036,9 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       if (index < 0 || index >= chapters.length) {
         return;
       }
-      if (on) {
+      if (on && !chapters[index].locked) {
         selected.add(index);
-      } else {
+      } else if (!on) {
         selected.delete(index);
       }
       selectionBus.emit(selectionOf());
@@ -956,7 +1053,9 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       }
       for (const index of indices) {
         if (on) {
-          selected.add(index);
+          if (!chapters[index].locked) {
+            selected.add(index);
+          }
         } else {
           selected.delete(index);
         }
@@ -968,7 +1067,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       if (loading || running) {
         throw 'a series is loading or a download is running';
       }
-      selected = new Set(on ? chapters.map((c) => c.index) : []);
+      selected = new Set(on ? chapters.filter((c) => !c.locked).map((c) => c.index) : []);
       selectionBus.emit(selectionOf());
       push();
     },
@@ -987,7 +1086,7 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
         }
         const hi = b ?? a;
         for (const c of chapters) {
-          if (c.number >= a && c.number <= hi) {
+          if (c.number >= a && c.number <= hi && !c.locked) {
             matched.push(c.index);
           }
         }
@@ -1038,6 +1137,9 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
     openURL(url) {
       window.open(url, '_blank', 'noopener');
     },
+    async readClipboard() {
+      return 'https://example.com/manga/one-piece';
+    },
     async start() {
       if (loading || running) {
         throw 'a series is loading or a download is running';
@@ -1062,6 +1164,12 @@ export function createMockApi(setup: Scenario | Partial<MockSetup> = 'empty'): A
       }
       pushLog('info', `Downloading ${picked.length} chapter(s) of ${title}`);
       simulateRun(picked);
+    },
+    async update() {
+      pushLog('info', 'Downloading the update ' + UPDATE_VERSION_DEV + '... (mock)');
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      pushLog('error', `couldn't download the update: the mock has no installer`);
+      throw new Error('the mock has no installer');
     },
     async showBrowser() {
       pushLog('info', 'would bring the browser window to the front (mock)');

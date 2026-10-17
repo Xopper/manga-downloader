@@ -1,7 +1,7 @@
 // Types of the data the Go App sends to the window. They mirror the JSON of
 // the DTOs in gui/app.go and gui/store.go; keep the two in step.
 
-export type JobState = 'downloading' | 'archiving' | 'done' | 'failed' | 'skipped';
+export type JobState = 'fetching' | 'downloading' | 'archiving' | 'done' | 'failed' | 'skipped';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 
@@ -116,6 +116,10 @@ export interface State {
   catalog: CatalogInfo;
   /** The followed series, with the check or batch download in progress */
   library: LibraryInfo;
+  /** The filename template a blank option stands for */
+  filenameTemplateDefault: string;
+  /** What is wrong with options.filenameTemplate; "" when nothing */
+  filenameTemplateWarning: string;
 }
 
 /** A series the user follows, as the library keeps it */
@@ -240,6 +244,10 @@ export interface Update {
   latest: string;
   /** The page the update is linked to: the latest release */
   url: string;
+  /** Update() can install it: an installed copy, and its package and checksums on the release */
+  oneClick: boolean;
+  /** Open the update prompt on load; only the mock sets it (the 11-update-prompt screenshot) */
+  prompt?: boolean;
 }
 
 export interface Chapter {
@@ -252,6 +260,8 @@ export interface Chapter {
   group: string;
   /** The volume the site files it under; 0 when the site doesn't say */
   volume: number;
+  /** The listing marks it locked: it can't be selected, so no run takes it */
+  locked: boolean;
 }
 
 export interface LogLine {

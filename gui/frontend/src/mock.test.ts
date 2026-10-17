@@ -266,22 +266,32 @@ describe('createMockApi', () => {
     expect((await createMockApi('done').state()).version).toBe('v0.0.0-mock');
   });
 
-  it('shows v1.16.1 for all scenarios with shot, v1.17.0 as the update', async () => {
+  it('shows v1.18.0 for all scenarios with shot, v1.19.0 as the update', async () => {
     const update = await createMockApi({ scenario: 'update', shot: true }).state();
-    expect(update.version).toBe('v1.16.1');
-    expect(update.update?.latest).toBe('v1.17.0');
+    expect(update.version).toBe('v1.18.0');
+    expect(update.update?.latest).toBe('v1.19.0');
 
     const loaded = await createMockApi({ scenario: 'loaded', shot: true }).state();
-    expect(loaded.version).toBe('v1.16.1');
+    expect(loaded.version).toBe('v1.18.0');
     expect(loaded.update).toBeNull();
   });
 
   it('links the version to its release whenever it reports a release', async () => {
     const tag = (v: string) => `https://github.com/elboletaire/manga-downloader/releases/tag/${v}`;
-    expect((await createMockApi({ scenario: 'loaded', shot: true }).state()).releaseURL).toBe(tag('v1.16.1'));
-    expect((await createMockApi({ scenario: 'update', shot: true }).state()).releaseURL).toBe(tag('v1.16.1'));
+    expect((await createMockApi({ scenario: 'loaded', shot: true }).state()).releaseURL).toBe(tag('v1.18.0'));
+    expect((await createMockApi({ scenario: 'update', shot: true }).state()).releaseURL).toBe(tag('v1.18.0'));
     expect((await createMockApi('update').state()).releaseURL).toBe(tag('v1.12.0'));
     expect((await createMockApi('loaded').state()).releaseURL).toBe('');
+  });
+
+  it('keeps the update not one-click with shot, and opens its prompt with prompt', async () => {
+    const shot = (await createMockApi({ scenario: 'update', shot: true }).state()).update;
+    expect(shot?.oneClick).toBe(false);
+    expect(shot?.prompt).toBeUndefined();
+
+    const prompt = (await createMockApi({ scenario: 'update', shot: true, prompt: true }).state()).update;
+    expect(prompt).toMatchObject({ latest: 'v1.19.0', oneClick: true, prompt: true });
+    expect((await createMockApi({ scenario: 'loaded', prompt: true }).state()).update).toBeNull();
   });
 
   it('uses the macOS output path with shot and the Linux path without', async () => {
@@ -420,17 +430,22 @@ describe('mockSetupFrom', () => {
       novolumes: false,
       fail: false,
       skip: false,
+      locked: false,
       shot: false,
+      fetching: false,
       epub: false,
       nocatalog: false,
       nolibrary: false,
+      prompt: false,
     });
     expect(mockSetupFrom('?novolumes').novolumes).toBe(true);
     expect(mockSetupFrom('?nolibrary').nolibrary).toBe(true);
     expect(mockSetupFrom('?chapters=nope').chapters).toBeGreaterThan(100);
     expect(mockSetupFrom('?fail').fail).toBe(true);
     expect(mockSetupFrom('?skip').skip).toBe(true);
+    expect(mockSetupFrom('?locked').locked).toBe(true);
     expect(mockSetupFrom('?shot').shot).toBe(true);
+    expect(mockSetupFrom('?prompt').prompt).toBe(true);
     expect(mockSetupFrom('?epub').epub).toBe(true);
     expect(mockSetupFrom('?nocatalog').nocatalog).toBe(true);
   });
@@ -517,5 +532,58 @@ describe('mock filters', () => {
     expect((await api.state()).stale).toBe(false);
     await reload;
     expect((await api.state()).stale).toBe(false);
+  });
+});
+
+describe('mock locked chapters', () => {
+  it('lists none by default, and every 50th chapter with &locked', async () => {
+    const plain = await createMockApi({ scenario: 'loaded' }).chapters();
+    expect(plain.some((c) => c.locked)).toBe(false);
+
+    const locked = (await createMockApi({ scenario: 'loaded', locked: true }).chapters()).filter((c) => c.locked);
+    expect(locked.length).toBeGreaterThan(0);
+    expect(locked.every((c) => c.number % 50 === 0)).toBe(true);
+  });
+
+  it('never selects a locked chapter, by click, span, All or range', async () => {
+    const api = createMockApi({ scenario: 'empty', locked: true });
+    await api.load('https://example.com/manga/one-piece');
+    const list = await api.chapters();
+    const lockedIdx = list.filter((c) => c.locked).map((c) => c.index);
+    expect(lockedIdx.length).toBeGreaterThan(0);
+
+    await api.setSelected(lockedIdx[0], true);
+    await api.setSelectedMany(lockedIdx, true);
+    expect(await api.selection()).toEqual([]);
+
+    await api.setAll(true);
+    expect((await api.selection()).length).toBe(list.length - lockedIdx.length);
+    expect((await api.selection()).some((i) => lockedIdx.includes(i))).toBe(false);
+
+    await api.setAll(false);
+    const first = list[0].number;
+    const n = await api.selectRange(`${first}-${list[list.length - 1].number}`);
+    expect(n).toBe(list.length - lockedIdx.length);
+  });
+});
+
+describe('one-click update', () => {
+  it('is offered in the update scenario, but not in the screenshot', async () => {
+    expect((await createMockApi('update').state()).update?.oneClick).toBe(true);
+    expect((await createMockApi({ scenario: 'update', shot: true }).state()).update?.oneClick).toBe(false);
+  });
+});
+
+describe('mock fetching rows', () => {
+  it('starts each chapter fetching its pages, then downloading them', async () => {
+    const api = createMockApi({ scenario: 'running', fetching: true, freeze: true });
+    const rows = (await api.state()).jobs;
+    expect(rows.some((j) => j.state === 'fetching' && j.total === 0 && j.status !== '')).toBe(true);
+    expect(rows.some((j) => j.state === 'downloading')).toBe(true);
+  });
+
+  it('keeps the other running scenarios free of fetching rows', async () => {
+    const rows = (await createMockApi({ scenario: 'running', freeze: true }).state()).jobs;
+    expect(rows.some((j) => j.state === 'fetching')).toBe(false);
   });
 });

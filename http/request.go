@@ -164,6 +164,15 @@ var transport = &http.Transport{
 	TLSHandshakeTimeout: 20 * time.Second,
 }
 
+// roundTripper, when set by SetRoundTripper, answers every request instead of
+// the network. The demo build uses it to serve the fake pages (see demo/).
+var roundTripper http.RoundTripper
+
+// SetRoundTripper routes every request through rt instead of the network
+func SetRoundTripper(rt http.RoundTripper) {
+	roundTripper = rt
+}
+
 // request sends a request to the given URL, retrying transient failures with
 // exponential backoff. Both GET and POST are retried safely: POST bodies are
 // rebuilt from params on each attempt so the body reader is never exhausted.
@@ -230,7 +239,11 @@ func doRequest(t string, params Params) (body io.ReadCloser, contentType string,
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
-	client := &http.Client{Transport: transport, Timeout: timeout}
+	var tr http.RoundTripper = transport
+	if roundTripper != nil {
+		tr = roundTripper
+	}
+	client := &http.Client{Transport: tr, Timeout: timeout}
 
 	var reqBody io.Reader
 	if rp.Form != nil {

@@ -105,13 +105,29 @@ func (b *Blogger) resolveSeriesURL() error {
 		return errSeriesNotFound(b.URL)
 	}
 
-	post, ok := bloggerPostTitle(b.doc)
-	if !ok {
-		return errSeriesNotFound(b.URL)
+	if post, ok := bloggerPostTitle(b.doc); ok {
+		b.query = post.Series
+		return nil
 	}
-	b.query = post.Series
+	// a title without a number is a series post, searched under its own name
+	if name := bloggerSeriesPostTitle(b.doc); name != "" {
+		b.query = name
+		return nil
+	}
 
-	return nil
+	return errSeriesNotFound(b.URL)
+}
+
+// bloggerSeriesPostTitle returns the title of a post that names a series
+// instead of a chapter (no number in it), or "" when it has none.
+func bloggerSeriesPostTitle(doc *goquery.Document) string {
+	name := stripBlogName(doc.Find(`meta[property="og:title"]`).AttrOr("content", ""))
+	name = bloggerLeerRe.ReplaceAllString(name, "")
+	name = stripKindWord(bloggerBracketRe.ReplaceAllString(name, " "))
+	if name == "" || bloggerNumberRe.MatchString(name) {
+		return ""
+	}
+	return name
 }
 
 // bloggerPostTitle reads a chapter post's title from the first place that
@@ -249,16 +265,11 @@ func bloggerChapters(entries []bloggerEntry, query, lang string) (Filterables, s
 			title = post.Series
 		}
 
-		chapterTitle := "Chapter " + strconv.FormatFloat(post.Number, 'f', -1, 64)
-		if post.Part != "" {
-			chapterTitle += " Part " + post.Part
-		}
-
 		chapters = append(chapters, &BloggerChapter{
 			Chapter{
-				Title:    chapterTitle,
 				Number:   post.Number,
 				Language: lang,
+				Label:    Label{Style: LabelNumbered, Part: post.Part},
 			},
 			e.URL,
 		})
@@ -347,13 +358,27 @@ func bloggerKey(name string) string {
 	}), " ")
 }
 
-// bloggerPages returns the reader images of a chapter post. Blogger's own
-// decorations (the hidden cover, the WhatsApp badge, the footer banner) carry
-// an alt text, while the pages the uploader pasted in have alt="".
+// bloggerPages returns a chapter post's pages: Blogger's own decorations carry an
+// alt text, the uploaded pages alt="". Script-rendered templates keep the body in
+// a hidden textarea.
 func bloggerPages(doc *goquery.Document, postURL *url.URL) []Page {
+	if pages := bloggerImages(doc.Find("div.post-body img[alt='']"), postURL); len(pages) > 0 {
+		return pages
+	}
+
+	raw := doc.Find("textarea#zeist-raw-data").First().Text()
+	body, err := goquery.NewDocumentFromReader(strings.NewReader(raw))
+	if err != nil {
+		return nil
+	}
+	return bloggerImages(body.Find("img[alt='']"), postURL)
+}
+
+// bloggerImages turns the src of each image into a numbered page.
+func bloggerImages(imgs *goquery.Selection, postURL *url.URL) []Page {
 	var pages []Page
 
-	doc.Find("div.post-body img[alt='']").Each(func(_ int, s *goquery.Selection) {
+	imgs.Each(func(_ int, s *goquery.Selection) {
 		src := strings.TrimSpace(s.AttrOr("src", ""))
 		if src == "" {
 			return
@@ -412,7 +437,7 @@ func (b *Blogger) FetchChapter(f Filterable) (*Chapter, error) {
 
 	pages := bloggerPages(doc, postURL)
 	if len(pages) == 0 {
-		return nil, fmt.Errorf("no pages found for %s", bchap.GetTitle())
+		return nil, fmt.Errorf("no pages found for %s", ChapterLabel(bchap))
 	}
 
 	chapter := bchap.Chapter

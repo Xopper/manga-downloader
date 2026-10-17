@@ -42,6 +42,49 @@ func VolumeOf(f Filterable) int {
 	return 0
 }
 
+// ChapterTitlePrefix matches the chapter word and number a title may open with
+// ("Chapter 0005: ", "Capítulo 5 - ", "Vol. 3 Ch. 5 "), and the separator after them
+var ChapterTitlePrefix = regexp.MustCompile(`(?i)^(?:vol(?:ume|umen)?\.?\s*\d+\s*)?(?:episode|chapter|chapitre|chap|cap[ií]tulo|capitolo|cap|ch|ep|c|b[öo]l[üu]m|глава)\.?\s*0*(\d+(?:\.\d+)?)\b(?:\s*[:.\-‐‒–—―−]+)?\s*`)
+
+// bareNumber matches a number a title opens with and no chapter word ("186. Foo")
+var bareNumber = regexp.MustCompile(`^0*(\d+(?:\.\d+)?)\b`)
+
+// ChapterName names a chapter in messages: its label, or "Chapter N (label)"
+// when the label doesn't open with its number, as sites often number their
+// own seasons in titles. Chapter 0 is left to the label (it may be unread).
+func ChapterName(f Filterable) string {
+	title, number := ChapterLabel(f), f.GetNumber()
+	if number <= 0 {
+		return title
+	}
+	for _, re := range []*regexp.Regexp{ChapterTitlePrefix, bareNumber} {
+		if m := re.FindStringSubmatch(title); m != nil {
+			if n, err := strconv.ParseFloat(m[1], 64); err == nil && n == number {
+				return title
+			}
+		}
+	}
+	name := NumberLabel(number)
+	if title == "" {
+		return name
+	}
+	return name + " (" + title + ")"
+}
+
+// Lockable is a chapter the listing may mark as locked. Like Volumed, it isn't
+// part of Filterable: most sites never say, so LockedOf is how callers ask.
+type Lockable interface {
+	GetLocked() bool
+}
+
+// LockedOf reports whether the listing marks a chapter as locked
+func LockedOf(f Filterable) bool {
+	if l, ok := f.(Lockable); ok {
+		return l.GetLocked()
+	}
+	return false
+}
+
 // volumeRe matches a whole volume number: a bare "3", or one behind a
 // "Volume"/"Vol."/"v" label ("Volume 3", "Vol. 03", "v98")
 var volumeRe = regexp.MustCompile(`(?i)^(?:vol(?:ume|umen)?\.?|v)?\s*0*(\d+)$`)
@@ -112,7 +155,7 @@ type UnavailableFilterError struct {
 func (e *UnavailableFilterError) Error() string {
 	available := "none"
 	if len(e.Available) > 0 {
-		available = strings.Join(e.Available, ", ")
+		available = strings.Join(SortedValues(e.Available), ", ")
 	}
 
 	return fmt.Sprintf("%s %q isn't available for this title (available: %s)", e.Filter, e.Value, available)

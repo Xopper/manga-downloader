@@ -47,7 +47,7 @@ Linux, and as a **command line tool** for scripts, servers and Docker.
 
 **Desktop app and command line**
 
-- **[125 supported sites](#supported-sites)**, from big aggregators to small
+- **[179 supported sites](#supported-sites)**, from big aggregators to small
   scanlation groups.
 - **[Search without a link](#search)**: the supported sites' catalogs are
   on your disk, so a title is found by name, offline, in the app or with
@@ -77,9 +77,12 @@ The easiest way is the [website][website], which picks the right download for
 your system. Or download the `manga-downloader-gui` asset for your system from
 the [releases page][releases]:
 
-- **Windows**: `manga-downloader-gui-<tag>-windows-amd64.zip`, or
-  `-windows-arm64.zip` for ARM devices such as Snapdragon laptops. Unzip it and
-  run `manga-downloader-gui.exe`.
+- **Windows**: `manga-downloader-gui-<tag>-windows-amd64-installer.exe`, or
+  `-windows-arm64-installer.exe` for ARM devices such as Snapdragon laptops. It
+  installs for your user alone (`%LOCALAPPDATA%\Programs\Manga Downloader`),
+  or for everyone in `C:\Program Files\Manga Downloader` if you run it as
+  administrator, and adds a Start menu shortcut. For a portable copy, use the `.zip` of the same name instead: unzip
+  it and run `manga-downloader-gui.exe`.
 - **macOS**: `manga-downloader-gui-<tag>-darwin-universal.zip`. Unzip it and move
   `Manga Downloader.app` wherever you like. Or install it with
   [Homebrew][homebrew], which also puts `manga-downloader-gui` on your `PATH`:
@@ -121,15 +124,20 @@ the [releases page][releases]:
 >
 > **Windows** needs the Microsoft Edge WebView2 runtime. Windows 11 and current
 > Windows 10 already have it; without it, the app offers to download and install it on first launch.
-> If SmartScreen shows *"Windows protected your PC"*, click **More info** →
-> **Run anyway**: the file is only flagged because it isn't signed.
+> If SmartScreen shows *"Windows protected your PC"* when you run the installer
+> or the app, click **More info** → **Run anyway**: the file is only flagged
+> because it isn't signed.
 
 If the desktop app sits next to the command line tool or is on your `PATH` (the
 Homebrew cask and the Linux `install.sh` put it there), `manga-downloader ui`
 opens it. On Windows, double-clicking `manga-downloader.exe` does the same.
 
 When a newer release is out, a yellow *!* next to the version in the status bar
-links to it.
+links to it. On the Windows installer's copy, the Linux install script's copy and
+a macOS copy you can write to, it opens a dialog that updates the app in one
+click, after checking the download against the release's checksums. While the
+app's Homebrew cask is installed it keeps the link instead, since `brew upgrade`
+updates that copy.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/09-update-dark.png">
@@ -165,6 +173,9 @@ it and run the binary:
 ~~~bash
 ./manga-downloader --help
 ~~~
+
+To verify the download, check it against `manga-downloader-<tag>-SHA256SUMS.txt`
+from the same release: `sha256sum -c --ignore-missing manga-downloader-<tag>-SHA256SUMS.txt`.
 
 Builds are published for Linux, macOS and Windows on amd64 and arm64 (Windows
 arm64 included), plus 32-bit builds for Linux and Windows. The Windows 32-bit
@@ -281,16 +292,6 @@ docker run --rm -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix \
 
 </details>
 
-#### Go
-
-~~~bash
-go install github.com/elboletaire/manga-downloader@latest
-~~~
-
-> [!TIP]
-> Binaries installed this way don't report a version number, because the
-> version is only added to release builds.
-
 ## Using the desktop app
 
 The app opens on your **library**: the series you follow, each with how many
@@ -307,7 +308,8 @@ To add a series:
    straight away.
 2. **Pick chapters** in the list. *New* selects what you haven't saved yet;
    type a range such as `1-10,12` and press *Add range*, Shift+click to select
-   a span, or use *All* and *None*. The arrow keys and Space work too. Press
+   a span, or use *All* and *None*. The arrow keys and Space work too. Locked
+   chapters (paid or members-only) show a lock and can't be selected. Press
    **Follow** on the right to keep the series in your library.
 3. **Choose a language and a scanlation group** when the site offers them. The
    selectors tell you when a series has none, and picking one reloads the
@@ -335,6 +337,14 @@ To add a series:
    <picture>
      <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/06-options-dark.png">
      <img alt="The Options tab with EPUB chosen, showing the format, reading direction and Pack as options" src="assets/screenshots/06-options-light.png">
+   </picture>
+
+   When a site needs you at its browser window, an alert says so, with *Show the
+   browser window* to bring it to the front and *Dismiss* to hide the alert.
+
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/08-browser-alert-dark.png">
+     <img alt="The app's alert saying the browser needs you, with Dismiss and Show the browser window buttons" src="assets/screenshots/08-browser-alert-light.png">
    </picture>
 
    <picture>
@@ -388,17 +398,21 @@ manga-downloader [flags] [url] [chapters]
 - `chapters` is a comma-separated list of numbers and ranges, such as
   `1,3,5-10`. If you leave it out, the tool asks whether to download every
   chapter. The answer defaults to "no".
+  Chapters the site marks as locked (coins, early access or members-only) are skipped,
+  with a line saying which.
 
 Arguments aren't positional, so `manga-downloader 1-50 [url]` works too.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/prompt.gif">
-  <img alt="The command line asking whether to download every chapter of a series, then downloading them" src="assets/demos/prompt-light.gif">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/download.gif">
+  <img alt="The command line downloading eight chapters at once, with the range typed before the URL, each chapter with its own progress bar" src="assets/demos/download-light.gif">
 </picture>
 
+Leave the range out and it asks before downloading the whole series:
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/download.gif">
-  <img alt="The command line downloading eight chapters at once, each with its own progress bar" src="assets/demos/download-light.gif">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/prompt.gif">
+  <img alt="The command line asking whether to download every chapter of a series, then downloading them" src="assets/demos/prompt-light.gif">
 </picture>
 
 ### Language and scanlation group
@@ -424,6 +438,11 @@ The default file name adds the release's group in brackets when it names one
 (`One Piece 5 - Chapter 5 [Alpha]`), so each release keeps its own file. A
 template without `{{.Group}}` only tells the releases apart by a version
 suffix (`v2`, `v3`…), in no particular group order.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/demos/groups.gif">
+  <img alt="The command line downloading a series with several scanlation groups per chapter, with the group in brackets after each title and a long title cut with an ellipsis, then again with --scanlator keeping one group's releases" src="assets/demos/groups-light.gif">
+</picture>
 
 ### Bundling and output format
 
@@ -557,6 +576,21 @@ left as is:
 A custom template names them too, with `{{.Number}}` being the volume's
 chapters (`1-7`) and `{{.Title}}` `Vol. 01`.
 
+`{{.Title}}` is the chapter's label: its title, or `Chapter 12` when the site
+gives none. `{{.SiteTitle}}` is the site's own title alone, empty when it gives
+none and for a volume or a bundle.
+
+`pad` zero-pads a number's whole part and keeps its decimals: `{{pad .Number 4}}`
+is `0005` for chapter 5 and `0010.5` for 10.5. MangaDex chapters used to be
+named with a padded label; this template names per-chapter MangaDex downloads
+that way again (with `Capítulo` in place of `Chapter` for InManga), except that
+decimal chapters keep their real number (`0010.5`). Like any custom template,
+it also names `--volumes` files, and in the app it applies to every site:
+
+~~~
+{{.Series}} {{.Number}} - Chapter {{pad .Number 4}}{{if .SiteTitle}} {{.SiteTitle}}{{end}}{{if .Group}} [{{.Group}}]{{end}}{{if gt .Version 1}} v{{.Version}}{{end}}
+~~~
+
 `{{.Group}}` is the scanlation group that made the release (empty when the site
 doesn't say). A volume or a bundle gets its group only when all of its chapters
 were made by the same one, so mixed groups leave it empty.
@@ -627,134 +661,192 @@ to a minute.
 ## Supported sites
 
 <details>
-<summary><b>Show all 125 supported sites</b></summary>
+<summary><b>Show all 179 supported sites</b></summary>
 <br>
 
-- [3asq.online (Arabic, former 3asq.org)](https://3asq.online)
-- [animeallstar1.com (AnimeAllStar, Spanish)](https://www.animeallstar1.com)
-- [animeallstar30.com (AnimeAllStar, Spanish)](https://animeallstar30.com)
-- [arenascan.com](https://arenascan.com)
-- [asmotoon.com (Asmodeus Scans)](https://asmotoon.com) \*
-- [asurascans.com (Asura Scans, former asuratoon.com)](https://asurascans.com)
-- [atsu.moe (Atsumaru)](https://atsu.moe)
-- [aurorascans.com (redirects to qimanga.com)](https://aurorascans.com)
-- [azorafly.com (Azorafly, Arabic)](https://azorafly.com)
-- [bigsolo.org](https://bigsolo.org)
-- [blackcloveronline.com (Black Clover)](https://blackcloveronline.com)
-- [bluesolo.org (Blue Solo, French scantrad)](https://bluesolo.org)
-- [chainsawman-chapter.online (Chainsaw Man)](https://chainsawman-chapter.online)
-- [chainsawmannmanga.com (Chainsaw Man)](https://chainsawmannmanga.com)
-- [comix.to](https://comix.to) \*
-- [danke.moe (Danke fürs Lesen)](https://danke.moe)
-- [deathtollscans.net](https://reader.deathtollscans.net)
-- [demonicscans.org (MangaDemon / Demonic Scans)](https://demonicscans.org)
-- [dragonballmangaa.com (Dragon Ball Super)](https://dragonballmangaa.com)
-- [dragontea.ink](https://dragontea.ink) \*
-- [drakecomic.net (Drake Scans, former drakecomic.org)](https://drakecomic.net)
-- [dynasty-scans.com (Dynasty Reader)](https://dynasty-scans.com)
-- [eldermanga.com](https://eldermanga.com)
-- [elftoon.net (Elf Toon, former elftoon.com)](https://elftoon.net)
-- [en-hijala.com (Hijala Translations)](https://en-hijala.com)
-- [en-thunderscans.com (Thunderscans)](https://en-thunderscans.com)
-- [eskimangalar.com](https://eskimangalar.com)
-- [evascans.net (former evascans.org)](https://evascans.net)
-- [fanfox.net (Manga Fox)](https://fanfox.net)
-- [flamecomics.xyz (Flame Comics, former Flame Scans)](https://flamecomics.xyz)
-- [fmteam.fr](https://fmteam.fr)
-- [furyosociety.com](https://furyosociety.com)
-- [gdscans.com (GalaxyDegenScans)](https://gdscans.com)
-- [genzupdates.com (Genz Toon)](https://genzupdates.com)
-- [guya.moe (Guya, Kaguya-sama)](https://guya.moe)
-- [heavenly-delusion.com (Heavenly Delusion)](https://heavenly-delusion.com)
-- [hivetoons.org (HiveToons, VoidScans)](https://hivetoons.org)
-- [inmanga.com](https://inmanga.com)
-- [jestful.net](https://jestful.net)
-- [jojolandsmanga.com (The JoJoLands)](https://jojolandsmanga.com)
-- [jujutsukaisenmanga.pro (Jujutsu Kaisen)](https://jujutsukaisenmanga.pro)
-- [kappabeast.com](https://kappabeast.com) \*
-- [kaynscans.com (Kayn Scans, former kaynscan.org)](https://kaynscans.com)
-- [kingofshojo.com](https://kingofshojo.com)
-- [komikindo.ch](https://komikindo.ch)
-- [komikstation.org (Indonesian)](https://komikstation.org)
-- [lagoonscans.com](https://lagoonscans.com)
-- [leercapitulo.co](https://www.leercapitulo.co)
-- [lelmanga.com (French)](https://www.lelmanga.com)
-- [lhtranslation.net (LHTranslation)](https://lhtranslation.net)
-- [lilymanga.net (yuri, some NSFW)](https://lilymanga.net)
-- [limonmanga.com](https://limonmanga.com)
-- [luacomic.org (LuaScans)](https://luacomic.org)
-- [madarascans.net (former madarascans.org/.com)](https://madarascans.net)
-- [maid.my.id](https://www.maid.my.id)
-- [mangaball.com (former mangaball.net)](https://mangaball.com)
-- [mangabats.com (former mangabat.com)](https://www.mangabats.com)
-- [mangaberri.com](https://mangaberri.com)
-- [mangadelsiglotvmanga.com.mx (Manga del Siglo TV Manga, Spanish)](https://www.mangadelsiglotvmanga.com.mx)
-- [mangadenizi.net](https://www.mangadenizi.net)
-- [mangadex.org (MangaDex)](https://mangadex.org)
-- [mangafire.to](https://mangafire.to) \*
-- [mangahere.cc (MangaHere)](https://www.mangahere.cc)
-- [mangahub.io](https://mangahub.io) \*
-- [mangak.io (MangaK, former mangabuddy.com)](https://mangak.io)
-- [mangakakalot.gg (MangaKakalot)](https://www.mangakakalot.gg) \*
-- [mangakatana.com](https://mangakatana.com)
-- [mangalib.me (MangaLib)](https://mangalib.me)
-- [mangalivre.to (Manga Livre, former mangalivre.tv/mangalivre.net)](https://mangalivre.to)
-- [manganato.gg (MangaNato)](https://www.manganato.gg) \*
-- [mangapark.cc (MangaPark)](https://mangapark.cc)
-- [mangapill.com](https://mangapill.com)
-- [mangaplus.shueisha.co.jp (Manga Plus, Shueisha's official reader)](https://mangaplus.shueisha.co.jp)
-- [mangaread.org](https://www.mangaread.org)
-- [mangasushi.org](https://mangasushi.org)
-- [mangasusuku.com (Indonesian, mostly NSFW)](https://mangasusuku.com)
-- [mangataro.org](https://mangataro.org)
-- [mangatown.com](https://www.mangatown.com)
-- [mangavault.lat (MangaVault)](https://mangavault.lat)
-- [mangaworld.mx (MangaWorld, Italian)](https://www.mangaworld.mx)
-- [mangtto.com (Mangitto)](https://mangtto.com)
-- [manhuaplus.com](https://manhuaplus.com)
-- [manhuatop.org](https://manhuatop.org) \*
-- [manhuaus.com](https://manhuaus.com) \*
-- [manhwaonline.org](https://manhwaonline.org)
-- [mgeko.cc](https://www.mgeko.cc)
-- [mistscans.com](https://mistscans.com)
-- [mkissa.to](https://mkissa.to) \*
-- [natomanga.com (MangaNato, former manganato.com/manganelo.com)](https://www.natomanga.com) \*
-- [projectsuki.com](https://projectsuki.com)
-- [qimanga.com](https://qimanga.com)
-- [ravenscans.org](https://ravenscans.org)
-- [rawkuma.net](https://rawkuma.net)
-- [ritharscans.com](https://ritharscans.com)
-- [rizzfables.com](https://rizzfables.com)
-- [rokaricomics.com](https://rokaricomics.com)
-- [roliascan.com](https://roliascan.com)
-- [sacachispa.site](https://sacachispa.site)
-- [sanascans.com (Sana Scans)](https://sanascans.com)
-- [scan-vf.net (ScanVF)](https://www.scan-vf.net)
-- [setsuscans.com](https://setsuscans.com) \*
-- [silentquill.net (Armageddon Scanlation)](https://silentquill.net)
-- [stonescape.xyz](https://stonescape.xyz)
-- [sushiscan.net](https://sushiscan.net) \*
-- [taiyo.moe](https://taiyo.moe)
-- [tcbonepiecechapters.com (TCB Scans, former tcbscans.com)](https://tcbonepiecechapters.com)
-- [team-shadowi.com](https://www.team-shadowi.com)
-- [templetoons.com (Temple Scan)](https://templetoons.com) \*
-- [the-apothecary-diaries.com (The Apothecary Diaries)](https://the-apothecary-diaries.com)
-- [toongod.org](https://www.toongod.org) \*
-- [toonily.com](https://toonily.com) \*
-- [tortugaceviri.com (Tortuga Çeviri)](https://tortugaceviri.com)
-- [tritinia.org (Tritinia Scans)](https://tritinia.org)
-- [trmanga.com](https://trmanga.com)
-- [tvymanga3.com (Tv y Manga, Spanish)](https://tvymanga3.com)
-- [twmanga.com (包子漫画, baozimh.com mirror)](https://www.twmanga.com)
-- [utoon.us (UToon, home of reset-scans' content)](https://www.utoon.us)
-- [uzaymanga.com](https://uzaymanga.com)
-- [violetscans.org](https://violetscans.org)
-- [vortexscans.org](https://vortexscans.org)
-- [webtoons.com (WEBTOON, free episodes only)](https://www.webtoons.com)
-- [weebcentral.com](https://weebcentral.com)
-- [witchtoons.net (WitchToons, former witchscans.com)](https://witchtoons.net)
-- [writerscans.com](https://writerscans.com)
-- [zonatmo.org (TuMangaOnline, former zonatmo.com)](https://zonatmo.org)
+| Site | Notes | Last verified |
+| --- | --- | --- |
+| [3asq.online](https://3asq.online) | Arabic, former 3asq.org | 2026-10-15 |
+| [anikiga.com](https://anikiga.com) | Turkish | 2026-10-16 |
+| [animeallstar1.com](https://www.animeallstar1.com) | AnimeAllStar, Spanish | 2026-10-15 |
+| [animeallstar30.com](https://animeallstar30.com) | AnimeAllStar, Spanish | 2026-10-15 |
+| [anzmanga25.com](https://www.anzmanga25.com) | AnzManga, Spanish | 2026-10-16 |
+| [apollcomics.es](https://apollcomics.es) | Spanish | 2026-10-16 |
+| [arenascan.com](https://arenascan.com) |  | 2026-10-15 |
+| [asmotoon.com](https://asmotoon.com) \* | Asmodeus Scans | 2026-10-15 |
+| [asurascans.com](https://asurascans.com) | Asura Scans, former asuratoon.com | 2026-10-15 |
+| [atsu.moe](https://atsu.moe) | Atsumaru | 2026-10-15 |
+| [aurorascans.com](https://aurorascans.com) | redirects to qimanga.com | 2026-10-15 |
+| [azorafly.com](https://azorafly.com) | Azorafly, Arabic | 2026-10-15 |
+| [bigsolo.org](https://bigsolo.org) |  | 2026-10-15 |
+| [blackcloveronline.com](https://blackcloveronline.com) | Black Clover | 2026-10-15 |
+| [bluesolo.org](https://bluesolo.org) | Blue Solo, French scantrad | 2026-10-15 |
+| [chainsawman-chapter.online](https://chainsawman-chapter.online) | Chainsaw Man | 2026-10-15 |
+| [chainsawmannmanga.com](https://chainsawmannmanga.com) | Chainsaw Man | 2026-10-15 |
+| [comic-action.com](https://comic-action.com) | Japanese, Web Action (GigaViewer) | — |
+| [comic-days.com](https://comic-days.com) | Japanese, Comic DAYS (GigaViewer) | — |
+| [comic-earthstar.com](https://comic-earthstar.com) | Japanese, Comic Earth Star (GigaViewer) | — |
+| [comic-gardo.com](https://comic-gardo.com) | Japanese, Comic Gardo (GigaViewer) | — |
+| [comic-ogyaaa.com](https://comic-ogyaaa.com) | Japanese, Comic Ogyaaa (GigaViewer) | — |
+| [comic-seasons.com](https://comic-seasons.com) | Japanese, Seasons (GigaViewer) | — |
+| [comic-trail.com](https://comic-trail.com) | Japanese, Comic Trail (GigaViewer) | — |
+| [comic-y-ours.com](https://comic-y-ours.com) | Japanese, Comic Y-Ours (GigaViewer) | — |
+| [comic-zenon.com](https://comic-zenon.com) | Japanese, Comic Zenon (GigaViewer) | — |
+| [comix.to](https://comix.to) \* |  | 2026-10-15 |
+| [danke.moe](https://danke.moe) | Danke fürs Lesen | 2026-10-15 |
+| [decadencescans.com](https://reader.decadencescans.com) | Decadence Scans, slow image host | 2026-10-16 |
+| [deathtollscans.net](https://reader.deathtollscans.net) |  | 2026-10-15 |
+| [demonicscans.org](https://demonicscans.org) | MangaDemon / Demonic Scans | 2026-10-15 |
+| [dragonballmangaa.com](https://dragonballmangaa.com) | Dragon Ball Super | 2026-10-15 |
+| [dragontea.ink](https://dragontea.ink) \* |  | 2026-10-15 |
+| [drakecomic.net](https://drakecomic.net) | Drake Scans, former drakecomic.org | 2026-10-15 |
+| [dynasty-scans.com](https://dynasty-scans.com) | Dynasty Reader | 2026-10-15 |
+| [eldermanga.com](https://eldermanga.com) |  | 2026-10-15 |
+| [elftoon.net](https://elftoon.net) | Elf Toon, former elftoon.com | 2026-10-15 |
+| [en-hijala.com](https://en-hijala.com) | Hijala Translations | 2026-10-15 |
+| [en-thunderscans.com](https://en-thunderscans.com) | Thunderscans | 2026-10-15 |
+| [eskimangalar.com](https://eskimangalar.com) |  | 2026-10-15 |
+| [evascans.net](https://evascans.net) | former evascans.org | 2026-10-15 |
+| [fanfox.net](https://fanfox.net) | Manga Fox | 2026-10-15 |
+| [fbsquadx.com](https://fbsquadx.com) | Fleur Blanche Scan, Spanish | 2026-10-16 |
+| [feelweb.jp](https://feelweb.jp) | Japanese, Feel Web (GigaViewer) | — |
+| [flamecomics.xyz](https://flamecomics.xyz) | Flame Comics, former Flame Scans | 2026-10-15 |
+| [fmteam.fr](https://fmteam.fr) |  | 2026-10-15 |
+| [furyosociety.com](https://furyosociety.com) |  | 2026-10-15 |
+| [gdscans.com](https://gdscans.com) | GalaxyDegenScans | 2026-10-15 |
+| [genztoons.org](https://genztoons.org) | Genz Toon, former genzupdates.com | 2026-10-15 |
+| [globalcomix.com](https://globalcomix.com) | Western comics, free issues only | 2026-10-16 |
+| [gourmetsupremacy.com](https://gourmetsupremacy.com) | Gourmet Scans, free chapters only | 2026-10-16 |
+| [guya.moe](https://guya.moe) | Guya, Kaguya-sama | 2026-10-15 |
+| [hachirumi.com](https://hachirumi.com) | Hachirumi, Guya instance, has an NSFW section | 2026-10-16 |
+| [heavenly-delusion.com](https://heavenly-delusion.com) | Heavenly Delusion | 2026-10-15 |
+| [heavenmanga.com](https://heavenmanga.com) | Spanish | 2026-10-15 |
+| [hivetoons.org](https://hivetoons.org) | HiveToons, VoidScans | 2026-10-15 |
+| [ichicomi.com](https://ichicomi.com) | Japanese, Ichi Comic (GigaViewer) | — |
+| [inmanga.com](https://inmanga.com) |  | 2026-10-15 |
+| [jestful.net](https://jestful.net) |  | 2026-10-15 |
+| [jojolandsmanga.com](https://jojolandsmanga.com) | The JoJoLands | 2026-10-15 |
+| [jujutsukaisenmanga.pro](https://jujutsukaisenmanga.pro) | Jujutsu Kaisen | 2026-10-15 |
+| [kappabeast.com](https://kappabeast.com) \* |  | 2026-10-15 |
+| [kaynscans.com](https://kaynscans.com) | Kayn Scans, former kaynscan.org | 2026-10-15 |
+| [kingofshojo.com](https://kingofshojo.com) |  | 2026-10-15 |
+| [kombatch.cc](https://kombatch.cc) | Indonesian | 2026-10-16 |
+| [komikindo.ch](https://komikindo.ch) |  | 2026-10-15 |
+| [komikmanga.com](https://komikmanga.com) | MangaReader, English | 2026-10-16 |
+| [komikstation.org](https://komikstation.org) | Indonesian | 2026-10-15 |
+| [ksgroupscans.com](https://ksgroupscans.com) | KSGroupScans | 2026-10-16 |
+| [kuragebunch.com](https://kuragebunch.com) | Japanese, Kurage Bunch (GigaViewer) | — |
+| [lagoonscans.com](https://lagoonscans.com) |  | 2026-10-15 |
+| [leercapitulo.co](https://www.leercapitulo.co) |  | 2026-10-15 |
+| [lelmanga.com](https://www.lelmanga.com) | French | 2026-10-15 |
+| [lelscanfr.com](https://www.lelscanfr.com) | French | 2026-10-15 |
+| [lelscans.net](https://lelscans.net) | French | 2026-10-15 |
+| [lhtranslation.net](https://lhtranslation.net) | LHTranslation | 2026-10-15 |
+| [lilymanga.net](https://lilymanga.net) | yuri, some NSFW | 2026-10-15 |
+| [limonmanga.com](https://limonmanga.com) |  | 2026-10-15 |
+| [luacomic.org](https://luacomic.org) | LuaScans | 2026-10-15 |
+| [madaradex.org](https://madaradex.org) | some adult titles | 2026-10-16 |
+| [madarascans.net](https://madarascans.net) | former madarascans.org/.com | 2026-10-15 |
+| [magcomi.com](https://magcomi.com) | Japanese, Mag Garden (GigaViewer) | — |
+| [maid.my.id](https://www.maid.my.id) |  | 2026-10-15 |
+| [manga.adonisfansub.com](https://manga.adonisfansub.com) | Adonis Fansub, Turkish | 2026-10-16 |
+| [manga.smuglo.li](https://manga.smuglo.li) | Lilyreader, yuri | 2026-10-16 |
+| [mangaball.com](https://mangaball.com) | former mangaball.net | 2026-10-15 |
+| [mangabats.com](https://www.mangabats.com) | former mangabat.com | 2026-10-15 |
+| [mangaberri.com](https://mangaberri.com) |  | 2026-10-15 |
+| [mangadelsiglotvmanga.com.mx](https://www.mangadelsiglotvmanga.com.mx) | Manga del Siglo TV Manga, Spanish | 2026-10-15 |
+| [mangadenizi.net](https://www.mangadenizi.net) |  | 2026-10-15 |
+| [mangadex.org](https://mangadex.org) | MangaDex | 2026-10-15 |
+| [mangaeclipse.com](https://mangaeclipse.com) | Manga Eclipse | 2026-10-16 |
+| [mangafire.to](https://mangafire.to) \* |  | 2026-10-15 |
+| [mangahere.cc](https://www.mangahere.cc) | MangaHere | 2026-10-15 |
+| [mangahub.io](https://mangahub.io) \* |  | 2026-10-15 |
+| [mangak.io](https://mangak.io) | MangaK, former mangabuddy.com | 2026-10-15 |
+| [mangakakalot.gg](https://www.mangakakalot.gg) \* | MangaKakalot | 2026-10-15 |
+| [mangakatana.com](https://mangakatana.com) |  | 2026-10-15 |
+| [mangalami.com](https://mangalami.com) | LamiManga, Thai | 2026-10-16 |
+| [mangalib.me](https://mangalib.me) | MangaLib | 2026-10-15 |
+| [mangalivre.to](https://mangalivre.to) | Manga Livre, former mangalivre.tv/mangalivre.net | 2026-10-15 |
+| [manganato.gg](https://www.manganato.gg) \* | MangaNato | 2026-10-15 |
+| [mangapark.cc](https://mangapark.cc) | MangaPark | 2026-10-15 |
+| [mangapill.com](https://mangapill.com) |  | 2026-10-15 |
+| [mangaplus.shueisha.co.jp](https://mangaplus.shueisha.co.jp) | Manga Plus, Shueisha's official reader | 2026-10-15 |
+| [mangaread.org](https://www.mangaread.org) |  | 2026-10-15 |
+| [mangas-origines.fr](https://mangas-origines.fr) | French | 2026-10-16 |
+| [mangasushi.org](https://mangasushi.org) |  | 2026-10-15 |
+| [mangasusuku.com](https://mangasusuku.com) | Indonesian, mostly NSFW | 2026-10-15 |
+| [mangataro.org](https://mangataro.org) |  | 2026-10-15 |
+| [mangatime-square.com](https://mangatime-square.com) | Japanese, Mangatime Square (GigaViewer) | — |
+| [mangatown.com](https://www.mangatown.com) |  | 2026-10-15 |
+| [mangavault.lat](https://mangavault.lat) | MangaVault | 2026-10-15 |
+| [mangaworld.mx](https://www.mangaworld.mx) | MangaWorld, Italian | 2026-10-15 |
+| [mangawow.org](https://mangawow.org) | MangaWOW, Turkish | 2026-10-16 |
+| [mangazin.org](https://mangazin.org) | MANGA ZIN | 2026-10-16 |
+| [mangtto.com](https://mangtto.com) | Mangitto | 2026-10-15 |
+| [manhuaplus.com](https://manhuaplus.com) |  | 2026-10-15 |
+| [manhuatop.org](https://manhuatop.org) \* |  | 2026-10-15 |
+| [manhuaus.com](https://manhuaus.com) \* |  | 2026-10-15 |
+| [manhwaonline.org](https://manhwaonline.org) |  | 2026-10-15 |
+| [manhwatop.com](https://manhwatop.com) | MANHWATOP | 2026-10-16 |
+| [mgeko.cc](https://www.mgeko.cc) |  | 2026-10-15 |
+| [mistscans.com](https://mistscans.com) |  | 2026-10-15 |
+| [mkissa.to](https://mkissa.to) \* |  | 2026-10-15 |
+| [mundomanhwa.com](https://mundomanhwa.com) | Spanish | 2026-10-16 |
+| [natomanga.com](https://www.natomanga.com) \* | MangaNato, former manganato.com/manganelo.com | 2026-10-15 |
+| [natsu.one](https://natsu.one) | NatsuID, Indonesian, some adult titles, former natsu.id | 2026-10-16 |
+| [niji-translations.com](https://niji-translations.com) | Niji, Arabic, yuri | 2026-10-16 |
+| [noranofansub.com](https://www.noranofansub.com) | NoraNoFansub, Spanish | 2026-10-16 |
+| [nyraxmanga.com](https://nyraxmanga.com) | Nyrax, some adult titles | 2026-10-16 |
+| [onma.top](https://onma.top) | Arabic | 2026-10-16 |
+| [oremanga.net](https://www.oremanga.net) | Oremanga, Thai | 2026-10-16 |
+| [ourfeel.jp](https://ourfeel.jp) | Japanese, Our Feel (GigaViewer) | — |
+| [projectsuki.com](https://projectsuki.com) |  | 2026-10-15 |
+| [qimanga.com](https://qimanga.com) |  | 2026-10-15 |
+| [rackusreads.com](https://rackusreads.com) | Rackus | 2026-10-16 |
+| [ravenscans.org](https://ravenscans.org) |  | 2026-10-15 |
+| [rawkuma.net](https://rawkuma.net) |  | 2026-10-15 |
+| [re-yume.my.id](https://www.re-yume.my.id) | Re-Yume, Indonesian | 2026-10-16 |
+| [ritharscans.com](https://ritharscans.com) |  | 2026-10-15 |
+| [rizzfables.com](https://rizzfables.com) |  | 2026-10-15 |
+| [rokaricomics.com](https://rokaricomics.com) |  | 2026-10-15 |
+| [roliascan.com](https://roliascan.com) |  | 2026-10-15 |
+| [ruyamanga2.com](https://www.ruyamanga2.com) | Rüya Manga, Turkish | 2026-10-16 |
+| [sacachispa.site](https://sacachispa.site) |  | 2026-10-15 |
+| [sanascans.com](https://sanascans.com) | Sana Scans | 2026-10-15 |
+| [scan-vf.net](https://www.scan-vf.net) | ScanVF | 2026-10-15 |
+| [setsuscans.com](https://setsuscans.com) \* |  | 2026-10-15 |
+| [shonenjumpplus.com](https://shonenjumpplus.com) | Japanese, Jump+ (GigaViewer) | — |
+| [silentquill.net](https://silentquill.net) | Armageddon Scanlation | 2026-10-15 |
+| [stonescape.xyz](https://stonescape.xyz) |  | 2026-10-15 |
+| [sunday-webry.com](https://www.sunday-webry.com) | Japanese, Sunday Webry (GigaViewer) | — |
+| [sushiscan.net](https://sushiscan.net) \* |  | 2026-10-15 |
+| [taiyo.moe](https://taiyo.moe) |  | 2026-10-15 |
+| [tcbonepiecechapters.com](https://tcbonepiecechapters.com) | TCB Scans, former tcbscans.com | 2026-10-15 |
+| [team-shadowi.com](https://www.team-shadowi.com) |  | 2026-10-15 |
+| [templetoons.com](https://templetoons.com) \* | Temple Scan | 2026-10-15 |
+| [the-apothecary-diaries.com](https://the-apothecary-diaries.com) | The Apothecary Diaries | 2026-10-15 |
+| [tonarinoyj.jp](https://tonarinoyj.jp) | Japanese, Young Jump (GigaViewer) | — |
+| [toongod.org](https://www.toongod.org) \* |  | 2026-10-15 |
+| [toonily.com](https://toonily.com) \* |  | 2026-10-15 |
+| [tortugaceviri.com](https://tortugaceviri.com) | Tortuga Çeviri | 2026-10-15 |
+| [tritinia.org](https://tritinia.org) | Tritinia Scans | 2026-10-15 |
+| [trmanga.com](https://trmanga.com) |  | 2026-10-15 |
+| [turkcemanga.com](https://turkcemanga.com) | Turkce Manga, Turkish | 2026-10-16 |
+| [tvymanga3.com](https://tvymanga3.com) | Tv y Manga, Spanish | 2026-10-15 |
+| [twmanga.com](https://www.twmanga.com) | 包子漫画, baozimh.com mirror | 2026-10-15 |
+| [utoon.us](https://www.utoon.us) | UToon, home of reset-scans' content | 2026-10-15 |
+| [uzaymanga.com](https://uzaymanga.com) |  | 2026-10-15 |
+| [violetscans.org](https://violetscans.org) |  | 2026-10-15 |
+| [vortexscans.org](https://vortexscans.org) |  | 2026-10-15 |
+| [webtoonia.fun](https://webtoonia.fun) | Turkish, former diamondfansub.com, some NSFW | 2026-10-16 |
+| [webtoons.com](https://www.webtoons.com) | WEBTOON, free episodes only | 2026-10-15 |
+| [weebcentral.com](https://weebcentral.com) |  | 2026-10-15 |
+| [witchtoons.net](https://witchtoons.net) | WitchToons, former witchscans.com | 2026-10-15 |
+| [writerscans.com](https://writerscans.com) |  | 2026-10-15 |
+| [yurionair.top](https://yurionair.top) | Yuri Verso, Portuguese, yuri, some adult titles | 2026-10-16 |
+| [zonatmo.org](https://zonatmo.org) | TuMangaOnline, former zonatmo.com | 2026-10-15 |
+
+Verified weekly by CI. Sites marked `*` open a browser window, so they are checked by hand and their dates are older. `—` means not checked yet.
 
 </details>
 
@@ -807,64 +899,17 @@ search may still exist on the site.
 
 ## Troubleshooting
 
-<details>
-<summary><b>The newest chapter downloads empty or is missing</b></summary>
-<br>
+The [FAQ on the website][faq] has the answers (also in Spanish and Catalan):
 
-Many sites keep their latest chapters behind a paywall, and the page often looks
-normal. Try a slightly older chapter to confirm that the site works.
-
-</details>
-
-<details>
-<summary><b>Old chapters are missing, or a warning says the range starts before the first chapter</b></summary>
-<br>
-
-Sites often delete old chapters. The tool can only download chapters that the
-site still lists.
-
-</details>
-
-<details>
-<summary><b>A browser window pops up</b></summary>
-<br>
-
-This is expected for sites marked with `*`. The window opens when the site shows
-a Cloudflare challenge or a captcha of its own, and the terminal (or the app)
-tells you when it may need you. Checkboxes are clicked automatically, but some
-challenges need you to solve them yourself; the download carries on by itself
-afterwards. In the app, an alert says the browser needs you, with *Show the
-browser window* to bring the window back to the front and *Dismiss* to hide the
-alert. To open the window from the start instead, use `--browser-visible`, or
-*Show the browser window* under *Advanced* in the app's Options.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/screenshots/08-browser-alert-dark.png">
-  <img alt="The app's alert saying the browser needs you, with Dismiss and Show the browser window buttons" src="assets/screenshots/08-browser-alert-light.png">
-</picture>
-
-</details>
-
-<details>
-<summary><b>No browser found</b></summary>
-<br>
-
-Sites marked with `*` need Google Chrome, Chromium, Brave or Edge installed in
-one of its usual places. To use another Chromium-based browser, set
-`MANGA_DOWNLOADER_BROWSER` to the full path of its executable (or a command on your `PATH`), for example
-`MANGA_DOWNLOADER_BROWSER=/usr/bin/brave-browser`. It works for the command line
-and the app alike (for the app, set it in the environment that starts it).
-
-</details>
-
-<details>
-<summary><b>Pages don't show up on my e-reader</b></summary>
-<br>
-
-The site probably serves WebP images. Download the chapters again with
-`--convert-images avif,webp`, or tick *WebP* under *Convert to JPEG* in the app.
-
-</details>
+- [Windows says "Windows protected your PC"][faq-smartscreen]
+- [macOS won't open it][faq-gatekeeper]
+- [Double-clicking `manga-downloader.exe` just flashes a window][faq-exe]
+- [The newest chapter downloads empty or is missing][faq-paywall]
+- [Old chapters are missing, or a warning says the range starts before the first chapter][faq-old]
+- [A browser window pops up][faq-browser]
+- [No browser found][faq-nobrowser]
+- [Pages don't show up on my e-reader][faq-ereader]
+- [My site isn't supported][faq-unsupported]
 
 ## Building from source
 
@@ -909,6 +954,16 @@ folder picker only for an app bundle, so Browse… does nothing in a bare run.
 [license]: ./LICENSE
 [releases]: https://github.com/elboletaire/manga-downloader/releases
 [website]: https://mangadownloader.cat
+[faq]: https://mangadownloader.cat/#faq
+[faq-smartscreen]: https://mangadownloader.cat/#faq-smartscreen
+[faq-gatekeeper]: https://mangadownloader.cat/#faq-gatekeeper
+[faq-exe]: https://mangadownloader.cat/#faq-exe
+[faq-paywall]: https://mangadownloader.cat/#faq-paywall
+[faq-old]: https://mangadownloader.cat/#faq-old
+[faq-browser]: https://mangadownloader.cat/#faq-browser
+[faq-nobrowser]: https://mangadownloader.cat/#faq-nobrowser
+[faq-ereader]: https://mangadownloader.cat/#faq-ereader
+[faq-unsupported]: https://mangadownloader.cat/#faq-unsupported
 [homebrew]: https://brew.sh
 [issues]: https://github.com/elboletaire/manga-downloader/issues
 [stargazers]: https://github.com/elboletaire/manga-downloader/stargazers

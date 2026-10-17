@@ -134,6 +134,10 @@ export function UpdateCatalog() {
   return window['go']['main']['App']['UpdateCatalog']();
 }
 
+export function Update() {
+  return window['go']['main']['App']['Update']();
+}
+
 export function Version() {
   return window['go']['main']['App']['Version']();
 }
