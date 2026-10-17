@@ -17,8 +17,9 @@ type SiteInfo struct {
 	Home string `json:"home"`
 	// Aliases are former domains of the site, so a URL on one still matches
 	Aliases []string `json:"aliases,omitempty"`
-	// Family names the crawler: themesia, madara, single, or a platform with no
-	// crawler yet (custom, nextjs, astro, nuxt, foolslide, blogger, api)
+	// Family names the crawler: themesia, madara, single, gigaviewer, sitemap,
+	// links, jsonapi, blogger, inmanga, or a platform with no crawler yet
+	// (custom, nextjs, astro, nuxt, foolslide, api)
 	Family string `json:"family"`
 	// List is the family's list page; {page} is the page number. For the
 	// sitemap family it's the site's sitemap (or sitemap index).
@@ -28,10 +29,12 @@ type SiteInfo struct {
 	Sitemaps string `json:"sitemaps,omitempty"`
 	// Series picks the sitemap URLs that are series (a regular expression on
 	// the URL); its first group, when it has one, is the series URL a chapter
-	// URL belongs to
+	// URL belongs to. The links family keeps only the links it matches.
 	Series string `json:"series,omitempty"`
 	// SeriesURL builds the series URL from Series' first group when it isn't
-	// a prefix of the matched URL ("https://www.utoon.us/en/manga/{1}.html")
+	// a prefix of the matched URL ("https://www.utoon.us/en/manga/{1}.html").
+	// For the jsonapi family it's built from an item's fields
+	// ("https://luacomic.org/series/{series_slug}", "{link}").
 	SeriesURL string `json:"seriesURL,omitempty"`
 	Lang      string `json:"lang"`
 	// Crawl is false for sites with no crawler, API sites and browser-gated sites
@@ -42,6 +45,17 @@ type SiteInfo struct {
 	Label string `json:"label,omitempty"`
 	// Note says why a site isn't crawled yet
 	Note string `json:"note,omitempty"`
+
+	// Links picks the series links on a list page (a CSS selector): the links
+	// family's rows, a gigaviewer site's series links when they aren't all its
+	// episode links
+	Links string `json:"links,omitempty"`
+	// Items is, for the jsonapi family, where a list page's array of series
+	// is in its JSON (dotted keys, "data"); empty when the page is the array
+	Items string `json:"items,omitempty"`
+	// TitleKey is, for the jsonapi family, an item's title (dotted keys,
+	// "title", "title.rendered")
+	TitleKey string `json:"titleKey,omitempty"`
 }
 
 //go:embed sites.json

@@ -1,0 +1,30 @@
+{
+ "meta": {
+  "total": 3,
+  "per_page": 3,
+  "current_page": 1,
+  "last_page": 1
+ },
+ "data": [
+  {
+   "id": 355,
+   "title": "100 Curses of the Ellestone Manor",
+   "series_slug": "100-curses-of-the-ellestone-manor",
+   "series_type": "Comic",
+   "status": "Ongoing"
+  },
+  {
+   "id": 14,
+   "title": "24 hour Rebirth Consultation Centre",
+   "series_slug": "24-hour-rebirth-consultation-centre",
+   "series_type": "Comic",
+   "status": "Ongoing"
+  },
+  {
+   "id": 119,
+   "title": "24 Hours Resurrection of the Villainess",
+   "series_type": "Comic",
+   "status": "Ongoing"
+  }
+ ]
+}

@@ -123,8 +123,9 @@
   "home": "https://www.animeallstar1.com",
   "family": "blogger",
   "lang": "es",
-  "crawl": false,
-  "label": "AnimeAllStar, Spanish"
+  "crawl": true,
+  "label": "AnimeAllStar, Spanish",
+  "list": "https://www.animeallstar1.com/feeds/posts/summary"
  },
  {
   "site": "animeallstar30.com",
@@ -137,10 +138,12 @@
  {
   "site": "anzmanga25.com",
   "home": "https://www.anzmanga25.com",
-  "family": "custom",
+  "family": "links",
   "lang": "es",
-  "crawl": false,
-  "label": "AnzManga, Spanish"
+  "crawl": true,
+  "label": "AnzManga, Spanish",
+  "list": "https://www.anzmanga25.com/changeMangaList?type=text",
+  "links": "ul.manga-list a.alpha-link"
  },
  {
   "site": "apcomics.org",
@@ -484,10 +487,10 @@
   "home": "https://comic-ogyaaa.com",
   "family": "gigaviewer",
   "lang": "ja",
-  "crawl": false,
+  "crawl": true,
   "label": "Japanese, Comic Ogyaaa (GigaViewer)",
-  "list": "https://comic-ogyaaa.com/comics",
-  "note": "its list page names no series, only their episodes"
+  "list": "https://comic-ogyaaa.com/",
+  "links": "a[data-series-name]"
  },
  {
   "site": "comic-seasons.com",
@@ -743,7 +746,8 @@
   "family": "custom",
   "lang": "en",
   "crawl": false,
-  "browser": true
+  "browser": true,
+  "note": "Cloudflare answers plain requests with 403; only the browser grabber gets in"
  },
  {
   "site": "drakecomic.net",
@@ -1462,9 +1466,10 @@
  {
   "site": "inmanga.com",
   "home": "https://inmanga.com",
-  "family": "custom",
+  "family": "inmanga",
   "lang": "es",
-  "crawl": false
+  "crawl": true,
+  "list": "https://inmanga.com/manga/getMangasConsultResult"
  },
  {
   "site": "irovedout.com",
@@ -1634,10 +1639,12 @@
  {
   "site": "komikmanga.com",
   "home": "https://komikmanga.com",
-  "family": "custom",
+  "family": "links",
   "lang": "en",
-  "crawl": false,
-  "label": "MangaReader, English"
+  "crawl": true,
+  "label": "MangaReader, English",
+  "list": "https://komikmanga.com/advanced.php?page={page}&status=all&orderby=NAME%20ASC",
+  "links": "#advanced-content .advanced-element > a"
  },
  {
   "site": "komikstation.org",
@@ -1696,9 +1703,11 @@
  {
   "site": "leercapitulo.co",
   "home": "https://www.leercapitulo.co",
-  "family": "custom",
+  "family": "links",
   "lang": "es",
-  "crawl": false
+  "crawl": true,
+  "list": "https://www.leercapitulo.co/manga/?page={page}",
+  "links": "a.lc-card-name"
  },
  {
   "site": "lelmanga.com",
@@ -1794,10 +1803,14 @@
  {
   "site": "luacomic.org",
   "home": "https://luacomic.org",
-  "family": "nextjs",
+  "family": "jsonapi",
   "lang": "en",
-  "crawl": false,
-  "label": "LuaScans"
+  "crawl": true,
+  "label": "LuaScans",
+  "list": "https://api.luacomic.org/query?page={page}&perPage=100&series_type=Comic&query_string=&order=asc&orderBy=title&adult=true&status=All&tags_ids=%5B%5D",
+  "seriesURL": "https://luacomic.org/series/{series_slug}",
+  "items": "data",
+  "titleKey": "title"
  },
  {
   "site": "lustoon.com",
@@ -2353,10 +2366,11 @@
  {
   "site": "mangas-origines.fr",
   "home": "https://mangas-origines.fr",
-  "family": "custom",
+  "family": "madara",
   "lang": "fr",
-  "crawl": false,
-  "label": "French"
+  "crawl": true,
+  "label": "French",
+  "list": "https://mangas-origines.fr/oeuvre/page/{page}/?m_orderby=alphabet"
  },
  {
   "site": "mangasushi.org",
@@ -2470,7 +2484,8 @@
   "family": "nuxt",
   "lang": "en",
   "crawl": false,
-  "label": "Mangitto"
+  "label": "Mangitto",
+  "note": "Cloudflare answers plain requests, its API included, with 403"
  },
  {
   "site": "manhuahot.com",
@@ -2892,10 +2907,12 @@
  {
   "site": "noranofansub.com",
   "home": "https://www.noranofansub.com",
-  "family": "custom",
+  "family": "links",
   "lang": "es",
-  "crawl": false,
-  "label": "NoraNoFansub, Spanish"
+  "crawl": true,
+  "label": "NoraNoFansub, Spanish",
+  "list": "https://www.noranofansub.com/lector/directory/{page}/",
+  "links": ".group > .title > a"
  },
  {
   "site": "novelcool.com",
@@ -3227,8 +3244,9 @@
   "home": "https://www.re-yume.my.id",
   "family": "blogger",
   "lang": "id",
-  "crawl": false,
-  "label": "Re-Yume, Indonesian"
+  "crawl": true,
+  "label": "Re-Yume, Indonesian",
+  "list": "https://www.re-yume.my.id/feeds/posts/summary/-/Chapter"
  },
  {
   "site": "read-horimiya.online",
@@ -3452,7 +3470,8 @@
   "family": "custom",
   "lang": "en",
   "crawl": false,
-  "browser": true
+  "browser": true,
+  "note": "Cloudflare answers plain requests with 403; only the browser grabber gets in"
  },
  {
   "site": "shonenjumpplus.com",
@@ -3557,7 +3576,8 @@
   "home": "https://taiyo.moe",
   "family": "nextjs",
   "lang": "en",
-  "crawl": false
+  "crawl": false,
+  "note": "no list page or API listing every title; its search is a Meilisearch instance behind a key"
  },
  {
   "site": "tapas.io",
@@ -3757,10 +3777,13 @@
  {
   "site": "tvymanga3.com",
   "home": "https://tvymanga3.com",
-  "family": "custom",
+  "family": "jsonapi",
   "lang": "es",
-  "crawl": false,
-  "label": "Tv y Manga, Spanish"
+  "crawl": true,
+  "label": "Tv y Manga, Spanish",
+  "list": "https://tvymanga3.com/wp-json/wp/v2/categories?per_page=100&page={page}&hide_empty=true&exclude=1&_fields=name,link",
+  "seriesURL": "{link}",
+  "titleKey": "name"
  },
  {
   "site": "twicomi.com",
@@ -4189,6 +4212,7 @@
   "lang": "es",
   "crawl": false,
   "browser": true,
-  "label": "TuMangaOnline, former zonatmo.com"
+  "label": "TuMangaOnline, former zonatmo.com",
+  "note": "Cloudflare answers plain requests with 403"
  }
 ]

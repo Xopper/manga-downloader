@@ -17,7 +17,8 @@ import (
 // every series to one of its episodes, and an episode link loads the whole
 // series in the downloader. The markup differs between hosts, so a link's
 // title is the first title element inside it, else its picture's alt text,
-// else its own text.
+// else its own text. A site's Links narrows the episode links to its series
+// cards.
 type gigaviewer struct{}
 
 func init() {
@@ -41,7 +42,12 @@ func (gigaviewer) Crawl(ctx context.Context, site SiteInfo, _ int) ([]Entry, err
 	}
 	var entries []Entry
 	seenURL, seenTitle := map[string]bool{}, map[string]bool{}
-	doc.Find(`a[href*="/episode/"]`).Each(func(_ int, a *goquery.Selection) {
+	links := `a[href*="/episode/"]`
+	if site.Links != "" {
+		// a home page whose banners and news also link episodes
+		links = site.Links
+	}
+	doc.Find(links).Each(func(_ int, a *goquery.Selection) {
 		href, _ := a.Attr("href")
 		u, err := base.Parse(href)
 		if err != nil || u.Host != base.Host || !gigaviewerEpisodePath.MatchString(u.Path) {
@@ -72,11 +78,11 @@ var gigaviewerButton = regexp.MustCompile(`最新話|最初から|読む|無料|
 var gigaviewerVolume = regexp.MustCompile(`\s*(?:[0-9０-９]+巻|[0-9０-９]*\s*【[^】]*】)$`)
 
 // gigaviewerTitle is a series link's title: the series title the link carries
-// (data-series-title), a series title element (a card can also name its
-// latest episode), any title or heading, the picture's alt text, then the
-// link's own text when it's short and not a button's
+// (data-series-title or data-series-name), a series title element (a card
+// can also name its latest episode), any title or heading, the picture's alt
+// text, then the link's own text when it's short and not a button's
 func gigaviewerTitle(a *goquery.Selection) string {
-	if t := squash(a.AttrOr("data-series-title", "")); t != "" {
+	if t := squash(a.AttrOr("data-series-title", a.AttrOr("data-series-name", ""))); t != "" {
 		return gigaviewerVolume.ReplaceAllString(t, "")
 	}
 	for _, sel := range []string{`[class*="series"][class*="title"]`, `[class*="title"]`, "h2, h3, h4"} {
