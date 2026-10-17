@@ -106,6 +106,7 @@ func TestTcbSeriesRe(t *testing.T) {
 		{"https://lilymanga.net/gl/a-love-hate-chord/", "gl/a-love-hate-chord"},
 		{"https://mangalivre.to/manga/chainsaw-man-pt-br/", "manga/chainsaw-man-pt-br"},
 		{"https://webtoonia.fun/seri/ask-bagimlisi/bolum-19/", "seri/ask-bagimlisi"},
+		{"https://toonizy.com/webtoon/inside-the-uniform/", "webtoon/inside-the-uniform"},
 		{"https://lhtranslation.net/manga/gaikotsu-kishi-sama/chapter-1/", "manga/gaikotsu-kishi-sama"},
 		{"https://gdscans.com/manga/example/volume-10/chapter-50/", "manga/example"},
 		{"https://lilymanga.net/gl/a-love-hate-chord/episode-02/", "gl/a-love-hate-chord"},
@@ -206,6 +207,8 @@ func TestTcbFetchTitleSingleH1(t *testing.T) {
 	for name, tc := range map[string]struct{ html, want string }{
 		"post-title": {`<h1>Hero</h1><div class="post-title"><h1>Real</h1></div><h1>Summary</h1>`, "Real"},
 		"first h1":   {`<h1>Hero</h1><div class="content"><h1>Summary</h1></div>`, "Hero"},
+		// toonizy.com has no h1: Open Graph names it, bare and with the site
+		"og:title": {`<meta property="og:title" content="Inside the Uniform - Toonizy"><meta property="og:title" content="Inside the Uniform"/>`, "Inside the Uniform"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

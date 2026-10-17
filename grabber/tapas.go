@@ -41,6 +41,9 @@ func (t *Tapas) Test() (bool, error) {
 	return hostMatchesDomain(t.URL, "tapas.io") && strings.Contains(t.URL, "/series/"), nil
 }
 
+// tapasBase is the site's root
+var tapasBase = "https://tapas.io"
+
 // tapasAppLinkRe reads the series' ID from its app link
 var tapasAppLinkRe = regexp.MustCompile(`tapastic://series/(\d+)`)
 
@@ -49,7 +52,7 @@ func (t *Tapas) series() error {
 	if t.id != "" {
 		return nil
 	}
-	doc, err := wcGetDoc(t.URL, "https://tapas.io/", false)
+	doc, err := wcGetDoc(t.URL, tapasBase+"/", false)
 	if err != nil {
 		return err
 	}
@@ -85,7 +88,7 @@ func (t *Tapas) FetchChapters() (Filterables, []error) {
 	var chapters Filterables
 	for page := 1; page <= tapasMaxPages; page++ {
 		body, err := http.GetText(http.RequestParams{
-			URL:     fmt.Sprintf("https://tapas.io/series/%s/episodes?page=%d&sort=OLDEST&max_limit=20", t.id, page),
+			URL:     fmt.Sprintf("%s/series/%s/episodes?page=%d&sort=OLDEST&max_limit=20", tapasBase, t.id, page),
 			Referer: t.URL,
 			Accept:  "application/json",
 		})
@@ -135,7 +138,7 @@ func tapasChapters(doc *goquery.Document, before int) Filterables {
 		ch.Locked = row.Find(".thumb__overlay--locked, .ico--lock").Length() > 0
 		chapters = append(chapters, &TapasChapter{
 			Chapter: ch,
-			URL:     "https://tapas.io" + row.AttrOr("data-permalink", ""),
+			URL:     tapasBase + row.AttrOr("data-permalink", ""),
 		})
 	})
 	return chapters

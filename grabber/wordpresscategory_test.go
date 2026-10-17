@@ -108,6 +108,19 @@ func TestWordPressCategoryHiddenImages(t *testing.T) {
 	}
 }
 
+func TestWpPageImagesElementor(t *testing.T) {
+	// randowis.com: an Elementor theme holds the post in a widget, not .entry-content
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(`
+		<div class="elementor-widget-theme-post-content"><img src="https://cdn.test/Why_014-001.jpg"></div>
+		<div class="elementor-widget-image"><img src="https://cdn.test/SIGN_Blank.png"></div>`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pages := wpPageImages(doc); len(pages) != 1 || pages[0].URL != "https://cdn.test/Why_014-001.jpg" {
+		t.Fatalf("got %+v, want only the post's picture", pages)
+	}
+}
+
 func TestWordPressCategoryTestKeepsLanguage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `<html lang="en-US"><head><link rel="alternate" href="/wp-json/wp/v2/categories/3" /></head>

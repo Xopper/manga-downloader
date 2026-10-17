@@ -242,7 +242,7 @@ func wcLargestImage(s *goquery.Selection, base *url.URL) string {
 
 // wpFeedNameRe reads a WordPress site's name from its feed link's title
 // ("Kill Six Billion Demons » Feed", "Sandra and Woo RSS Feed")
-var wpFeedNameRe = regexp.MustCompile(`^(.+?)\s*(?:»\s*)?(?:RSS\s*)?(?:2\.0\s*)?Feed$`)
+var wpFeedNameRe = regexp.MustCompile(`^(.*?[\p{L}\p{N}].*?)\s*(?:»\s*)?(?:RSS\s*)?(?:2\.0\s*)?Feed$`)
 
 // wpSiteName is a WordPress site's name: its main feed's, which every
 // theme links in the head, else the one it gives Open Graph, else its title's

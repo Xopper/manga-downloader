@@ -5,8 +5,8 @@ package grabber
 import (
 	"encoding/json"
 	"errors"
-	"html"
 	"fmt"
+	"html"
 	"net/url"
 	"regexp"
 	"slices"

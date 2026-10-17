@@ -33,7 +33,7 @@ func NewNamiComi(g *Grabber) *NamiComi {
 }
 
 // namiComiAPI is the API's root
-const namiComiAPI = "https://api.namicomi.com"
+var namiComiAPI = "https://api.namicomi.com"
 
 // namiComiTitleRe reads a title's ID from its page's URL (/en/title/TatWWTNm/greek-wine)
 var namiComiTitleRe = regexp.MustCompile(`/title/([A-Za-z0-9]+)`)

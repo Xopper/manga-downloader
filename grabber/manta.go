@@ -33,7 +33,7 @@ func NewManta(g *Grabber) *Manta {
 }
 
 // mantaAPI is the site's API root
-const mantaAPI = "https://manta.net/front/v1"
+var mantaAPI = "https://manta.net/front/v1"
 
 // mantaFree is the lock state of an episode anyone can read
 const mantaFree = 110

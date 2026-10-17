@@ -36,7 +36,7 @@ func NewComicsKingdom(g *Grabber) *ComicsKingdom {
 }
 
 // comicsKingdomAPI is the REST API's root
-const comicsKingdomAPI = "https://wp.comicskingdom.com/wp-json/wp/v2/"
+var comicsKingdomAPI = "https://wp.comicskingdom.com/wp-json/wp/v2/"
 
 // Test tells whether the URL is a Comics Kingdom feature, and reads its slug
 func (c *ComicsKingdom) Test() (bool, error) {
