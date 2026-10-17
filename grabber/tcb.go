@@ -24,6 +24,10 @@ type Tcb struct {
 	chaps  *goquery.Selection
 	title  string
 	series string // series URL, which a pasted chapter URL is reduced to
+	// ajax is the series' ajax/chapters URL, and lastPage the number of
+	// pages the list is split over when the theme paginates it (?t=N)
+	ajax     string
+	lastPage int
 }
 
 func NewTcb(g *Grabber) *Tcb {
@@ -36,10 +40,18 @@ type TcbChapter struct {
 	URL string
 }
 
-// tcbSeriesRe matches the series path of a Madara URL: /manga/<slug>/, or
-// /gl/ (lilymanga.net) and /seri/ (webtoonia.fun). The slug must end in a slash,
-// so a chapter URL maps to its series while /somanga/ and /glimpse/ don't match.
-var tcbSeriesRe = regexp.MustCompile(`/((?:manga|gl|seri)/[^/]+)/`)
+// tcbSeriesRe matches the series path of a Madara URL: its first two path
+// segments, /<type>/<slug>, so a chapter URL maps to its series. Madara lets
+// each site name the type segment: /manga/, /gl/ (lilymanga.net), /seri/
+// (webtoonia.fun), /manhwa/ (manhwatoon.me), /series/ (mangatop.org),
+// /comics/ (grabber.zone), /m/ (hunlightcomics.com)… Test() asks the series'
+// ajax/chapters for the platform's own chapter rows before claiming the URL.
+var tcbSeriesRe = regexp.MustCompile(`^https?://[^/]+/([^/?#]+/[^/?#]+)(?:[/?#]|$)`)
+
+// tcbKnownSeriesRe matches the type segments seen on Madara sites: an error
+// while probing one of these is worth reporting, while for any other URL it
+// only means the site isn't Madara.
+var tcbKnownSeriesRe = regexp.MustCompile(`^(?:manga|gl|seri)/`)
 
 // tcbMovedHostRe matches diamondfansub.com, which now redirects every series
 // and chapter page to webtoonia.fun (a chapter URL there lands on the series),
@@ -63,6 +75,9 @@ func (t *Tcb) Test() (bool, error) {
 		DisableRetry: true, // identification probe: a 5xx means "not this site"
 	})
 	if err != nil {
+		if !tcbKnownSeriesRe.MatchString(match[1]) {
+			return false, nil
+		}
 		return false, err
 	}
 
@@ -81,6 +96,8 @@ func (t *Tcb) Test() (bool, error) {
 	// would pick up those volume headers (and their empty list-wrapper <li>)
 	// as bogus duplicate chapters alongside the real ones.
 	t.chaps = body.Find("li.wp-manga-chapter")
+	t.ajax = uri
+	t.lastPage = tcbLastPage(body)
 	if t.chaps.Length() == 0 {
 		// Some installs answer with the series page, which names the manga id
 		// admin-ajax.php needs.
@@ -147,9 +164,88 @@ func (t *Tcb) FetchTitle() (string, error) {
 	return t.title, nil
 }
 
+// tcbLastPage returns the last page of a paginated ajax/chapters list
+// (mangatop.org: 30 rows a page, `<a href="/?t=21" data-page="21">`), or 1
+func tcbLastPage(doc *goquery.Document) int {
+	last := 1
+	doc.Find(".pagination a[data-page]").Each(func(_ int, a *goquery.Selection) {
+		if n, err := strconv.Atoi(a.AttrOr("data-page", "")); err == nil && n > last {
+			last = n
+		}
+	})
+	return last
+}
+
+// tcbMaxPages bounds the pages of a paginated list, so a pager that never
+// ends can't keep the walk going
+const tcbMaxPages = 200
+
+// fetchChapterPages returns the rows of pages 2 to lastPage of a paginated
+// ajax/chapters list, one selection per page in page order (newest first,
+// like the first page)
+func (t Tcb) fetchChapterPages() ([]*goquery.Selection, []error) {
+	last := min(t.lastPage, tcbMaxPages)
+	results := make([]*goquery.Selection, last+1)
+	errs := make([]error, last+1)
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, tcbListWorkers)
+	for page := 2; page <= last; page++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			rbody, err := http.Post(http.RequestParams{
+				URL:     t.ajax + "/?t=" + strconv.Itoa(page),
+				Referer: t.series,
+			})
+			if err != nil {
+				errs[page] = fmt.Errorf("chapter list page %d: %w", page, err)
+				return
+			}
+			defer rbody.Close()
+			doc, err := goquery.NewDocumentFromReader(rbody)
+			if err != nil {
+				errs[page] = fmt.Errorf("chapter list page %d: %w", page, err)
+				return
+			}
+			results[page] = doc.Find("li.wp-manga-chapter")
+		}()
+	}
+	wg.Wait()
+
+	var pages []*goquery.Selection
+	var errList []error
+	for page := 2; page <= last; page++ {
+		if errs[page] != nil {
+			errList = append(errList, errs[page])
+			continue
+		}
+		pages = append(pages, results[page])
+	}
+	return pages, errList
+}
+
+// tcbListWorkers bounds the concurrent fetches of a paginated chapter list
+const tcbListWorkers = 4
+
 // FetchChapters returns a slice of chapters
 func (t Tcb) FetchChapters() (chapters Filterables, errs []error) {
-	t.chaps.Each(func(i int, s *goquery.Selection) {
+	lists := []*goquery.Selection{t.chaps}
+	if t.lastPage > 1 {
+		more, moreErrs := t.fetchChapterPages()
+		lists = append(lists, more...)
+		errs = append(errs, moreErrs...)
+	}
+	for _, rows := range lists {
+		chapters = append(chapters, t.listChapters(rows)...)
+	}
+	return chapters, errs
+}
+
+// listChapters reads the chapter rows of one ajax/chapters page
+func (t Tcb) listChapters(rows *goquery.Selection) (chapters Filterables) {
+	rows.Each(func(i int, s *goquery.Selection) {
 		// fetch title (usually "Chapter N")
 		link := s.Find("a")
 		if len(link.Children().Nodes) > 0 {
@@ -242,10 +338,23 @@ func tcbReaderTypeError(doc *goquery.Document, title string) error {
 	switch {
 	case strings.Contains(class, "chapter-type-video"):
 		return fmt.Errorf("%s is a video, not a manga chapter", title)
-	case strings.Contains(class, "chapter-type-text"):
+	case strings.Contains(class, "chapter-type-text") && !tcbTextHasImages(doc):
 		return fmt.Errorf("%s is a novel chapter, not a manga chapter", title)
 	}
 	return nil
+}
+
+// tcbTextHasImages reports whether a text chapter is a manga chapter whose
+// pages were pasted into the text (manhwaden.com), so it has pictures to pack
+// besides the theme's lazy-load placeholders.
+func tcbTextHasImages(doc *goquery.Document) bool {
+	found := false
+	doc.Find("div.reading-content img").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+		u := strings.TrimSpace(s.AttrOr("data-src", s.AttrOr("src", "")))
+		found = u != "" && !isThemeImage(u)
+		return !found
+	})
+	return found
 }
 
 // FetchChapter fetches a chapter and its pages

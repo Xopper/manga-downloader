@@ -202,7 +202,15 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewProjectsuki(g),
 		NewHeavenManga(g),
 		NewLelScans(g),
+		NewThreeHentai(g),
+		NewHennojin(g),
+		// fetch-testing, ahead of PlainHTML: the Iken series page renders only
+		// the newest chapters, which a generic entry would take for the list
+		NewIken(g),
 		plainHTML,
+		NewZinManga(g),
+		NewLiliana(g),
+		NewHeanCMS(g),
 		NewGallery(g),
 		NewTcb(g),
 		NewJestful(g),

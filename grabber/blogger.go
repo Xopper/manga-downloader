@@ -360,14 +360,19 @@ func bloggerKey(name string) string {
 
 // bloggerPages returns a chapter post's pages: Blogger's own decorations carry an
 // alt text, the uploaded pages alt="". Script-rendered templates keep the body in
-// a hidden textarea.
+// a hidden textarea, and manga reader templates (murimscans.site) print it in a
+// div.chapter-raw-content, their pages with no alt at all.
 func bloggerPages(doc *goquery.Document, postURL *url.URL) []Page {
 	if pages := bloggerImages(doc.Find("div.post-body img[alt='']"), postURL); len(pages) > 0 {
 		return pages
 	}
+	raw := doc.Find("div.chapter-raw-content").First()
+	if pages := bloggerImages(raw.Find("img[alt=''], img:not([alt])"), postURL); len(pages) > 0 {
+		return pages
+	}
 
-	raw := doc.Find("textarea#zeist-raw-data").First().Text()
-	body, err := goquery.NewDocumentFromReader(strings.NewReader(raw))
+	textarea := doc.Find("textarea#zeist-raw-data").First().Text()
+	body, err := goquery.NewDocumentFromReader(strings.NewReader(textarea))
 	if err != nil {
 		return nil
 	}
