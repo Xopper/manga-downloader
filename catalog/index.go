@@ -205,12 +205,8 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	text, err := http.GetText(http.RequestParams{URL: baseURL + indexFile, DisableRetry: true})
+	remote, err := fetchIndex(ctx, baseURL+indexFile)
 	if err != nil {
-		return nil, fmt.Errorf("catalog index: %w", err)
-	}
-	var remote Index
-	if err := json.Unmarshal([]byte(text), &remote); err != nil {
 		return nil, fmt.Errorf("catalog index: %w", err)
 	}
 	oldIndex, _ := os.Stat(filepath.Join(s.Dir, indexFile))
@@ -374,4 +370,35 @@ func Gzip(dir string) error {
 	}
 
 	return nil
+}
+
+// indexAttempts is how many times the index is asked for before an update
+// gives up: a connection dropped mid-transfer is worth another try
+const indexAttempts = 3
+
+// fetchIndex downloads and reads the published index, asking again when the
+// download breaks off or comes back unreadable
+func fetchIndex(ctx context.Context, u string) (Index, error) {
+	var last error
+	for attempt := 0; attempt < indexAttempts; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return Index{}, ctx.Err()
+			case <-time.After(time.Duration(attempt) * time.Second):
+			}
+		}
+		text, err := http.GetText(http.RequestParams{URL: u, DisableRetry: true})
+		if err != nil {
+			last = err
+			continue
+		}
+		var idx Index
+		if err := json.Unmarshal([]byte(text), &idx); err != nil {
+			last = err
+			continue
+		}
+		return idx, nil
+	}
+	return Index{}, last
 }

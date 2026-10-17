@@ -20,10 +20,12 @@ func GetText(params Params) (text string, err error) {
 	}
 	defer body.Close()
 
+	// a body cut short (a connection dropped mid-transfer, a timeout) is an
+	// error, not a shorter page: a cut-off JSON or HTML reads as broken
 	buff := new(bytes.Buffer)
-	io.Copy(buff, body)
+	if _, err = io.Copy(buff, body); err != nil {
+		return "", err
+	}
 
-	text = buff.String()
-
-	return
+	return buff.String(), nil
 }

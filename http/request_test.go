@@ -688,3 +688,19 @@ func TestRequestAcceptsPartialContentForRange(t *testing.T) {
 		t.Error("GetText() accepted a 206 nobody asked for")
 	}
 }
+
+// a body cut short is an error, not a shorter page: a cut-off JSON read as
+// broken was how a dropped catalog download showed
+func TestGetTextReportsACutOffBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1000")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"sites":[`)
+		// the handler returns with 990 bytes missing: the client sees EOF
+	}))
+	defer srv.Close()
+
+	if text, err := GetText(RequestParams{URL: srv.URL, DisableRetry: true}); err == nil {
+		t.Errorf("GetText() = %q, nil; want an error", text)
+	}
+}

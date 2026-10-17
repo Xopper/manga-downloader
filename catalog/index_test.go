@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -486,5 +487,28 @@ func TestPlainFileWinsOverItsGzipTwin(t *testing.T) {
 	s.Load()
 	if c, _ := s.Catalog("a.test"); len(c.Entries) != 2 {
 		t.Error("stale gz survived")
+	}
+}
+
+// an index download that breaks off is asked for again
+func TestFetchIndexRetriesACutOffDownload(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if calls.Add(1) == 1 {
+			w.Header().Set("Content-Length", "1000")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, `{"generated":`)
+			return
+		}
+		fmt.Fprint(w, `{"generated":"2026-10-17T00:00:00Z","sites":[]}`)
+	}))
+	defer srv.Close()
+
+	idx, err := fetchIndex(context.Background(), srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 2 || idx.Generated.IsZero() {
+		t.Errorf("calls = %d, index %+v", calls.Load(), idx)
 	}
 }
