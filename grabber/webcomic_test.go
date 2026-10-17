@@ -119,7 +119,7 @@ func TestWpSiteName(t *testing.T) {
 		  <link rel="alternate" type="application/rss+xml" title="Kill Six Billion Demons &raquo; Comments Feed" href="/comments/feed/">`, "Kill Six Billion Demons"},
 		{`<link rel="alternate" type="application/rss+xml" title="Sandra and Woo RSS Feed" href="/feed/">`, "Sandra and Woo"},
 		// an empty site name falls through to Open Graph, then the title
-		{`<link rel="alternate" type="application/rss+xml" title=" &raquo; Feed" href="/feed"><meta property="og:site_name" content="Buttsmithy">`, "Buttsmithy"},
+		{`<link rel="alternate" type="application/rss+xml" title=" &raquo; Feed" href="/feed"><link rel="alternate" type="application/rss+xml" title=" &raquo; Comments Feed" href="/comments/feed"><meta property="og:site_name" content="Buttsmithy">`, "Buttsmithy"},
 		{`<title>Archive | Grrl Power</title>`, "Grrl Power"},
 	}
 	for _, c := range cases {

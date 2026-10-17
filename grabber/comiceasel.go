@@ -89,7 +89,7 @@ func (c *ComicEasel) Test() (bool, error) {
 	return theme && doc.Find("td.archive-title a[href]").Length() > 0, nil
 }
 
-// FetchTitle returns the comic's name: the site's
+// FetchTitle returns the comic's name: the site's, else its domain's
 func (c *ComicEasel) FetchTitle() (string, error) {
 	if c.doc == nil {
 		if _, err := c.Test(); err != nil {
@@ -97,7 +97,8 @@ func (c *ComicEasel) FetchTitle() (string, error) {
 		}
 	}
 	if c.title == "" {
-		c.title = wpSiteName(c.doc)
+		// any page of the comic will do, so its title may name a strip
+		c.title = wpDeclaredName(c.doc)
 	}
 	if c.title == "" {
 		c.title = hostName(c.URL)

@@ -242,12 +242,21 @@ func wcLargestImage(s *goquery.Selection, base *url.URL) string {
 
 // wpFeedNameRe reads a WordPress site's name from its feed link's title
 // ("Kill Six Billion Demons » Feed", "Sandra and Woo RSS Feed")
-var wpFeedNameRe = regexp.MustCompile(`^(.*?[\p{L}\p{N}].*?)\s*(?:»\s*)?(?:RSS\s*)?(?:2\.0\s*)?Feed$`)
+var wpFeedNameRe = regexp.MustCompile(`^(.*?[\p{L}\p{N}].*?)\s*(?:»\s*Feed|RSS(?:\s*2\.0)?\s*Feed)$`)
 
-// wpSiteName is a WordPress site's name: its main feed's, which every
-// theme links in the head, else the one it gives Open Graph, else its title's
-// last part
+// wpSiteName is a WordPress site's name: the one it declares (wpDeclaredName),
+// else its title's last part
 func wpSiteName(doc *goquery.Document) string {
+	if name := wpDeclaredName(doc); name != "" {
+		return name
+	}
+	return sanitizeTitle(html.UnescapeString(wcTitleSiteName(doc.Find("title").First().Text())))
+}
+
+// wpDeclaredName is the name a WordPress site gives its main feed, which
+// every theme links in the head, else the one it gives Open Graph; "" when
+// it gives none
+func wpDeclaredName(doc *goquery.Document) string {
 	var name string
 	doc.Find(`link[rel="alternate"][type="application/rss+xml"]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		if m := wpFeedNameRe.FindStringSubmatch(strings.TrimSpace(s.AttrOr("title", ""))); m != nil {
@@ -257,9 +266,6 @@ func wpSiteName(doc *goquery.Document) string {
 	})
 	if name == "" {
 		name = doc.Find(`meta[property="og:site_name"]`).AttrOr("content", "")
-	}
-	if name == "" {
-		name = wcTitleSiteName(doc.Find("title").First().Text())
 	}
 	return sanitizeTitle(html.UnescapeString(name))
 }
