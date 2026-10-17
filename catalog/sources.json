@@ -1,16 +1,5 @@
 [
  {
-  "site": "127.0.0.1",
-  "name": "Bakkin Self-hosted",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "6251873330157357206",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
   "site": "18porncomic.com",
   "name": "18 Porn Comic",
   "lang": "en",
@@ -44,17 +33,6 @@
   "downloadable": true
  },
  {
-  "site": "3600000.xyz",
-  "name": "3600000 Beauty",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "5498091984644576825",
-  "entries": 100,
-  "complete": true,
-  "links": "unchecked",
-  "downloadable": true
- },
- {
   "site": "3asq.online",
   "name": "Arabic, former 3asq.org",
   "lang": "ar",
@@ -76,17 +54,6 @@
   "downloadable": true
  },
  {
-  "site": "4khd.com",
-  "name": "4KHD",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "6501663152246384585",
-  "entries": 6064,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "4porncomic.com",
   "name": "4PornComic",
   "lang": "en",
@@ -103,17 +70,6 @@
   "lang": "en",
   "nsfw": true,
   "sourceId": "7689490563697355048",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
-  "site": "ahottie.top",
-  "name": "AHottie",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "6289731484943315811",
   "entries": 0,
   "complete": false,
   "failed": true,
@@ -463,28 +419,6 @@
   "downloadable": true
  },
  {
-  "site": "baobua.net",
-  "name": "BaoBua",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "514187608699312366",
-  "entries": 7216,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "batcave.biz",
-  "name": "BatCave",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "7422099479605463706",
-  "entries": 3015,
-  "complete": false,
-  "links": "unchecked",
-  "downloadable": false
- },
- {
   "site": "bato1.com",
   "name": "Bbato",
   "lang": "en",
@@ -524,17 +458,6 @@
   "sourceId": "",
   "entries": 1,
   "complete": true,
-  "downloadable": true
- },
- {
-  "site": "blastwave-comic.com",
-  "name": "Gone with the Blastwave",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "4006397036545425884",
-  "entries": 1,
-  "complete": false,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -592,17 +515,6 @@
   "downloadable": true
  },
  {
-  "site": "buondua.com",
-  "name": "Buon Dua",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "1435103006121310663",
-  "entries": 515,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "cartoonporn.to",
   "name": "CartoonPorn",
   "lang": "en",
@@ -610,17 +522,6 @@
   "sourceId": "7034264791241222160",
   "entries": 6656,
   "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "ccc.vinnieveritas.com",
-  "name": "Vinnie Veritas - CCC",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "9005452006043030878",
-  "entries": 1,
-  "complete": true,
   "links": "joined",
   "downloadable": true
  },
@@ -645,17 +546,6 @@
   "downloadable": true
  },
  {
-  "site": "clowncorps.net",
-  "name": "Clown Corps",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "285164574089229147",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "cocomic.co",
   "name": "Cocomic",
   "lang": "en",
@@ -675,17 +565,6 @@
   "sourceId": "2571489285618757730",
   "entries": 3612,
   "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "collectedcurios.com",
-  "name": "Collected Curios",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1896428900030795228",
-  "entries": 3,
-  "complete": true,
   "links": "joined",
   "downloadable": true
  },
@@ -825,40 +704,6 @@
   "downloadable": true
  },
  {
-  "site": "comicaurora.com",
-  "name": "Aurora",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "9148518200946142514",
-  "entries": 31,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "comicfury.com",
-  "name": "Comic Fury",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "6251704791239468278",
-  "entries": 1201,
-  "complete": false,
-  "links": "fetched",
-  "fetched": 200,
-  "downloadable": true
- },
- {
-  "site": "comichubfree.com",
-  "name": "ComicHubFree",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "2310489567413492709",
-  "entries": 3961,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
- },
- {
   "site": "comick.live",
   "name": "Comick (Unoriginal)",
   "lang": "all",
@@ -960,17 +805,6 @@
   "downloadable": true
  },
  {
-  "site": "commitstrip.com",
-  "name": "Commit Strip",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "5328240584854276436",
-  "entries": 15,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "coolmic.me",
   "name": "Coolmic",
   "lang": "en",
@@ -981,28 +815,6 @@
   "links": "templated",
   "fetched": 1,
   "downloadable": false
- },
- {
-  "site": "coomer.st",
-  "name": "Coomer",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "8715899195746116471",
-  "entries": 28537,
-  "complete": false,
-  "links": "joined",
-  "downloadable": false
- },
- {
-  "site": "cosplaytele.com",
-  "name": "CosplayTele",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "7395748658970167454",
-  "entries": 5553,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "cubari.moe",
@@ -1061,17 +873,6 @@
   "downloadable": false
  },
  {
-  "site": "danbooru.donmai.us",
-  "name": "Danbooru",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "7602260701584916302",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
   "site": "danke.moe",
   "name": "Danke fürs Lesen",
   "lang": "en",
@@ -1081,28 +882,6 @@
   "complete": true,
   "links": "templated",
   "fetched": 1,
-  "downloadable": true
- },
- {
-  "site": "darklegacycomics.com",
-  "name": "Dark Legacy Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1650720534254409337",
-  "entries": 2,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "darthsanddroids.net",
-  "name": "Darths \u0026 Droids",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1395072850055110585",
-  "entries": 13,
-  "complete": false,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -1149,33 +928,11 @@
   "downloadable": true
  },
  {
-  "site": "deviantart.com",
-  "name": "DeviantArt",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "5211324870873630158",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
   "site": "dflow.alwaysdata.net",
   "name": "DFlowScans",
   "lang": "en",
   "nsfw": false,
   "sourceId": "5731115645938971449",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
-  "site": "digitalcomicmuseum.com",
-  "name": "Digital Comic Museum",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1057298314437889941",
   "entries": 0,
   "complete": false,
   "failed": true,
@@ -1283,17 +1040,6 @@
   "downloadable": true
  },
  {
-  "site": "dresdencodak.com",
-  "name": "Dark Science",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "2059482759352416637",
-  "entries": 1,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "dynasty-scans.com",
   "name": "Dynasty Scans",
   "lang": "en",
@@ -1302,18 +1048,6 @@
   "entries": 415,
   "complete": true,
   "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "e621.net",
-  "name": "e621",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "3580576879040377475",
-  "entries": 9022,
-  "complete": false,
-  "links": "templated",
-  "fetched": 1,
   "downloadable": true
  },
  {
@@ -1340,28 +1074,6 @@
   "downloadable": true
  },
  {
-  "site": "egscomics.com",
-  "name": "El Goonish Shive",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "6631281276194159210",
-  "entries": 3,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "elan.school",
-  "name": "Elan School",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "6159323532820101296",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "eldermanga.com",
   "name": "",
   "lang": "en",
@@ -1381,17 +1093,6 @@
   "complete": true,
   "links": "fetched",
   "downloadable": true
- },
- {
-  "site": "elitebabes.com",
-  "name": "Elite Babes",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "6842598531101194683",
-  "entries": 159,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
  },
  {
   "site": "emaqi.com",
@@ -1428,28 +1129,6 @@
   "links": "fetched",
   "fetched": 200,
   "downloadable": true
- },
- {
-  "site": "en.girlstop.info",
-  "name": "GirlsTop",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "1368670128695001652",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
-  "site": "en.xchina.co",
-  "name": "小黄书",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "6844007153169388830",
-  "entries": 0,
-  "complete": true,
-  "failed": true,
-  "downloadable": false
  },
  {
   "site": "erisscans.com",
@@ -1503,51 +1182,6 @@
   "entries": 265,
   "complete": true,
   "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "everia.club",
-  "name": "Everia.club",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "7698513740234984368",
-  "entries": 6015,
-  "complete": false,
-  "links": "unchecked",
-  "downloadable": true
- },
- {
-  "site": "everiaclub.com",
-  "name": "EveriaClub (unoriginal)",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "8698756602692547891",
-  "entries": 533,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
- },
- {
-  "site": "existentialcomics.com",
-  "name": "Existential Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "684582342346256208",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "explosm.net",
-  "name": "Cyanide \u0026 Happiness",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "491094567635736188",
-  "entries": 1,
-  "complete": true,
-  "links": "fetched",
-  "fetched": 21,
   "downloadable": true
  },
  {
@@ -1605,17 +1239,6 @@
   "downloadable": true
  },
  {
-  "site": "femjoyhunter.com",
-  "name": "Femjoy Hunter",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "9185590742756804817",
-  "entries": 38,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "flamecomics.xyz",
   "name": "Flame Comics",
   "lang": "en",
@@ -1634,17 +1257,6 @@
   "sourceId": "",
   "entries": 20,
   "complete": true,
-  "downloadable": true
- },
- {
-  "site": "foamgirl.net",
-  "name": "FoamGirl",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "5874068195320206396",
-  "entries": 6030,
-  "complete": false,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -1668,17 +1280,6 @@
   "complete": false,
   "links": "joined",
   "downloadable": false
- },
- {
-  "site": "ftvhunter.com",
-  "name": "FTV Hunter",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "2424130356866336342",
-  "entries": 38,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "furyosociety.com",
@@ -1756,17 +1357,6 @@
   "complete": true,
   "links": "joined",
   "downloadable": true
- },
- {
-  "site": "giantitp.com",
-  "name": "The Order Of The Stick (OOTS)",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "6973362428290892964",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
  },
  {
   "site": "gingertoon.com",
@@ -1858,28 +1448,6 @@
   "downloadable": true
  },
  {
-  "site": "grrlpowercomic.com",
-  "name": "Grrl Power Comic",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1991252499508931836",
-  "entries": 1,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "gunnerkrigg.com",
-  "name": "Gunnerkrigg Court",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "6036325841864340105",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "guya.cubari.moe",
   "name": "Guya",
   "lang": "en",
@@ -1956,17 +1524,6 @@
   "complete": true,
   "links": "joined",
   "downloadable": true
- },
- {
-  "site": "hentai-cosplay-xxx.com",
-  "name": "Hentai Cosplay",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "3422463439145930309",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
  },
  {
   "site": "hentai1.io",
@@ -2298,17 +1855,6 @@
   "downloadable": true
  },
  {
-  "site": "hiveworkscomics.com",
-  "name": "Hiveworks Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "6620819060709781499",
-  "entries": 38,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
- },
- {
   "site": "hni-scantrad.net",
   "name": "HNI-Scantrad",
   "lang": "all",
@@ -2418,17 +1964,6 @@
   "downloadable": true
  },
  {
-  "site": "incase.buttsmithy.com",
-  "name": "Buttsmithy",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "5116114496934092518",
-  "entries": 55,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "infinityscans.org",
   "name": "InfinityScans",
   "lang": "en",
@@ -2447,17 +1982,6 @@
   "sourceId": "",
   "entries": 5249,
   "complete": true,
-  "downloadable": true
- },
- {
-  "site": "irovedout.com",
-  "name": "I Roved Out",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "8197175895739916188",
-  "entries": 1,
-  "complete": false,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -2494,17 +2018,6 @@
   "downloadable": true
  },
  {
-  "site": "jjcos.com",
-  "name": "JJCOS",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "5763134940669279175",
-  "entries": 6000,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "jojolandsmanga.com",
   "name": "The JoJoLands",
   "lang": "en",
@@ -2512,28 +2025,6 @@
   "sourceId": "",
   "entries": 1,
   "complete": true,
-  "downloadable": true
- },
- {
-  "site": "jolleycomics.com",
-  "name": "The Property of Hate",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "7307224992915342074",
-  "entries": 1,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "joymiihub.com",
-  "name": "Joymii Hub",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "8421979328901634475",
-  "entries": 40,
-  "complete": true,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -2616,17 +2107,6 @@
   "downloadable": true
  },
  {
-  "site": "kemono.cr",
-  "name": "Kemono",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "2011050813940802605",
-  "entries": 24634,
-  "complete": false,
-  "links": "joined",
-  "downloadable": false
- },
- {
   "site": "kencomics.com",
   "name": "Ken Scans",
   "lang": "en",
@@ -2646,17 +2126,6 @@
   "sourceId": "2816768640766208312",
   "entries": 32,
   "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "killsixbilliondemons.com",
-  "name": "KillSixBillionDemons",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "5520021760150818261",
-  "entries": 6,
-  "complete": false,
   "links": "joined",
   "downloadable": true
  },
@@ -2700,17 +2169,6 @@
   "nsfw": true,
   "sourceId": "7739452864322240494",
   "entries": 119,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "kiutaku.com",
-  "name": "Kiutaku",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "3040035304874076216",
-  "entries": 517,
   "complete": true,
   "links": "joined",
   "downloadable": true
@@ -2985,28 +2443,6 @@
   "links": "fetched",
   "fetched": 200,
   "downloadable": true
- },
- {
-  "site": "loadingartist.com",
-  "name": "Loading Artist",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1555415289901855998",
-  "entries": 1,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "localhost",
-  "name": "StashApp",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "4332882684116196542",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
  },
  {
   "site": "lolobun.com",
@@ -4597,39 +4033,6 @@
   "downloadable": false
  },
  {
-  "site": "megatokyo.com",
-  "name": "Megatokyo",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "2609498548705590664",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "mehgazone.com",
-  "name": "Mehgazone",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "2698265163169248715",
-  "entries": 2,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "meijuntu.com",
-  "name": "Junmeitu",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "4721197766605490540",
-  "entries": 9445,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "meitoon.org",
   "name": "MeiToon",
   "lang": "en",
@@ -4639,17 +4042,6 @@
   "complete": false,
   "failed": true,
   "downloadable": false
- },
- {
-  "site": "metarthunter.com",
-  "name": "Metart Hunter",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "3567512546321944475",
-  "entries": 46,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "mgeko.cc",
@@ -4685,17 +4077,6 @@
   "downloadable": false
  },
  {
-  "site": "misskon.com",
-  "name": "MissKon",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "492049561920540214",
-  "entries": 6093,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "mistscans.com",
   "name": "Mist Scans",
   "lang": "en",
@@ -4703,17 +4084,6 @@
   "sourceId": "80073424419623517",
   "entries": 199,
   "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "mitaku.net",
-  "name": "Mitaku",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "7541045796029140694",
-  "entries": 2704,
-  "complete": false,
   "links": "joined",
   "downloadable": true
  },
@@ -4728,17 +4098,6 @@
   "links": "fetched",
   "fetched": 200,
   "downloadable": true
- },
- {
-  "site": "monochromecms.netlify.app",
-  "name": "Monochrome Custom",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1373514020932708527",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
  },
  {
   "site": "multporn.net",
@@ -5048,28 +4407,6 @@
   "downloadable": true
  },
  {
-  "site": "oglaf.com",
-  "name": "Oglaf",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "1725608127916018822",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "ohjoysextoy.com",
-  "name": "Oh Joy Sex Toy",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "4502591927177845825",
-  "entries": 724,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "omegascans.org",
   "name": "Omega Scans",
   "lang": "en",
@@ -5182,18 +4519,6 @@
   "downloadable": true
  },
  {
-  "site": "ososedki.com",
-  "name": "OSOSEDKI",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "703138310497011533",
-  "entries": 13409,
-  "complete": false,
-  "links": "templated",
-  "fetched": 1,
-  "downloadable": true
- },
- {
   "site": "ourfeel.jp",
   "name": "Japanese, Our Feel (GigaViewer)",
   "lang": "ja",
@@ -5239,39 +4564,6 @@
   "downloadable": true
  },
  {
-  "site": "patchfriday.com",
-  "name": "Patch Friday",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "5782663927698937256",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "pawchive.pw",
-  "name": "Pawchive",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "4284527942812494681",
-  "entries": 24396,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "peppercarrot.com",
-  "name": "Pepper\u0026Carrot",
-  "lang": "all",
-  "nsfw": false,
-  "sourceId": "279282683217001983",
-  "entries": 3,
-  "complete": true,
-  "links": "fetched",
-  "downloadable": true
- },
- {
   "site": "petrotechsociety.org",
   "name": "Petrotechsociety",
   "lang": "en",
@@ -5296,17 +4588,6 @@
   "downloadable": false
  },
  {
-  "site": "photos18.com",
-  "name": "Photos18",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "225835804698740720",
-  "entries": 13512,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "pixiv.net",
   "name": "Pixiv",
   "lang": "en",
@@ -5316,39 +4597,6 @@
   "complete": false,
   "links": "joined",
   "downloadable": false
- },
- {
-  "site": "play.mobilelegends.com",
-  "name": "MLBB Lore Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1211137741907860722",
-  "entries": 89,
-  "complete": true,
-  "links": "fetched",
-  "downloadable": false
- },
- {
-  "site": "pmatehunter.com",
-  "name": "Playmate Hunter",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "1082062847119890629",
-  "entries": 33,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "politeandgood.com",
-  "name": "Broccoli Soup",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "2175678633501332475",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "pornhwa18.com",
@@ -5375,17 +4623,6 @@
   "downloadable": true
  },
  {
-  "site": "pornpics.com",
-  "name": "PornPics",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "1459635082044256286",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
   "site": "projectsuki.com",
   "name": "Project Suki",
   "lang": "all",
@@ -5409,17 +4646,6 @@
   "downloadable": true
  },
  {
-  "site": "questionablecontent.net",
-  "name": "Questionable Content",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "5564060716297760161",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "rackusreads.com",
   "name": "Rackus",
   "lang": "en",
@@ -5440,17 +4666,6 @@
   "complete": false,
   "failed": true,
   "downloadable": false
- },
- {
-  "site": "randowis.com",
-  "name": "Randowiz",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1502370949450941405",
-  "entries": 3,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "ravenscans.org",
@@ -5517,17 +4732,6 @@
   "downloadable": true
  },
  {
-  "site": "readallcomics.com",
-  "name": "ReadAllComics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "58328287106519523",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
   "site": "readbagabondo.com",
   "name": "Read Vagabond Manga",
   "lang": "en",
@@ -5548,28 +4752,6 @@
   "complete": true,
   "links": "joined",
   "downloadable": true
- },
- {
-  "site": "readcomiconline.li",
-  "name": "ReadComicOnline",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "8061953015808280611",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
-  "site": "readcomicsonline.ru",
-  "name": "Read Comics Online",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "7185601298150078890",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
  },
  {
   "site": "reader.deathtollscans.net",
@@ -5614,17 +4796,6 @@
   "complete": true,
   "links": "joined",
   "downloadable": false
- },
- {
-  "site": "reallifecomics.com",
-  "name": "Real Life Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "4890735226828164084",
-  "entries": 26,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "reimanga.net",
@@ -5774,17 +4945,6 @@
   "downloadable": true
  },
  {
-  "site": "sabrina-online.com",
-  "name": "Sabrina Online",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "346019099366213894",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "sacachispa.site",
   "name": "SACACHISPA",
   "lang": "en",
@@ -5806,17 +4966,6 @@
   "complete": true,
   "links": "templated",
   "fetched": 1,
-  "downloadable": true
- },
- {
-  "site": "sandraandwoo.com",
-  "name": "Sandra and Woo",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "8566345145646340492",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -5862,17 +5011,6 @@
   "links": "templated",
   "fetched": 1,
   "downloadable": false
- },
- {
-  "site": "schlockmercenary.com",
-  "name": "Schlock Mercenary",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "4705692208637300585",
-  "entries": 23,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "scythescans.com",
@@ -5941,17 +5079,6 @@
   "downloadable": true
  },
  {
-  "site": "simply-cosplay.com",
-  "name": "Simply Cosplay",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "5522274089781089670",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
   "site": "simply-hentai.com",
   "name": "Simply Hentai",
   "lang": "en",
@@ -5983,28 +5110,6 @@
   "complete": false,
   "failed": true,
   "downloadable": false
- },
- {
-  "site": "smbc-comics.com",
-  "name": "Saturday Morning Breakfast Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "3035799230093482569",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "snafu-comics.com",
-  "name": "Snafu Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "5425488988830744299",
-  "entries": 22,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "spmanhwa.online",
@@ -6039,17 +5144,6 @@
   "downloadable": true
  },
  {
-  "site": "supermegacomics.com",
-  "name": "SUPER MEGA",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "7900982727014582653",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "sushiscan.net",
   "name": "",
   "lang": "fr",
@@ -6057,17 +5151,6 @@
   "sourceId": "",
   "entries": 4347,
   "complete": true,
-  "downloadable": true
- },
- {
-  "site": "swordscomic.com",
-  "name": "Swords Comic",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "4098334577101891258",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
   "downloadable": true
  },
  {
@@ -6159,17 +5242,6 @@
   "complete": false,
   "failed": true,
   "downloadable": false
- },
- {
-  "site": "theduckwebcomics.com",
-  "name": "The Duck Webcomics",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "5361143498571709507",
-  "entries": 436,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "thegirlfromrandomchatting.com",
@@ -6422,28 +5494,6 @@
   "downloadable": true
  },
  {
-  "site": "twokinds.keenspot.com",
-  "name": "Keenspot TwoKinds",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "3133607736276627986",
-  "entries": 2,
-  "complete": false,
-  "links": "fetched",
-  "downloadable": false
- },
- {
-  "site": "universe.leagueoflegends.com",
-  "name": "League of Legends",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "5421383187922044761",
-  "entries": 13,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "utoon.us",
   "name": "UToon, home of reset-scans' content",
   "lang": "en",
@@ -6462,17 +5512,6 @@
   "entries": 142,
   "complete": true,
   "downloadable": true
- },
- {
-  "site": "v2ph.com",
-  "name": "V2PH",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "4511819378822109646",
-  "entries": 1369,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
  },
  {
   "site": "valirscans.org",
@@ -6529,17 +5568,6 @@
   "complete": true,
   "links": "joined",
   "downloadable": false
- },
- {
-  "site": "vixenlogic.com",
-  "name": "Vixen Logic",
-  "lang": "en",
-  "nsfw": true,
-  "sourceId": "2247457324301240357",
-  "entries": 1,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
  },
  {
   "site": "viz.com",
@@ -6776,17 +5804,6 @@
   "downloadable": true
  },
  {
-  "site": "wp.comicskingdom.com",
-  "name": "Comics Kingdom",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "3350274514125477391",
-  "entries": 129,
-  "complete": true,
-  "links": "fetched",
-  "downloadable": true
- },
- {
   "site": "writerscans.com",
   "name": "Writer Scans",
   "lang": "en",
@@ -6941,28 +5958,6 @@
   "downloadable": true
  },
  {
-  "site": "xarthunter.com",
-  "name": "XArt Hunter",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "7425515716363969566",
-  "entries": 35,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
- },
- {
-  "site": "xasiat.com",
-  "name": "XAsiat Albums",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "7187893778775685546",
-  "entries": 8658,
-  "complete": false,
-  "links": "joined",
-  "downloadable": true
- },
- {
   "site": "xcomic.me",
   "name": "XCOMIC",
   "lang": "all",
@@ -6972,39 +5967,6 @@
   "complete": false,
   "links": "templated",
   "fetched": 1,
-  "downloadable": true
- },
- {
-  "site": "xgmn8.vip",
-  "name": "性感美女",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "2870097240566002663",
-  "entries": 0,
-  "complete": false,
-  "failed": true,
-  "downloadable": false
- },
- {
-  "site": "xiutaku.com",
-  "name": "Xiutaku",
-  "lang": "all",
-  "nsfw": true,
-  "sourceId": "6520733892888572506",
-  "entries": 486,
-  "complete": true,
-  "links": "joined",
-  "downloadable": true
- },
- {
-  "site": "xkcd.com",
-  "name": "xkcd",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "1538249443376436084",
-  "entries": 1,
-  "complete": true,
-  "links": "fetched",
   "downloadable": true
  },
  {
@@ -7028,29 +5990,6 @@
   "complete": false,
   "failed": true,
   "downloadable": false
- },
- {
-  "site": "xoxocomic.com",
-  "name": "XOXO Comics",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "2385956107618754468",
-  "entries": 5425,
-  "complete": true,
-  "links": "joined",
-  "downloadable": false
- },
- {
-  "site": "xrabohrok.github.io",
-  "name": "War For Rayuba",
-  "lang": "en",
-  "nsfw": false,
-  "sourceId": "9161629559428486377",
-  "entries": 1,
-  "complete": true,
-  "links": "fetched",
-  "fetched": 8,
-  "downloadable": true
  },
  {
   "site": "xyzcomics.com",
