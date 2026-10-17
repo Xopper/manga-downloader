@@ -2,45 +2,111 @@
 
 package grabber
 
-import "testing"
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
 
-func TestToonzSeriesPath(t *testing.T) {
-	cases := map[string]string{
-		"https://toonz.to/manhwa/ill-dream-of-you":              "/manhwa/ill-dream-of-you",
-		"https://toonz.to/manhwa/ill-dream-of-you/":             "/manhwa/ill-dream-of-you",
-		"https://toonz.to/manhwa/ill-dream-of-you/chapter/0.01": "/manhwa/ill-dream-of-you",
-		"https://www.toonz.to/manhua/19-days?x=1":               "/manhwa/19-days",
-	}
-	for in, want := range cases {
-		if got, err := toonzSeriesPath(in); err != nil || got != want {
-			t.Errorf("toonzSeriesPath(%q) = %q, %v; want %q", in, got, err, want)
+// toonzFlightHTML wraps an RSC stream the way Next.js streams it, split in
+// two push() chunks
+func toonzFlightHTML(t *testing.T, stream string) string {
+	t.Helper()
+	half := len(stream) / 2
+	html := "<html><body>"
+	for _, part := range []string{stream[:half], stream[half:]} {
+		raw, err := json.Marshal(part)
+		if err != nil {
+			t.Fatal(err)
 		}
+		html += `<script>self.__next_f.push([1,` + string(raw) + `])</script>`
 	}
-	if _, err := toonzSeriesPath("https://toonz.to/"); err == nil {
-		t.Error("toonzSeriesPath(home) found a series")
+	return html + "</body></html>"
+}
+
+// toonzSeriesStream is a trimmed series page payload: the comic's ids and
+// title sit in a client component's props
+const toonzSeriesStream = `45:["$","$L4b",null,{"comicId":1078007,"comicSlug":"ill-dream-of-you","comicType":"manhwa","comicTitle":"I'll dream of \"you\"","isAuthenticated":false}]` + "\n"
+
+// toonzReaderStream is a trimmed reader page payload, with a neighbour
+// chapter mentioned before the one being read
+const toonzReaderStream = `5:{"next":{"chapter":{"id":13409415,"images":[]}},"chapter":{"id":13409414,"comicId":1078007,"chapterNumber":"2.00","images":[` +
+	`{"id":2,"filename":"002.webp","sortOrder":2},` +
+	`{"id":1,"filename":"chapters/1078007/13409414/001-01.webp","sortOrder":1}]}}` + "\n"
+
+func TestToonzResolveSeriesURL(t *testing.T) {
+	cases := []struct{ input, want string }{
+		{"https://toonz.to/manhwa/ill-dream-of-you/chapter/0.01", "https://toonz.to/manhwa/ill-dream-of-you"},
+		{"https://toonz.to/manga/chainsaw-man/chapter/12?x=1#top", "https://toonz.to/manga/chainsaw-man"},
+		{"https://toonz.to/manhwa/ill-dream-of-you", "https://toonz.to/manhwa/ill-dream-of-you"},
+		{"https://toonz.to/manhwa/browse", "https://toonz.to/manhwa/browse"},
+	}
+	for _, c := range cases {
+		g := &Toonz{Grabber: &Grabber{URL: c.input}}
+		g.resolveSeriesURL()
+		if g.URL != c.want {
+			t.Errorf("resolveSeriesURL(%q) = %q, want %q", c.input, g.URL, c.want)
+		}
 	}
 }
 
-func TestToonzChaptersAndImages(t *testing.T) {
-	title := "Prologue."
-	chapters := toonzChapters("https://toonz.to/manhwa/x", []toonzChapterJSON{
-		{ID: 2, ChapterNumber: "1.00", Slug: "chapter-1"},
-		{ID: 1, ChapterNumber: "0.01", Title: &title, Slug: "chapter-0.01"},
-	})
-	if len(chapters) != 2 {
-		t.Fatalf("got %d chapters", len(chapters))
+func TestToonzTest(t *testing.T) {
+	for url, want := range map[string]bool{
+		"https://toonz.to/manhwa/ill-dream-of-you": true,
+		"https://www.toonz.to/manga/x":             true,
+		"https://nottoonz.to/manga/x":              false,
+	} {
+		if got, _ := (&Toonz{Grabber: &Grabber{URL: url}}).Test(); got != want {
+			t.Errorf("Test(%q) = %v, want %v", url, got, want)
+		}
 	}
-	c := chapters[1].(*ToonzChapter)
-	if c.Number != 0.01 || c.Path != "https://toonz.to/manhwa/x/chapter/0.01" || ChapterLabel(c) != "Chapter 0.01 - Prologue." {
-		t.Errorf("chapter = %+v, label %q", c, ChapterLabel(c))
+}
+
+func TestToonzFetch(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/manhwa/ill-dream-of-you", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(toonzFlightHTML(t, toonzSeriesStream)))
+	})
+	mux.HandleFunc("/api/comics/1078007/chapters", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"chapters":[
+			{"id":13409414,"chapterNumber":"2.00","title":null,"slug":"chapter-2","pageCount":2},
+			{"id":13409412,"chapterNumber":"0.01","title":"Prologue.","slug":"chapter-0.01","pageCount":23}]}`))
+	})
+	mux.HandleFunc("/manhwa/ill-dream-of-you/chapter/2", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(toonzFlightHTML(t, toonzReaderStream)))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	g := NewToonz(&Grabber{URL: srv.URL + "/manhwa/ill-dream-of-you/chapter/2", Settings: &Settings{}})
+	title, err := g.FetchTitle()
+	if err != nil || title != `I'll dream of "you"` {
+		t.Fatalf("FetchTitle() = %q, %v", title, err)
+	}
+	chapters, errs := g.FetchChapters()
+	if len(errs) != 0 || len(chapters) != 2 {
+		t.Fatalf("FetchChapters() = %d chapters, %v", len(chapters), errs)
+	}
+	second := chapters[1].(*ToonzChapter)
+	if second.Number != 0.01 || second.Title != "Prologue." || second.URL != srv.URL+"/manhwa/ill-dream-of-you/chapter/0.01" {
+		t.Errorf("chapter[1] = %v %q %q", second.Number, second.Title, second.URL)
 	}
 
-	payload := `1:["$","div",null,{"comicId":1,"images":[{"id":1,"filename":"chapters/1/2/001.webp","sortOrder":1},{"filename":"/chapters/1/2/002.webp"}]}]`
-	files, err := toonzImages(payload)
-	if err != nil || len(files) != 2 || files[0] != "chapters/1/2/001.webp" {
-		t.Errorf("toonzImages() = %v, %v", files, err)
+	chapter, err := g.FetchChapter(chapters[0])
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := toonzImages(`{"nothing":1}`); err == nil {
-		t.Error("toonzImages() found pictures in a payload without any")
+	want := []string{
+		srv.URL + "/uploads/chapters/1078007/13409414/001-01.webp",
+		srv.URL + "/uploads/chapters/1078007/13409414/002.webp",
+	}
+	if len(chapter.Pages) != len(want) {
+		t.Fatalf("got %d pages, want %d", len(chapter.Pages), len(want))
+	}
+	for i, p := range chapter.Pages {
+		if p.URL != want[i] {
+			t.Errorf("page %d = %q, want %q", i+1, p.URL, want[i])
+		}
 	}
 }

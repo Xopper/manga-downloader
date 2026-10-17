@@ -3,190 +3,162 @@
 package grabber
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"html"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/elboletaire/manga-downloader/http"
 )
 
-var (
-	toonzHostRe    = regexp.MustCompile(`(?i)^https?://(?:www\.)?toonz\.to(?:[/?#]|$)`)
-	toonzSeriesRe  = regexp.MustCompile(`^/([a-z]+)/([^/?#]+)`)
-	toonzComicIDRe = regexp.MustCompile(`comicId[^:]{0,4}:(\d+)`)
-	toonzTitleRe   = regexp.MustCompile(`(?s)<h1[^>]*>(.*?)</h1>`)
-	toonzTagRe     = regexp.MustCompile(`<[^>]+>`)
-)
-
-// toonzCookie lifts the reader's rating filter, which otherwise hides the
-// adult series and their chapters
-const toonzCookie = "reader_prefs=%7B%22rating%22%3A%22pornographic%22%7D"
-
-// Toonz is a grabber for toonz.to, a Next.js manhwa site. The series page
-// only holds the comic id (in its RSC payload); the chapters come from
-// /api/comics/{id}/chapters, and a chapter's picture list from its reader
-// page asked for as an RSC payload ("rsc: 1"), whose images are files under
-// /uploads/.
+// Toonz is a grabber for toonz.to, a Next.js App Router site (series under
+// /manhwa/, /manga/ or /manhua/{slug}). The series page only embeds the
+// newest chapters in its RSC payload; the client loads the rest from
+// /api/comics/{id}/chapters, which answers the whole list in one go, so the
+// series page is read just for the comic's numeric id and title. Reader pages
+// carry their images in the RSC payload too, as file names relative to the
+// site's own /uploads/ folder.
 type Toonz struct {
 	*Grabber
-	seriesURL string
-	title     string
-	comicID   string
+	series *toonzSeries
 }
 
+// ToonzChapter represents a Toonz chapter
+type ToonzChapter struct {
+	Chapter
+	// URL is the chapter's reader page
+	URL string
+	// ComicID is the series' numeric id, part of the image paths
+	ComicID int64
+}
+
+// toonzSeries is what the series page says about the comic
+type toonzSeries struct {
+	ID    int64
+	Title string
+}
+
+// NewToonz returns a Toonz grabber
 func NewToonz(g *Grabber) *Toonz {
 	return &Toonz{Grabber: g}
 }
 
-// ToonzChapter is a toonz.to chapter; Path is its reader page
-type ToonzChapter struct {
-	Chapter
-	Path string
-}
+// toonzChapterRe matches reader paths (/{type}/{slug}/chapter/{number})
+var toonzChapterRe = regexp.MustCompile(`^(/[^/]+/[^/]+)/chapter/[^/]+/?$`)
 
-// toonzChapterJSON is a chapter of the chapters API
-type toonzChapterJSON struct {
-	ID            int     `json:"id"`
-	ChapterNumber string  `json:"chapterNumber"`
-	Title         *string `json:"title"`
-	Slug          string  `json:"slug"`
-}
+// toonzComicRe pulls the comic's id and title from the props of the series
+// page's client components, which always list them in this order
+var toonzComicRe = regexp.MustCompile(`"comicId":(\d+),"comicSlug":"[^"]*","comicType":"[^"]*","comicTitle":("(?:[^"\\]|\\.)*")`)
 
 // Test returns true for toonz.to URLs
 func (t *Toonz) Test() (bool, error) {
-	return toonzHostRe.MatchString(t.URL), nil
+	host, _, ok := chapterPath(t.URL)
+	return ok && host == "toonz.to", nil
 }
 
-// toonzSeriesPath trims a chapter path (/manhwa/{slug}/chapter/{n}) back to
-// its series (/manhwa/{slug}); the site links /manhua/ for /manhwa/
-func toonzSeriesPath(rawURL string) (string, error) {
-	u, err := url.Parse(rawURL)
+// resolveSeriesURL rewrites a reader URL to its series URL. No-op for series
+// URLs.
+func (t *Toonz) resolveSeriesURL() {
+	u, err := url.Parse(t.URL)
 	if err != nil {
-		return "", err
+		return
 	}
-	m := toonzSeriesRe.FindStringSubmatch(u.Path)
+	m := toonzChapterRe.FindStringSubmatch(u.Path)
 	if m == nil {
-		return "", errSeriesNotFound(rawURL)
+		return
 	}
-	kind := m[1]
-	if kind == "manhua" {
-		kind = "manhwa"
-	}
-
-	return "/" + kind + "/" + m[2], nil
+	u.Path = m[1]
+	u.RawQuery = ""
+	u.Fragment = ""
+	t.URL = u.String()
 }
 
-func (t *Toonz) headers() map[string]string {
-	return map[string]string{"Cookie": toonzCookie}
-}
-
-// fetchSeries reads the title and comic id off the series page, once
-func (t *Toonz) fetchSeries() error {
-	if t.comicID != "" {
-		return nil
-	}
-	path, err := toonzSeriesPath(t.URL)
-	if err != nil {
-		return err
-	}
-	t.seriesURL = t.BaseUrl() + path
-	page, err := http.GetText(http.RequestParams{URL: t.seriesURL, Headers: t.headers()})
-	if err != nil {
-		return err
-	}
-	m := toonzComicIDRe.FindStringSubmatch(strings.ReplaceAll(page, `\"`, `"`))
-	if m == nil {
-		return fmt.Errorf("could not find the comic id in %s", t.seriesURL)
-	}
-	t.comicID = m[1]
-	if h := toonzTitleRe.FindStringSubmatch(page); h != nil {
-		t.title = html.UnescapeString(toonzTagRe.ReplaceAllString(h[1], ""))
-	}
-
-	return nil
-}
-
-// FetchTitle returns the series title
+// FetchTitle fetches and returns the manga title
 func (t *Toonz) FetchTitle() (string, error) {
-	if err := t.fetchSeries(); err != nil {
+	series, err := t.fetchSeries()
+	if err != nil {
 		return "", err
 	}
-
-	return sanitizeTitle(t.title), nil
+	return sanitizeTitle(series.Title), nil
 }
 
-// FetchChapters returns the series' chapters from the chapters API
-func (t *Toonz) FetchChapters() (Filterables, []error) {
-	if err := t.fetchSeries(); err != nil {
-		return nil, []error{err}
-	}
-	text, err := http.GetText(http.RequestParams{URL: t.BaseUrl() + "/api/comics/" + t.comicID + "/chapters", Headers: t.headers()})
+// FetchChapters returns the chapters of the manga
+func (t *Toonz) FetchChapters() (chapters Filterables, errs []error) {
+	series, err := t.fetchSeries()
 	if err != nil {
 		return nil, []error{err}
 	}
-	list := struct {
-		Chapters []toonzChapterJSON `json:"chapters"`
-	}{}
-	if err = json.Unmarshal([]byte(text), &list); err != nil {
+
+	body, err := http.Get(http.RequestParams{
+		URL:     fmt.Sprintf("%s/api/comics/%d/chapters", t.BaseUrl(), series.ID),
+		Referer: t.URL,
+		Accept:  "application/json",
+	})
+	if err != nil {
+		return nil, []error{err}
+	}
+	defer body.Close()
+
+	feed := toonzChapterList{}
+	if err := json.NewDecoder(body).Decode(&feed); err != nil {
 		return nil, []error{err}
 	}
 
-	return toonzChapters(t.seriesURL, list.Chapters), nil
-}
-
-func toonzChapters(seriesURL string, list []toonzChapterJSON) (chapters Filterables) {
-	for _, c := range list {
-		number, _ := strconv.ParseFloat(c.ChapterNumber, 64)
+	u, _ := url.Parse(t.URL)
+	seriesPath := strings.TrimSuffix(u.Path, "/")
+	for _, c := range feed.Chapters {
+		number, err := strconv.ParseFloat(c.ChapterNumber, 64)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("could not parse chapter number %q: %w", c.ChapterNumber, err))
+			continue
+		}
 		title := ""
 		if c.Title != nil {
-			title = *c.Title
+			title = sanitizeTitle(*c.Title)
 		}
 		chapters = append(chapters, &ToonzChapter{
 			Chapter: Chapter{
-				Number:   number,
-				Title:    sanitizeTitle(title),
-				ID:       strconv.Itoa(c.ID),
-				Language: "en",
-				Label:    Label{Style: LabelPrefixed, Number: strconv.FormatFloat(number, 'f', -1, 64)},
+				Number:     number,
+				Title:      title,
+				PagesCount: c.PageCount,
+				ID:         strconv.FormatInt(c.ID, 10),
+				Label:      Label{Style: LabelPrefixed},
 			},
-			Path: seriesURL + "/chapter/" + strings.TrimPrefix(c.Slug, "chapter-"),
+			// the reader's links drop the slug's "chapter-" prefix
+			URL:     t.BaseUrl() + seriesPath + "/chapter/" + strings.TrimPrefix(c.Slug, "chapter-"),
+			ComicID: series.ID,
 		})
 	}
 
-	return chapters
+	return chapters, errs
 }
 
-// FetchChapter reads the chapter's pictures off its reader's RSC payload
+// FetchChapter fetches a chapter and its pages
 func (t *Toonz) FetchChapter(f Filterable) (*Chapter, error) {
 	tchap := f.(*ToonzChapter)
-	headers := t.headers()
-	headers["rsc"] = "1"
-	payload, err := http.GetText(http.RequestParams{URL: tchap.Path, Headers: headers})
+
+	html, err := http.GetText(http.RequestParams{URL: tchap.URL, Referer: t.URL})
 	if err != nil {
 		return nil, err
 	}
-	files, err := toonzImages(payload)
+	reader, err := toonzReaderChapter(html, tchap.ID)
 	if err != nil {
-		return nil, fmt.Errorf("%w in %s", err, tchap.Path)
+		return nil, fmt.Errorf("%s: %w", tchap.URL, err)
 	}
 
 	chapter := &Chapter{
-		Title:    tchap.GetTitle(),
-		Number:   tchap.GetNumber(),
-		Language: tchap.Language,
-		ID:       tchap.ID,
-		Label:    labelOf(f),
+		Title:  f.GetTitle(),
+		Number: f.GetNumber(),
+		Label:  labelOf(f),
+		ID:     tchap.ID,
 	}
-	for i, file := range files {
+	for i, img := range reader.Images {
 		chapter.Pages = append(chapter.Pages, Page{
 			Number: int64(i + 1),
-			URL:    t.BaseUrl() + "/uploads/" + strings.TrimPrefix(file, "/"),
+			URL:    toonzImageURL(t.BaseUrl(), tchap.ComicID, tchap.ID, img.Filename),
 		})
 	}
 	chapter.PagesCount = int64(len(chapter.Pages))
@@ -194,28 +166,101 @@ func (t *Toonz) FetchChapter(f Filterable) (*Chapter, error) {
 	return chapter, nil
 }
 
-// toonzImages decodes the first "images" array of an RSC payload
-func toonzImages(payload string) ([]string, error) {
-	i := strings.Index(payload, `"images":[`)
-	if i < 0 {
-		return nil, errors.New("no picture list")
-	}
-	images := []struct {
-		Filename string `json:"filename"`
-	}{}
-	dec := json.NewDecoder(bytes.NewReader([]byte(payload[i+len(`"images":`):])))
-	if err := dec.Decode(&images); err != nil {
+// toonzReaderChapter reads the chapter object (with its images, sorted) out
+// of a reader page's RSC payload. The id pins the object, since the payload
+// also mentions the previous and next chapters.
+func toonzReaderChapter(html, id string) (*toonzReader, error) {
+	stream, err := nextFlightStream(html)
+	if err != nil {
 		return nil, err
 	}
-	var files []string
-	for _, img := range images {
-		if img.Filename != "" {
-			files = append(files, img.Filename)
-		}
+	idx := strings.Index(stream, `"chapter":{"id":`+id+`,`)
+	if idx == -1 {
+		return nil, fmt.Errorf("chapter %s not found in the reader data", id)
 	}
-	if len(files) == 0 {
-		return nil, errors.New("no pictures")
+	raw, err := extractBalancedJSON(stream[idx:], `"chapter":`)
+	if err != nil {
+		return nil, err
+	}
+	reader := &toonzReader{}
+	if err := json.Unmarshal([]byte(raw), reader); err != nil {
+		return nil, err
+	}
+	if len(reader.Images) == 0 {
+		return nil, fmt.Errorf("chapter %s has no images", id)
+	}
+	sort.SliceStable(reader.Images, func(i, j int) bool {
+		return reader.Images[i].SortOrder < reader.Images[j].SortOrder
+	})
+	return reader, nil
+}
+
+// toonzImageURL builds an image URL the way the reader does: a file name
+// holding a slash is a path under /uploads/, a bare one sits in the chapter's
+// own folder
+func toonzImageURL(base string, comicID int64, chapterID, filename string) string {
+	if strings.Contains(filename, "/") {
+		return base + "/uploads/" + filename
+	}
+	return fmt.Sprintf("%s/uploads/chapters/%d/%s/%s", base, comicID, chapterID, filename)
+}
+
+// fetchSeries reads the comic's id and title off the series page, once
+func (t *Toonz) fetchSeries() (*toonzSeries, error) {
+	t.resolveSeriesURL()
+	if t.series != nil {
+		return t.series, nil
 	}
 
-	return files, nil
+	html, err := http.GetText(http.RequestParams{URL: t.URL})
+	if err != nil {
+		return nil, err
+	}
+	series, err := toonzParseSeries(html)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", t.URL, err)
+	}
+	t.series = series
+	return series, nil
+}
+
+// toonzParseSeries extracts the comic's id and title from a series page
+func toonzParseSeries(html string) (*toonzSeries, error) {
+	stream, err := nextFlightStream(html)
+	if err != nil {
+		return nil, err
+	}
+	m := toonzComicRe.FindStringSubmatch(stream)
+	if m == nil {
+		return nil, fmt.Errorf("could not find the comic id in the page (is the URL a series page?)")
+	}
+	id, err := strconv.ParseInt(m[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	series := &toonzSeries{ID: id}
+	if err := json.Unmarshal([]byte(m[2]), &series.Title); err != nil {
+		return nil, err
+	}
+	return series, nil
+}
+
+// toonzChapterList is the /api/comics/{id}/chapters response
+type toonzChapterList struct {
+	Chapters []struct {
+		ID int64 `json:"id"`
+		// ChapterNumber is a decimal string ("0.01", "12.00")
+		ChapterNumber string  `json:"chapterNumber"`
+		Title         *string `json:"title"`
+		Slug          string  `json:"slug"`
+		PageCount     int64   `json:"pageCount"`
+	} `json:"chapters"`
+}
+
+// toonzReader is the chapter object of a reader page's RSC payload
+type toonzReader struct {
+	Images []struct {
+		Filename  string `json:"filename"`
+		SortOrder int    `json:"sortOrder"`
+	} `json:"images"`
 }
