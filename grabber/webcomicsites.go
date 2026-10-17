@@ -32,6 +32,8 @@ type WebComic struct {
 // WebComicChapter is a strip, or a chapter of strips, of a WebComic site
 type WebComicChapter struct {
 	Chapter
+	// Index is the page listing the chapter's strips, when the archive didn't
+	Index string
 	// Strips are the pages holding the chapter's pictures, in reading order
 	Strips []string
 	// Pictures are the chapter's pictures, when the archive gives them
@@ -44,6 +46,13 @@ type webComicSite struct {
 	Hosts []string
 	// Archive is the archive's path, when the series URL isn't the archive
 	Archive string
+	// ArchiveURL is the archive of a site that hosts many comics, from the
+	// URL of any of its pages
+	ArchiveURL func(series *url.URL) string
+	// IndexLinks selects a chapter index's links to its strips, for an
+	// archive that lists chapters whose strips are listed on a page of their
+	// own (wcEntry.Index)
+	IndexLinks string
 	// Links selects the archive's links to strips
 	Links string
 	// NumberRe captures a strip's number from its link; without it, or when
@@ -73,6 +82,8 @@ type webComicSite struct {
 
 // wcEntry is a chapter as an archive lists it
 type wcEntry struct {
+	// Index is the page listing the chapter's strips, read when it's fetched
+	Index  string
 	Title  string
 	Number float64
 	// HasNumber is set when Number is the site's, else the position numbers it
@@ -113,6 +124,15 @@ func (w *WebComic) archive() (*goquery.Document, error) {
 	page := w.URL
 	if w.site.Archive != "" {
 		page = w.BaseUrl() + w.site.Archive
+	}
+	if w.site.ArchiveURL != nil {
+		u, err := url.Parse(w.URL)
+		if err != nil {
+			return nil, err
+		}
+		if page = w.site.ArchiveURL(u); page == "" {
+			return nil, errSeriesNotFound(w.URL)
+		}
 	}
 	doc, err := wcGetDoc(page, w.BaseUrl(), false)
 	if err != nil {
@@ -184,6 +204,7 @@ func (w *WebComic) FetchChapters() (Filterables, []error) {
 			Chapter:  wcChapter(e.Title, number),
 			Strips:   e.Strips,
 			Pictures: e.Pictures,
+			Index:    e.Index,
 		}
 		ch.Volume = e.Volume
 		ch.Language = language
@@ -256,11 +277,19 @@ func (w *WebComic) nextPages(doc *goquery.Document) []*goquery.Document {
 // comic pictures of each of its strips' pages
 func (w *WebComic) FetchChapter(f Filterable) (*Chapter, error) {
 	ch := f.(*WebComicChapter)
+	strips := ch.Strips
+	if ch.Index != "" {
+		doc, err := wcGetDoc(ch.Index, w.BaseUrl(), false)
+		if err != nil {
+			return nil, err
+		}
+		strips = wcLinks(doc, w.site.IndexLinks)
+	}
 	var pages []Page
 	for _, p := range ch.Pictures {
 		pages = append(pages, Page{Number: int64(len(pages) + 1), URL: p})
 	}
-	for _, strip := range ch.Strips {
+	for _, strip := range strips {
 		doc, err := wcGetDoc(strip, w.BaseUrl(), false)
 		if err != nil {
 			return nil, err
@@ -286,6 +315,19 @@ func (w *WebComic) FetchChapter(f Filterable) (*Chapter, error) {
 		Language:   ch.Language,
 		Pages:      pages,
 	}, nil
+}
+
+// wcLinks returns the links a selector finds, resolved, once each
+func wcLinks(doc *goquery.Document, selector string) []string {
+	var links []string
+	seen := map[string]bool{}
+	doc.Find(selector).Each(func(_ int, a *goquery.Selection) {
+		if u := resolveURLRelative(a.AttrOr("href", ""), docURL(doc)); u != "" && !seen[u] {
+			seen[u] = true
+			links = append(links, u)
+		}
+	})
+	return links
 }
 
 // wcFileNumberRe reads the number a picture's file name ends with ("img_4.png")
@@ -418,6 +460,35 @@ var webComicSites = []webComicSite{
 		},
 	},
 	{
+		// comicfury.com hosts many comics, at /read/{slug}/
+		Hosts: []string{"comicfury.com"},
+		ArchiveURL: func(series *url.URL) string {
+			m := comicFurySlugRe.FindStringSubmatch(series.Path)
+			if m == nil {
+				return ""
+			}
+			return "https://comicfury.com/read/" + m[1] + "/archive"
+		},
+		List:       comicFuryChapters,
+		IndexLinks: comicFuryPages,
+		Image:      `img[src*="img.comicfury.com/comics/"]`,
+		Title: func(_ *url.URL, doc *goquery.Document) string {
+			return sanitizeTitle(doc.Find(`a[href^="/comicprofile.php"]`).First().Text())
+		},
+	},
+	{
+		// theduckwebcomics.com (Drunk Duck) hosts many comics, at
+		// /{Comic}/; every page is a chapter
+		Hosts:       []string{"theduckwebcomics.com"},
+		List:        duckChapters,
+		NewestFirst: true,
+		Image:       "img.page-image",
+		Title: func(series *url.URL, _ *goquery.Document) string {
+			comic := strings.SplitN(strings.Trim(series.Path, "/"), "/", 2)[0]
+			return strings.ReplaceAll(comic, "_", " ")
+		},
+	},
+	{
 		// gunnerkrigg.com: the archive names each chapter and lists its
 		// pages, whose pictures are numbered after them
 		Hosts:   []string{"gunnerkrigg.com"},
@@ -476,6 +547,61 @@ func dbmChapters(doc *goquery.Document) ([]wcEntry, error) {
 	for i, n := range wcNumbers(names) {
 		entries[i].Number, entries[i].HasNumber = n, true
 	}
+	return entries, nil
+}
+
+// comicFurySlugRe reads a Comic Fury comic's slug from any of its pages
+var comicFurySlugRe = regexp.MustCompile(`^/read/([^/]+)`)
+
+// comicFuryChapters reads a Comic Fury comic's archive: its chapters, each
+// with an index of its pages, or its pages when it has no chapters
+func comicFuryChapters(doc *goquery.Document) ([]wcEntry, error) {
+	base := docURL(doc)
+	var entries []wcEntry
+	for _, link := range wcLinks(doc, `a[href*="/archive/chapter/"]`) {
+		a := doc.Find(`a[href="` + strings.TrimPrefix(link, base.Scheme+"://"+base.Host) + `"]`).First()
+		entries = append(entries, wcEntry{Title: sanitizeTitle(a.Text()), Index: link})
+	}
+	if len(entries) == 0 {
+		for _, link := range wcLinks(doc, comicFuryPages) {
+			entries = append(entries, wcEntry{Strips: []string{link}})
+		}
+		return entries, nil
+	}
+	names := make([]string, len(entries))
+	for i, e := range entries {
+		names[i] = e.Title
+	}
+	for i, n := range wcNumbers(names) {
+		entries[i].Number, entries[i].HasNumber = n, true
+	}
+	return entries, nil
+}
+
+// comicFuryPages selects a Comic Fury index's links to its pages, which
+// end in their ID ("first" and "last" don't)
+const comicFuryPages = `a[href*="/comics/"]:not([href$="/first"]):not([href$="/last"])`
+
+// duckPageRe reads the page number The Duck's dropdown names a page with
+var duckPageRe = regexp.MustCompile(`(?i)page\s*(\d+)\s*$`)
+
+// duckChapters reads the page dropdown of a comic on The Duck, which lists
+// every page, newest first
+func duckChapters(doc *goquery.Document) ([]wcEntry, error) {
+	base := docURL(doc)
+	comic := strings.SplitN(strings.Trim(base.Path, "/"), "/", 2)[0]
+	var entries []wcEntry
+	doc.Find("select#page_dropdown option[value]").Each(func(_ int, o *goquery.Selection) {
+		link := resolveURLRelative("/"+comic+"/"+o.AttrOr("value", "")+"/", base)
+		text := sanitizeTitle(o.Text())
+		e := wcEntry{Strips: []string{link}}
+		if m := duckPageRe.FindStringSubmatchIndex(text); m != nil {
+			e.Number, _ = strconv.ParseFloat(text[m[2]:m[3]], 64)
+			e.HasNumber = true
+			e.Title = strings.Trim(text[:m[0]], " -")
+		}
+		entries = append(entries, e)
+	})
 	return entries, nil
 }
 

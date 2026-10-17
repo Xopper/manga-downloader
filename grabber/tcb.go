@@ -37,9 +37,9 @@ type TcbChapter struct {
 }
 
 // tcbSeriesRe matches the series path of a Madara URL: /manga/<slug>/, or
-// /gl/ (lilymanga.net) and /seri/ (webtoonia.fun). The slug must end in a slash,
+// /gl/ (lilymanga.net), /seri/ (webtoonia.fun) and /webtoon/ (toonizy.com). The slug must end in a slash,
 // so a chapter URL maps to its series while /somanga/ and /glimpse/ don't match.
-var tcbSeriesRe = regexp.MustCompile(`/((?:manga|gl|seri)/[^/]+)/`)
+var tcbSeriesRe = regexp.MustCompile(`/((?:manga|gl|seri|webtoon)/[^/]+)/`)
 
 // tcbMovedHostRe matches diamondfansub.com, which now redirects every series
 // and chapter page to webtoonia.fun (a chapter URL there lands on the series),
@@ -143,6 +143,14 @@ func (t *Tcb) FetchTitle() (string, error) {
 	h1 = h1.Clone()
 	h1.Find(".manga-title-badges").Remove()
 	t.title = sanitizeTitle(h1.Text())
+	if t.title == "" {
+		// a theme without the heading (toonizy.com) still names the series
+		// for Open Graph, one tag bare and another with the site's name
+		body.Find(`meta[property="og:title"]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
+			t.title = sanitizeTitle(s.AttrOr("content", ""))
+			return strings.Contains(t.title, " - ")
+		})
+	}
 
 	return t.title, nil
 }

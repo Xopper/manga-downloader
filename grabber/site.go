@@ -235,7 +235,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 	// are WordPress posts too, and the fallback resolves those to their series.
 	// Their errors surface only when nothing matches.
 	var markupErrs []error
-	for _, s := range []Site{NewComicEasel(g), NewSingleManga(g), NewWordPressCategory(g), NewBlogger(g)} {
+	for _, s := range []Site{NewComicWorld(g), NewComicEasel(g), NewSingleManga(g), NewWordPressCategory(g), NewBlogger(g)} {
 		ok, err := s.Test()
 		if err != nil {
 			markupErrs = append(markupErrs, err)
