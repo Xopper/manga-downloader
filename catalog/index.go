@@ -116,13 +116,13 @@ func catalogFiles(dir string) ([]string, error) {
 	var names []string
 	has := map[string]bool{}
 	for _, name := range plain {
-		if isCatalogFile(filepath.Base(name)) {
+		if isCatalogFile(filepath.Base(name)) && !skippedFile(filepath.Base(name)) {
 			names = append(names, name)
 			has[name] = true
 		}
 	}
 	for _, name := range gzipped {
-		if isCatalogFile(filepath.Base(name)) && !has[strings.TrimSuffix(name, ".gz")] {
+		if isCatalogFile(filepath.Base(name)) && !skippedFile(filepath.Base(name)) && !has[strings.TrimSuffix(name, ".gz")] {
 			names = append(names, name)
 		}
 	}
@@ -205,6 +205,9 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	// the files of the sites skipped since they were fetched go first: no
+	// index lists them any more, so nothing else would remove them
+	s.dropSkipped()
 	remote, err := fetchIndex(ctx, baseURL+indexFile)
 	if err != nil {
 		return nil, fmt.Errorf("catalog index: %w", err)
@@ -228,6 +231,10 @@ func (s *Store) Update(ctx context.Context, baseURL string) ([]string, error) {
 	for i, re := range remote.Sites {
 		if !validEntry(re) {
 			fail(fmt.Errorf("catalog index: refusing entry %q (%s)", re.Site, re.File))
+			continue
+		}
+		if Skipped(re.Site) {
+			// not manga: not fetched
 			continue
 		}
 		if le := local.entry(re.Site); le != nil && le.SHA256 == re.SHA256 {

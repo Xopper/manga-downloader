@@ -93,6 +93,13 @@ func loadSites() {
 	if err := json.Unmarshal(sitesJSON, &sites); err != nil {
 		panic("catalog: sites.json: " + err.Error())
 	}
+	kept := sites[:0]
+	for _, s := range sites {
+		if !Skipped(s.Site) {
+			kept = append(kept, s)
+		}
+	}
+	sites = kept
 	byHost = make(map[string]int, len(sites)*2)
 	for i, s := range sites {
 		byHost[s.Site] = i

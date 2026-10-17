@@ -317,6 +317,9 @@ func CrawlSuwayomi(ctx context.Context, w io.Writer, o SuwayomiOptions) (*Suwayo
 			}
 			continue
 		}
+		if Skipped(site) {
+			continue
+		}
 		// shards split by host, not by position, so two sources on one host
 		// (a mirror, an "en" and an "all" source) merge inside one process
 		if o.Shards > 0 && shardOf(site, o.Shards) != o.Shard {

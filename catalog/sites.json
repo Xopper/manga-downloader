@@ -27,15 +27,6 @@
   "note": "listed by its Tachiyomi source; read by the SingleManga grabber"
  },
  {
-  "site": "3600000.xyz",
-  "home": "https://3600000.xyz",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "3600000 Beauty",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "3asq.online",
   "home": "https://3asq.online",
   "family": "madara",
@@ -52,15 +43,6 @@
   "crawl": false,
   "label": "3Hentai",
   "note": "listed by its Tachiyomi source; read by the ThreeHentai grabber"
- },
- {
-  "site": "4khd.com",
-  "home": "https://4khd.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "4KHD",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
  },
  {
   "site": "4porncomic.com",
@@ -284,15 +266,6 @@
   "note": "listed by its Tachiyomi source; read by the Bakkin grabber"
  },
  {
-  "site": "baobua.net",
-  "home": "https://baobua.net",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "BaoBua",
-  "note": "listed by its Tachiyomi source; read by the PhotoGallery grabber"
- },
- {
   "site": "bato1.com",
   "home": "https://bato1.com",
   "family": "custom",
@@ -328,15 +301,6 @@
   "label": "Black Clover"
  },
  {
-  "site": "blastwave-comic.com",
-  "home": "https://blastwave-comic.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Gone with the Blastwave",
-  "note": "listed by its Tachiyomi source; read by the Webcomic grabber"
- },
- {
   "site": "bluesolo.org",
   "home": "https://bluesolo.org",
   "family": "jsonlist",
@@ -357,15 +321,6 @@
   "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
-  "site": "buondua.com",
-  "home": "https://buondua.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Buon Dua",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
   "site": "cartoonporn.to",
   "home": "https://cartoonporn.to",
   "family": "custom",
@@ -373,15 +328,6 @@
   "crawl": false,
   "label": "CartoonPorn",
   "note": "listed by its Tachiyomi source; read by the Tcb grabber"
- },
- {
-  "site": "ccc.vinnieveritas.com",
-  "home": "https://ccc.vinnieveritas.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Vinnie Veritas - CCC",
-  "note": "listed by its Tachiyomi source; read by the VinnieVeritas grabber"
  },
  {
   "site": "chainsawman-chapter.online",
@@ -400,15 +346,6 @@
   "label": "Chainsaw Man"
  },
  {
-  "site": "clowncorps.net",
-  "home": "https://clowncorps.net",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Clown Corps",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
- },
- {
   "site": "cocomic.co",
   "home": "https://cocomic.co",
   "family": "custom",
@@ -425,15 +362,6 @@
   "crawl": false,
   "label": "Coffee Manga (Unoriginal)",
   "note": "listed by its Tachiyomi source; read by the Tcb grabber"
- },
- {
-  "site": "collectedcurios.com",
-  "home": "https://collectedcurios.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Collected Curios",
-  "note": "listed by its Tachiyomi source; read by the Webcomic grabber"
  },
  {
   "site": "colorizedmangas.com",
@@ -545,24 +473,6 @@
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
-  "site": "comicaurora.com",
-  "home": "https://comicaurora.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Aurora",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
-  "site": "comicfury.com",
-  "home": "https://comicfury.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Comic Fury",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "comick.live",
   "home": "https://comick.live",
   "family": "custom",
@@ -617,24 +527,6 @@
   "note": "Cloudflare challenges plain HTTP (403) on every page and its API"
  },
  {
-  "site": "commitstrip.com",
-  "home": "https://commitstrip.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Commit Strip",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
-  "site": "cosplaytele.com",
-  "home": "https://cosplaytele.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "CosplayTele",
-  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
- },
- {
   "site": "cucumbermanga.com",
   "home": "https://cucumbermanga.com",
   "family": "custom",
@@ -659,24 +551,6 @@
   "lang": "en",
   "crawl": false,
   "label": "Danke fürs Lesen"
- },
- {
-  "site": "darklegacycomics.com",
-  "home": "https://darklegacycomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Dark Legacy Comics",
-  "note": "listed by its Tachiyomi source; read by the Webcomic grabber"
- },
- {
-  "site": "darthsanddroids.net",
-  "home": "https://darthsanddroids.net",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Darths & Droids",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "dbnewhope.com",
@@ -766,30 +640,12 @@
   "label": "Drake Scans, former drakecomic.org"
  },
  {
-  "site": "dresdencodak.com",
-  "home": "https://dresdencodak.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Dark Science",
-  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
- },
- {
   "site": "dynasty-scans.com",
   "home": "https://dynasty-scans.com",
   "family": "custom",
   "lang": "en",
   "crawl": false,
   "label": "Dynasty Reader"
- },
- {
-  "site": "e621.net",
-  "home": "https://e621.net",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "e621",
-  "note": "listed by its Tachiyomi source; read by the E621 grabber"
  },
  {
   "site": "eggporncomics.com",
@@ -799,24 +655,6 @@
   "crawl": false,
   "label": "Eggporncomics",
   "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
-  "site": "egscomics.com",
-  "home": "https://egscomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "El Goonish Shive",
-  "note": "listed by its Tachiyomi source; read by the ComicControl grabber"
- },
- {
-  "site": "elan.school",
-  "home": "https://elan.school",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Elan School",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "eldermanga.com",
@@ -891,33 +729,6 @@
   "label": "former evascans.org"
  },
  {
-  "site": "everia.club",
-  "home": "https://everia.club",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Everia.club",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
-  "site": "existentialcomics.com",
-  "home": "https://existentialcomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Existential Comics",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
-  "site": "explosm.net",
-  "home": "https://explosm.net",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Cyanide & Happiness",
-  "note": "listed by its Tachiyomi source; read by the Explosm grabber"
- },
- {
   "site": "fanfox.net",
   "home": "https://fanfox.net",
   "family": "custom",
@@ -944,15 +755,6 @@
   "list": "https://feelweb.jp/"
  },
  {
-  "site": "femjoyhunter.com",
-  "home": "https://femjoyhunter.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Femjoy Hunter",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
   "site": "flamecomics.xyz",
   "home": "https://flamecomics.xyz",
   "family": "nextjs",
@@ -969,24 +771,6 @@
   "list": "https://fmteam.fr/api/comics",
   "items": "comics",
   "itemAlt": "alt_titles"
- },
- {
-  "site": "foamgirl.net",
-  "home": "https://foamgirl.net",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "FoamGirl",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
-  "site": "ftvhunter.com",
-  "home": "https://ftvhunter.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "FTV Hunter",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
  },
  {
   "site": "furyosociety.com",
@@ -1086,24 +870,6 @@
   "crawl": false,
   "label": "Grim Scans",
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
- },
- {
-  "site": "grrlpowercomic.com",
-  "home": "https://grrlpowercomic.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Grrl Power Comic",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
- },
- {
-  "site": "gunnerkrigg.com",
-  "home": "https://gunnerkrigg.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Gunnerkrigg Court",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "guya.cubari.moe",
@@ -1466,30 +1232,12 @@
   "note": "listed by its Tachiyomi source; read by the HentaiGallery grabber"
  },
  {
-  "site": "incase.buttsmithy.com",
-  "home": "https://incase.buttsmithy.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Buttsmithy",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
- },
- {
   "site": "inmanga.com",
   "home": "https://inmanga.com",
   "family": "inmanga",
   "lang": "es",
   "crawl": true,
   "list": "https://inmanga.com/manga/getMangasConsultResult"
- },
- {
-  "site": "irovedout.com",
-  "home": "https://irovedout.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "I Roved Out",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
  },
  {
   "site": "jestful.net",
@@ -1501,39 +1249,12 @@
   "items": ".series-title a"
  },
  {
-  "site": "jjcos.com",
-  "home": "https://jjcos.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "JJCOS",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "jojolandsmanga.com",
   "home": "https://w9.jojolandsmanga.com",
   "family": "single",
   "lang": "en",
   "crawl": true,
   "label": "The JoJoLands"
- },
- {
-  "site": "jolleycomics.com",
-  "home": "https://jolleycomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "The Property of Hate",
-  "note": "listed by its Tachiyomi source; read by the JolleyComics grabber"
- },
- {
-  "site": "joymiihub.com",
-  "home": "https://joymiihub.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Joymii Hub",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
  },
  {
   "site": "jujutsukaisenmanga.pro",
@@ -1578,15 +1299,6 @@
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
-  "site": "killsixbilliondemons.com",
-  "home": "https://killsixbilliondemons.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "KillSixBillionDemons",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
- },
- {
   "site": "kingcomix.com",
   "home": "https://kingcomix.com",
   "family": "custom",
@@ -1611,15 +1323,6 @@
   "crawl": false,
   "label": "Kitsune Dawn",
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
- },
- {
-  "site": "kiutaku.com",
-  "home": "https://kiutaku.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Kiutaku",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "kokomangas.com",
@@ -1796,15 +1499,6 @@
   "crawl": false,
   "label": "LinkManga",
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
- },
- {
-  "site": "loadingartist.com",
-  "home": "https://loadingartist.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Loading Artist",
-  "note": "listed by its Tachiyomi source; read by the StripComic grabber"
  },
  {
   "site": "lolobun.com",
@@ -2721,42 +2415,6 @@
   "note": "listed by its Tachiyomi source; read by the Manta grabber"
  },
  {
-  "site": "megatokyo.com",
-  "home": "https://megatokyo.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Megatokyo",
-  "note": "listed by its Tachiyomi source; read by the Gallery grabber"
- },
- {
-  "site": "mehgazone.com",
-  "home": "https://mehgazone.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Mehgazone",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
-  "site": "meijuntu.com",
-  "home": "https://meijuntu.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Junmeitu",
-  "note": "listed by its Tachiyomi source; read by the Junmeitu grabber"
- },
- {
-  "site": "metarthunter.com",
-  "home": "https://metarthunter.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Metart Hunter",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
   "site": "mgeko.cc",
   "home": "https://www.mgeko.cc",
   "family": "custom",
@@ -2764,29 +2422,11 @@
   "crawl": false
  },
  {
-  "site": "misskon.com",
-  "home": "https://misskon.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "MissKon",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "mistscans.com",
   "home": "https://mistscans.com",
   "family": "custom",
   "lang": "en",
   "crawl": false
- },
- {
-  "site": "mitaku.net",
-  "home": "https://mitaku.net",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Mitaku",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
  },
  {
   "site": "mkissa.to",
@@ -2992,24 +2632,6 @@
   "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
-  "site": "oglaf.com",
-  "home": "https://oglaf.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Oglaf",
-  "note": "listed by its Tachiyomi source; read by the Oglaf grabber"
- },
- {
-  "site": "ohjoysextoy.com",
-  "home": "https://ohjoysextoy.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Oh Joy Sex Toy",
-  "note": "listed by its Tachiyomi source; read by the Gallery grabber"
- },
- {
   "site": "omegascans.org",
   "home": "https://omegascans.org",
   "family": "custom",
@@ -3085,15 +2707,6 @@
   "note": "listed by its Tachiyomi source; read by the Iken grabber"
  },
  {
-  "site": "ososedki.com",
-  "home": "https://ososedki.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "OSOSEDKI",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
   "site": "ourfeel.jp",
   "home": "https://ourfeel.jp",
   "family": "gigaviewer",
@@ -3121,33 +2734,6 @@
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
-  "site": "patchfriday.com",
-  "home": "https://patchfriday.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Patch Friday",
-  "note": "listed by its Tachiyomi source; read by the StripComic grabber"
- },
- {
-  "site": "pawchive.pw",
-  "home": "https://pawchive.pw",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Pawchive",
-  "note": "listed by its Tachiyomi source; read by the Kemono grabber"
- },
- {
-  "site": "peppercarrot.com",
-  "home": "https://peppercarrot.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Pepper&Carrot",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "petrotechsociety.org",
   "home": "https://petrotechsociety.org",
   "family": "custom",
@@ -3155,33 +2741,6 @@
   "crawl": false,
   "label": "Petrotechsociety",
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
- },
- {
-  "site": "photos18.com",
-  "home": "https://photos18.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Photos18",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
-  "site": "pmatehunter.com",
-  "home": "https://pmatehunter.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Playmate Hunter",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
-  "site": "politeandgood.com",
-  "home": "https://politeandgood.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Broccoli Soup",
-  "note": "listed by its Tachiyomi source; read by the Webcomic grabber"
  },
  {
   "site": "pornhwa18.com",
@@ -3220,15 +2779,6 @@
   "label": "Qi Manga, former Aurora Scans"
  },
  {
-  "site": "questionablecontent.net",
-  "home": "https://questionablecontent.net",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Questionable Content",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "rackusreads.com",
   "home": "https://rackusreads.com",
   "family": "themesia",
@@ -3236,15 +2786,6 @@
   "crawl": true,
   "list": "https://rackusreads.com/manga/list-mode/",
   "label": "Rackus"
- },
- {
-  "site": "randowis.com",
-  "home": "https://randowis.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Randowiz",
-  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
  },
  {
   "site": "ravenscans.org",
@@ -3338,15 +2879,6 @@
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
-  "site": "reallifecomics.com",
-  "home": "https://reallifecomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Real Life Comics",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "rinkocomics.com",
   "home": "https://rinkocomics.com",
   "family": "custom",
@@ -3413,15 +2945,6 @@
   "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
-  "site": "sabrina-online.com",
-  "home": "https://sabrina-online.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Sabrina Online",
-  "note": "listed by its Tachiyomi source; read by the Webcomic grabber"
- },
- {
   "site": "sacachispa.site",
   "home": "https://sacachispa.site",
   "family": "custom",
@@ -3435,15 +2958,6 @@
   "lang": "en",
   "crawl": false,
   "label": "Sana Scans"
- },
- {
-  "site": "sandraandwoo.com",
-  "home": "https://sandraandwoo.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Sandra and Woo",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
  },
  {
   "site": "saymanhwa.com",
@@ -3463,15 +2977,6 @@
   "label": "ScanVF",
   "list": "https://www.scan-vf.net/changeMangaList?type=text",
   "items": "ul.manga-list a.alpha-link"
- },
- {
-  "site": "schlockmercenary.com",
-  "home": "https://schlockmercenary.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Schlock Mercenary",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "scythescans.com",
@@ -3539,24 +3044,6 @@
   "note": "listed by its Tachiyomi source; read by the Keyoapp grabber"
  },
  {
-  "site": "smbc-comics.com",
-  "home": "https://smbc-comics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Saturday Morning Breakfast Comics",
-  "note": "listed by its Tachiyomi source; read by the Webcomic grabber"
- },
- {
-  "site": "snafu-comics.com",
-  "home": "https://snafu-comics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Snafu Comics",
-  "note": "listed by its Tachiyomi source; read by the ComicControl grabber"
- },
- {
   "site": "stonescape.xyz",
   "home": "https://stonescape.xyz",
   "family": "custom",
@@ -3573,15 +3060,6 @@
   "list": "https://www.sunday-webry.com/series"
  },
  {
-  "site": "supermegacomics.com",
-  "home": "https://supermegacomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "SUPER MEGA",
-  "note": "listed by its Tachiyomi source; read by the StripComic grabber"
- },
- {
   "site": "sushiscan.net",
   "home": "https://sushiscan.net",
   "family": "sitemap",
@@ -3591,15 +3069,6 @@
   "list": "https://sushiscan.net/wp-sitemap.xml",
   "sitemaps": "posts-manga",
   "series": "/catalogue/[^/]+/$"
- },
- {
-  "site": "swordscomic.com",
-  "home": "https://swordscomic.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Swords Comic",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "taiyo.moe",
@@ -3651,15 +3120,6 @@
   "lang": "en",
   "crawl": true,
   "label": "The Apothecary Diaries"
- },
- {
-  "site": "theduckwebcomics.com",
-  "home": "https://theduckwebcomics.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "The Duck Webcomics",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
  },
  {
   "site": "thegirlfromrandomchatting.com",
@@ -3838,15 +3298,6 @@
   "itemTitle": "name"
  },
  {
-  "site": "universe.leagueoflegends.com",
-  "home": "https://universe.leagueoflegends.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "League of Legends",
-  "note": "listed by its Tachiyomi source; read by the LolUniverse grabber"
- },
- {
   "site": "utoon.us",
   "home": "https://www.utoon.us/en",
   "family": "sitemap",
@@ -3896,15 +3347,6 @@
    "violetscans.org"
   ],
   "note": "no /manga/list-mode/ page (2026-10-15)"
- },
- {
-  "site": "vixenlogic.com",
-  "home": "https://vixenlogic.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Vixen Logic",
-  "note": "listed by its Tachiyomi source; read by the ComicEasel grabber"
  },
  {
   "site": "vortexscans.org",
@@ -3971,15 +3413,6 @@
   "lang": "en",
   "crawl": false,
   "label": "WitchToons, former witchscans.com"
- },
- {
-  "site": "wp.comicskingdom.com",
-  "home": "https://wp.comicskingdom.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "Comics Kingdom",
-  "note": "listed by its Tachiyomi source; read by the ComicsKingdom grabber"
  },
  {
   "site": "writerscans.com",
@@ -4097,15 +3530,6 @@
   "note": "listed by its Tachiyomi source; read by the MangaCatalog grabber"
  },
  {
-  "site": "xasiat.com",
-  "home": "https://xasiat.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "XAsiat Albums",
-  "note": "listed by its Tachiyomi source; read by the PhotoGallery grabber"
- },
- {
   "site": "xcomic.me",
   "home": "https://xcomic.me",
   "family": "custom",
@@ -4115,24 +3539,6 @@
   "note": "listed by its Tachiyomi source; read by the Gallery grabber"
  },
  {
-  "site": "xiutaku.com",
-  "home": "https://xiutaku.com",
-  "family": "custom",
-  "lang": "all",
-  "crawl": false,
-  "label": "Xiutaku",
-  "note": "listed by its Tachiyomi source; read by the SingleGallery grabber"
- },
- {
-  "site": "xkcd.com",
-  "home": "https://xkcd.com",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "xkcd",
-  "note": "listed by its Tachiyomi source; read by the WebComic grabber"
- },
- {
   "site": "xlecx.one",
   "home": "https://xlecx.one",
   "family": "custom",
@@ -4140,15 +3546,6 @@
   "crawl": false,
   "label": "XlecX",
   "note": "listed by its Tachiyomi source; read by the Xlecx grabber"
- },
- {
-  "site": "xrabohrok.github.io",
-  "home": "https://xrabohrok.github.io",
-  "family": "custom",
-  "lang": "en",
-  "crawl": false,
-  "label": "War For Rayuba",
-  "note": "listed by its Tachiyomi source; read by the WarForRayuba grabber"
  },
  {
   "site": "xyzcomics.com",

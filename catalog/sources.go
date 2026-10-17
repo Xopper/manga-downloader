@@ -92,8 +92,14 @@ func readRows(path string) ([]SourceRow, error) {
 	if err := json.Unmarshal(b, &rows); err != nil {
 		return nil, err
 	}
+	kept := rows[:0]
+	for _, r := range rows {
+		if !Skipped(r.Site) {
+			kept = append(kept, r)
+		}
+	}
 
-	return rows, nil
+	return kept, nil
 }
 
 // Sources returns the rows of sources.json the store loaded, nil without one
