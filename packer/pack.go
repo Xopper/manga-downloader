@@ -4,6 +4,7 @@ package packer
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,7 +43,13 @@ func PackSingle(outputdir string, s grabber.Site, chapter *DownloadedChapter, pr
 			Labels:           map[string]string{epubSingleFolder: chapterLabel(chapter.Chapter)},
 		}
 	}
-	return pack(outputdir, format, s.GetFilenameTemplate(), releaseName(chapter.Chapter), NewChapterFileTemplateParts(title, chapter.Chapter), namePagesAs(chapter.Files, pageFormats(format, s.GetConvertImages()), format, s.GetSavePagesAs()), info, progress)
+	label := releaseName(chapter.Chapter)
+	files := namePagesAs(chapter.Files, pageFormats(format, s.GetConvertImages()), format, s.GetSavePagesAs())
+	path, err := pack(outputdir, format, s.GetFilenameTemplate(), label, NewChapterFileTemplateParts(title, chapter.Chapter), files, info, progress)
+	if err == nil {
+		reportSize(label, chapterBytes(chapter), files, s.GetSavePagesAs())
+	}
+	return path, err
 }
 
 // PackBundle packs a bundle of downloaded chapters, grouping each chapter's
@@ -60,12 +67,16 @@ func PackBundle(outputdir string, s grabber.Site, chapters []*DownloadedChapter,
 	for i, c := range chapters {
 		listed[i] = c.Chapter
 	}
-	return pack(outputdir, format, s.GetFilenameTemplate(), "the bundle", FilenameTemplateParts{
+	path, err := pack(outputdir, format, s.GetFilenameTemplate(), "the bundle", FilenameTemplateParts{
 		Series: title,
 		Number: rng,
 		Title:  "bundle",
 		Group:  sharedGroup(listed),
 	}, files, info, progress)
+	if err == nil {
+		reportSize("the bundle", chapterBytes(chapters...), files, s.GetSavePagesAs())
+	}
+	return path, err
 }
 
 // PackVolume packs the downloaded chapters of a volume into one file, laid
@@ -89,8 +100,62 @@ func PackVolume(outputdir string, s grabber.Site, volume int, chapters []*Downlo
 			Labels:           labels,
 		}
 	}
-	return pack(outputdir, format, VolumeTemplate(s.GetFilenameTemplate()), "volume "+strconv.Itoa(volume),
+	label := "volume " + strconv.Itoa(volume)
+	path, err := pack(outputdir, format, VolumeTemplate(s.GetFilenameTemplate()), label,
 		NewVolumeFileTemplateParts(title, volume, listed), files, info, progress)
+	if err == nil {
+		reportSize(label, chapterBytes(chapters...), files, s.GetSavePagesAs())
+	}
+	return path, err
+}
+
+// chapterBytes is the size of the chapters' pages as the site served them
+func chapterBytes(chapters ...*DownloadedChapter) int {
+	n := 0
+	for _, c := range chapters {
+		for _, page := range c.Files {
+			n += len(page.Data)
+		}
+	}
+	return n
+}
+
+// reportSize says, once a file is saved, how much converting its pages saved
+// (or cost): "- Chapter 1: pages 6.9 MB → 5.5 MB as WebP (1.4 MB smaller, 20%)".
+// Nothing is said when no page was converted, the sizes being the same then.
+func reportSize(label string, before int, files []File, saveAs string) {
+	after := 0
+	for _, f := range files {
+		after += len(f.Data)
+	}
+	if msg := sizeMessage(label, before, after, saveAs); msg != "" {
+		notice.Info("%s", msg)
+	}
+}
+
+// sizeMessage is reportSize's line, "" when there's nothing to say
+func sizeMessage(label string, before, after int, saveAs string) string {
+	if before == after || before == 0 {
+		return ""
+	}
+	as := "as JPEG"
+	if saveAs == grabber.SavePagesWebP {
+		as = "as WebP"
+	}
+	change, diff := "smaller", before-after
+	if diff < 0 {
+		change, diff = "bigger", -diff
+	}
+	percent := int(math.Round(float64(diff) * 100 / float64(before)))
+	return fmt.Sprintf("- %s: pages %s → %s %s (%s %s, %d%%)", label, sizeLabel(before), sizeLabel(after), as, sizeLabel(diff), change, percent)
+}
+
+// sizeLabel writes a byte count for people: "5.5 MB", "340 KB"
+func sizeLabel(n int) string {
+	if n >= 1<<20 {
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	}
+	return fmt.Sprintf("%d KB", (n+512)>>10)
 }
 
 // releaseName names a chapter's release for messages: its chapter name, then

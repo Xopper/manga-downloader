@@ -297,3 +297,22 @@ func TestConvertToJPEGDecodeError(t *testing.T) {
 		t.Errorf("convertToJPEG error = %v, want it to wrap %v", err, sentinel)
 	}
 }
+
+func TestSizeMessage(t *testing.T) {
+	cases := []struct {
+		before, after int
+		saveAs, want  string
+	}{
+		{7 << 20, 5 << 20, grabber.SavePagesWebP, "- Chapter 1: pages 7.0 MB → 5.0 MB as WebP (2.0 MB smaller, 29%)"},
+		{400 << 10, 500 << 10, grabber.SavePagesJPEG, "- Chapter 1: pages 400 KB → 500 KB as JPEG (100 KB bigger, 25%)"},
+		// --convert-images alone also ends up in JPEG
+		{2 << 20, 1 << 20, "", "- Chapter 1: pages 2.0 MB → 1.0 MB as JPEG (1.0 MB smaller, 50%)"},
+		// nothing converted: nothing to say
+		{3 << 20, 3 << 20, grabber.SavePagesWebP, ""},
+	}
+	for _, c := range cases {
+		if got := sizeMessage("Chapter 1", c.before, c.after, c.saveAs); got != c.want {
+			t.Errorf("sizeMessage(%d, %d, %q) = %q, want %q", c.before, c.after, c.saveAs, got, c.want)
+		}
+	}
+}
