@@ -222,6 +222,13 @@ func TestGetPlainHTMLImageURL(t *testing.T) {
 				`</div><script>let realUrl = ` + "`https://cdn.example.org/uploads/${uid}`" + `;</script></body></html>`,
 			want: []string{"https://cdn.example.org/uploads/1.avif", "https://cdn.example.org/uploads/2.avif"},
 		},
+		{
+			name:     "an RSC pages list of sizes leaves the <img>s (colorizedmangas)",
+			selector: `main img[src*="/pages/"]`,
+			html: `<html><body><main><img src="https://cdn.example.com/pages/1/001.webp"/><img src="https://cdn.example.com/pages/1/002.webp"/></main>` +
+				`<script>self.__next_f.push([1,"{\\"pages\\":[{\\"n\\":1,\\"w\\":1080,\\"h\\":500}]}"])</script></body></html>`,
+			want: []string{"https://cdn.example.com/pages/1/001.webp", "https://cdn.example.com/pages/1/002.webp"},
+		},
 	}
 
 	for _, c := range cases {
