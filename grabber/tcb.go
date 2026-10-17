@@ -37,9 +37,11 @@ type TcbChapter struct {
 }
 
 // tcbSeriesRe matches the series path of a Madara URL: /manga/<slug>/, or
-// /gl/ (lilymanga.net) and /seri/ (webtoonia.fun). The slug must end in a slash,
-// so a chapter URL maps to its series while /somanga/ and /glimpse/ don't match.
-var tcbSeriesRe = regexp.MustCompile(`/((?:manga|gl|seri)/[^/]+)/`)
+// /gl/ (lilymanga.net), /seri/ (webtoonia.fun), /manhwa/ (mangapark.tv),
+// /read-1/ (mangaowl.io), /comic/ (mangagg.com), /hentai/ and /porncomic/. The
+// slug must end in a slash, so a chapter URL maps to its series while /somanga/
+// and /glimpse/ don't match.
+var tcbSeriesRe = regexp.MustCompile(`/((?:manga|gl|seri|manhwa|read-1|comic|hentai|porncomic)/[^/]+)/`)
 
 // tcbMovedHostRe matches diamondfansub.com, which now redirects every series
 // and chapter page to webtoonia.fun (a chapter URL there lands on the series),
@@ -419,5 +421,10 @@ func (t Tcb) readerPageImages(f Filterable, pageNum int, pageDoc *goquery.Docume
 			pages = append(pages, t.readerImage(pageNum, u))
 		}
 	})
+	if len(pages) == 0 {
+		for _, u := range madaraForkImages(pageDoc) {
+			pages = append(pages, t.readerImage(pageNum, u))
+		}
+	}
 	return pages
 }
