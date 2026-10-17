@@ -201,6 +201,9 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewProjectsuki(g),
 		NewHeavenManga(g),
 		NewLelScans(g),
+		// custom-built sites (sites/custom-a)
+		NewPandachaika(g),
+		NewToonz(g),
 		plainHTML,
 		NewTcb(g),
 		NewJestful(g),
