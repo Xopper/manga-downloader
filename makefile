@@ -116,6 +116,7 @@ catalog/smoke:
 	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site kingofshojo.com
 	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site mangaread.org
 	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site heavenly-delusion.com
+	go run . catalog crawl --limit 2 --out /tmp/catalog-smoke --site shonenjumpplus.com
 	test -s /tmp/catalog-smoke/index.json
 	grep -q '"entries": 1,' /tmp/catalog-smoke/index.json
 

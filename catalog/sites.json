@@ -9,6 +9,15 @@
   "label": "Arabic, former 3asq.org"
  },
  {
+  "site": "anikiga.com",
+  "home": "https://anikiga.com",
+  "family": "madara",
+  "lang": "tr",
+  "crawl": false,
+  "label": "Turkish",
+  "note": "its manga archive pages list news posts, not series"
+ },
+ {
   "site": "animeallstar1.com",
   "home": "https://www.animeallstar1.com",
   "family": "blogger",
@@ -23,6 +32,23 @@
   "lang": "es",
   "crawl": false,
   "label": "AnimeAllStar, Spanish"
+ },
+ {
+  "site": "anzmanga25.com",
+  "home": "https://www.anzmanga25.com",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false,
+  "label": "AnzManga, Spanish"
+ },
+ {
+  "site": "apollcomics.es",
+  "home": "https://apollcomics.es",
+  "family": "madara",
+  "lang": "es",
+  "crawl": true,
+  "list": "https://apollcomics.es/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Spanish"
  },
  {
   "site": "arenascan.com",
@@ -105,6 +131,88 @@
   "label": "Chainsaw Man"
  },
  {
+  "site": "comic-action.com",
+  "home": "https://comic-action.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Web Action (GigaViewer)",
+  "list": "https://comic-action.com/series"
+ },
+ {
+  "site": "comic-days.com",
+  "home": "https://comic-days.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Comic DAYS (GigaViewer)",
+  "list": "https://comic-days.com/series"
+ },
+ {
+  "site": "comic-earthstar.com",
+  "home": "https://comic-earthstar.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Comic Earth Star (GigaViewer)",
+  "list": "https://comic-earthstar.com/series"
+ },
+ {
+  "site": "comic-gardo.com",
+  "home": "https://comic-gardo.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Comic Gardo (GigaViewer)",
+  "list": "https://comic-gardo.com/series"
+ },
+ {
+  "site": "comic-ogyaaa.com",
+  "home": "https://comic-ogyaaa.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": false,
+  "label": "Japanese, Comic Ogyaaa (GigaViewer)",
+  "list": "https://comic-ogyaaa.com/comics",
+  "note": "its list page names no series, only their episodes"
+ },
+ {
+  "site": "comic-seasons.com",
+  "home": "https://comic-seasons.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Seasons (GigaViewer)",
+  "list": "https://comic-seasons.com/comics"
+ },
+ {
+  "site": "comic-trail.com",
+  "home": "https://comic-trail.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Comic Trail (GigaViewer)",
+  "list": "https://comic-trail.com/series"
+ },
+ {
+  "site": "comic-y-ours.com",
+  "home": "https://comic-y-ours.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Comic Y-Ours (GigaViewer)",
+  "list": "https://comic-y-ours.com/series"
+ },
+ {
+  "site": "comic-zenon.com",
+  "home": "https://comic-zenon.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Comic Zenon (GigaViewer)",
+  "list": "https://comic-zenon.com/series"
+ },
+ {
   "site": "comix.to",
   "home": "https://comix.to",
   "family": "custom",
@@ -119,6 +227,15 @@
   "lang": "en",
   "crawl": false,
   "label": "Danke fürs Lesen"
+ },
+ {
+  "site": "decadencescans.com",
+  "home": "https://reader.decadencescans.com",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://reader.decadencescans.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Decadence Scans, slow image host"
  },
  {
   "site": "demonicscans.org",
@@ -217,6 +334,24 @@
   "label": "Manga Fox"
  },
  {
+  "site": "fbsquadx.com",
+  "home": "https://fbsquadx.com",
+  "family": "madara",
+  "lang": "es",
+  "crawl": true,
+  "list": "https://fbsquadx.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Fleur Blanche Scan, Spanish"
+ },
+ {
+  "site": "feelweb.jp",
+  "home": "https://feelweb.jp",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Feel Web (GigaViewer)",
+  "list": "https://feelweb.jp/"
+ },
+ {
   "site": "flamecomics.xyz",
   "home": "https://flamecomics.xyz",
   "family": "nextjs",
@@ -259,6 +394,22 @@
   "label": "Genz Toon"
  },
  {
+  "site": "globalcomix.com",
+  "home": "https://globalcomix.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Western comics, free issues only"
+ },
+ {
+  "site": "gourmetsupremacy.com",
+  "home": "https://gourmetsupremacy.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Gourmet Scans, free chapters only"
+ },
+ {
   "site": "guya.cubari.moe",
   "home": "https://guya.cubari.moe",
   "family": "single",
@@ -270,6 +421,14 @@
   "label": "Kaguya-sama (Guya)"
  },
  {
+  "site": "hachirumi.com",
+  "home": "https://hachirumi.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Hachirumi, Guya instance, has an NSFW section"
+ },
+ {
   "site": "heavenly-delusion.com",
   "home": "https://w7.heavenly-delusion.com",
   "family": "single",
@@ -278,12 +437,29 @@
   "label": "Heavenly Delusion"
  },
  {
+  "site": "heavenmanga.com",
+  "home": "https://heavenmanga.com",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false,
+  "label": "Spanish"
+ },
+ {
   "site": "hivetoons.org",
   "home": "https://hivetoons.org",
   "family": "custom",
   "lang": "en",
   "crawl": false,
   "label": "HiveToons, VoidScans"
+ },
+ {
+  "site": "ichicomi.com",
+  "home": "https://ichicomi.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Ichi Comic (GigaViewer)",
+  "list": "https://ichicomi.com/series"
  },
  {
   "site": "inmanga.com",
@@ -340,11 +516,28 @@
   "list": "https://kingofshojo.com/manga/list-mode/"
  },
  {
+  "site": "kombatch.cc",
+  "home": "https://kombatch.cc",
+  "family": "themesia",
+  "lang": "id",
+  "crawl": true,
+  "list": "https://kombatch.cc/manga/list-mode/",
+  "label": "Indonesian"
+ },
+ {
   "site": "komikindo.ch",
   "home": "https://komikindo.ch",
   "family": "custom",
   "lang": "id",
   "crawl": false
+ },
+ {
+  "site": "komikmanga.com",
+  "home": "https://komikmanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaReader, English"
  },
  {
   "site": "komikstation.org",
@@ -354,6 +547,25 @@
   "crawl": true,
   "list": "https://komikstation.org/manga/list-mode/",
   "label": "Indonesian"
+ },
+ {
+  "site": "ksgroupscans.com",
+  "home": "https://ksgroupscans.com",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://ksgroupscans.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "KSGroupScans"
+ },
+ {
+  "site": "kuragebunch.com",
+  "home": "https://kuragebunch.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": false,
+  "label": "Japanese, Kurage Bunch (GigaViewer)",
+  "list": "https://kuragebunch.com/comics",
+  "note": "its list page names no series, only their episodes"
  },
  {
   "site": "lagoonscans.com",
@@ -377,6 +589,22 @@
   "lang": "fr",
   "crawl": true,
   "list": "https://www.lelmanga.com/manga/list-mode/",
+  "label": "French"
+ },
+ {
+  "site": "lelscanfr.com",
+  "home": "https://www.lelscanfr.com",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false,
+  "label": "French"
+ },
+ {
+  "site": "lelscans.net",
+  "home": "https://lelscans.net",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false,
   "label": "French"
  },
  {
@@ -413,6 +641,15 @@
   "label": "LuaScans"
  },
  {
+  "site": "madaradex.org",
+  "home": "https://madaradex.org",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://madaradex.org/title/page/{page}/?m_orderby=alphabet",
+  "label": "some adult titles"
+ },
+ {
   "site": "madarascans.net",
   "home": "https://madarascans.net",
   "family": "madara",
@@ -422,12 +659,38 @@
   "label": "former madarascans.org/.com"
  },
  {
+  "site": "magcomi.com",
+  "home": "https://magcomi.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Mag Garden (GigaViewer)",
+  "list": "https://magcomi.com/series"
+ },
+ {
   "site": "maid.my.id",
   "home": "https://www.maid.my.id",
   "family": "themesia",
   "lang": "id",
   "crawl": false,
   "note": "no /manga/list-mode/ page (2026-10-15)"
+ },
+ {
+  "site": "manga.adonisfansub.com",
+  "home": "https://manga.adonisfansub.com",
+  "family": "themesia",
+  "lang": "tr",
+  "crawl": true,
+  "list": "https://manga.adonisfansub.com/manga/list-mode/",
+  "label": "Adonis Fansub, Turkish"
+ },
+ {
+  "site": "manga.smuglo.li",
+  "home": "https://manga.smuglo.li",
+  "family": "foolslide",
+  "lang": "en",
+  "crawl": false,
+  "label": "Lilyreader, yuri"
  },
  {
   "site": "mangaball.com",
@@ -476,6 +739,15 @@
   "label": "MangaDex"
  },
  {
+  "site": "mangaeclipse.com",
+  "home": "https://mangaeclipse.com",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://mangaeclipse.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Manga Eclipse"
+ },
+ {
   "site": "mangafire.to",
   "home": "https://mangafire.to",
   "family": "custom",
@@ -522,6 +794,15 @@
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "mangalami.com",
+  "home": "https://mangalami.com",
+  "family": "themesia",
+  "lang": "th",
+  "crawl": true,
+  "list": "https://mangalami.com/manga/list-mode/",
+  "label": "LamiManga, Thai"
  },
  {
   "site": "mangalib.me",
@@ -581,6 +862,14 @@
   "list": "https://www.mangaread.org/manga/page/{page}/?m_orderby=alphabet"
  },
  {
+  "site": "mangas-origines.fr",
+  "home": "https://mangas-origines.fr",
+  "family": "custom",
+  "lang": "fr",
+  "crawl": false,
+  "label": "French"
+ },
+ {
   "site": "mangasushi.org",
   "home": "https://mangasushi.org",
   "family": "madara",
@@ -604,6 +893,15 @@
   "crawl": false
  },
  {
+  "site": "mangatime-square.com",
+  "home": "https://mangatime-square.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Mangatime Square (GigaViewer)",
+  "list": "https://mangatime-square.com/series"
+ },
+ {
   "site": "mangatown.com",
   "home": "https://www.mangatown.com",
   "family": "custom",
@@ -625,6 +923,24 @@
   "lang": "it",
   "crawl": false,
   "label": "MangaWorld, Italian"
+ },
+ {
+  "site": "mangawow.org",
+  "home": "https://mangawow.org",
+  "family": "madara",
+  "lang": "tr",
+  "crawl": true,
+  "list": "https://mangawow.org/manga/page/{page}/?m_orderby=alphabet",
+  "label": "MangaWOW, Turkish"
+ },
+ {
+  "site": "mangazin.org",
+  "home": "https://mangazin.org",
+  "family": "madara",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://mangazin.org/manga/page/{page}/?m_orderby=alphabet",
+  "label": "MANGA ZIN"
  },
  {
   "site": "mangtto.com",
@@ -666,6 +982,14 @@
   "crawl": false
  },
  {
+  "site": "manhwatop.com",
+  "home": "https://manhwatop.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MANHWATOP"
+ },
+ {
   "site": "mgeko.cc",
   "home": "https://www.mgeko.cc",
   "family": "custom",
@@ -688,6 +1012,15 @@
   "browser": true
  },
  {
+  "site": "mundomanhwa.com",
+  "home": "https://mundomanhwa.com",
+  "family": "madara",
+  "lang": "es",
+  "crawl": true,
+  "list": "https://mundomanhwa.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Spanish"
+ },
+ {
   "site": "natomanga.com",
   "home": "https://www.natomanga.com",
   "family": "custom",
@@ -695,6 +1028,65 @@
   "crawl": false,
   "browser": true,
   "label": "MangaNato, former manganato.com/manganelo.com"
+ },
+ {
+  "site": "natsu.one",
+  "home": "https://natsu.one",
+  "family": "custom",
+  "lang": "id",
+  "crawl": false,
+  "label": "NatsuID, Indonesian, some adult titles, former natsu.id"
+ },
+ {
+  "site": "niji-translations.com",
+  "home": "https://niji-translations.com",
+  "family": "madara",
+  "lang": "ar",
+  "crawl": true,
+  "list": "https://niji-translations.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Niji, Arabic, yuri"
+ },
+ {
+  "site": "noranofansub.com",
+  "home": "https://www.noranofansub.com",
+  "family": "custom",
+  "lang": "es",
+  "crawl": false,
+  "label": "NoraNoFansub, Spanish"
+ },
+ {
+  "site": "nyraxmanga.com",
+  "home": "https://nyraxmanga.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://nyraxmanga.com/manga/list-mode/",
+  "label": "Nyrax, some adult titles"
+ },
+ {
+  "site": "onma.top",
+  "home": "https://onma.top",
+  "family": "custom",
+  "lang": "ar",
+  "crawl": false,
+  "label": "Arabic"
+ },
+ {
+  "site": "oremanga.net",
+  "home": "https://www.oremanga.net",
+  "family": "custom",
+  "lang": "th",
+  "crawl": false,
+  "label": "Oremanga, Thai"
+ },
+ {
+  "site": "ourfeel.jp",
+  "home": "https://ourfeel.jp",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Our Feel (GigaViewer)",
+  "list": "https://ourfeel.jp/comics"
  },
  {
   "site": "projectsuki.com",
@@ -715,6 +1107,15 @@
   "label": "Qi Manga, former Aurora Scans"
  },
  {
+  "site": "rackusreads.com",
+  "home": "https://rackusreads.com",
+  "family": "themesia",
+  "lang": "en",
+  "crawl": true,
+  "list": "https://rackusreads.com/manga/list-mode/",
+  "label": "Rackus"
+ },
+ {
   "site": "ravenscans.org",
   "home": "https://ravenscans.org",
   "family": "themesia",
@@ -730,11 +1131,22 @@
   "crawl": false
  },
  {
+  "site": "re-yume.my.id",
+  "home": "https://www.re-yume.my.id",
+  "family": "blogger",
+  "lang": "id",
+  "crawl": false,
+  "label": "Re-Yume, Indonesian"
+ },
+ {
   "site": "reader.deathtollscans.net",
   "home": "https://reader.deathtollscans.net",
   "family": "foolslide",
   "lang": "en",
-  "crawl": false
+  "crawl": false,
+  "aliases": [
+   "deathtollscans.net"
+  ]
  },
  {
   "site": "ritharscans.com",
@@ -765,6 +1177,15 @@
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "ruyamanga2.com",
+  "home": "https://www.ruyamanga2.com",
+  "family": "madara",
+  "lang": "tr",
+  "crawl": true,
+  "list": "https://www.ruyamanga2.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Rüya Manga, Turkish"
  },
  {
   "site": "sacachispa.site",
@@ -798,6 +1219,15 @@
   "browser": true
  },
  {
+  "site": "shonenjumpplus.com",
+  "home": "https://shonenjumpplus.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Jump+ (GigaViewer)",
+  "list": "https://shonenjumpplus.com/series"
+ },
+ {
   "site": "silentquill.net",
   "home": "https://silentquill.net",
   "family": "custom",
@@ -811,6 +1241,15 @@
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "sunday-webry.com",
+  "home": "https://www.sunday-webry.com",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Sunday Webry (GigaViewer)",
+  "list": "https://www.sunday-webry.com/series"
  },
  {
   "site": "sushiscan.net",
@@ -860,6 +1299,15 @@
   "label": "The Apothecary Diaries"
  },
  {
+  "site": "tonarinoyj.jp",
+  "home": "https://tonarinoyj.jp",
+  "family": "gigaviewer",
+  "lang": "ja",
+  "crawl": true,
+  "label": "Japanese, Young Jump (GigaViewer)",
+  "list": "https://tonarinoyj.jp/series"
+ },
+ {
   "site": "toongod.org",
   "home": "https://www.toongod.org",
   "family": "custom",
@@ -899,6 +1347,15 @@
   "family": "custom",
   "lang": "tr",
   "crawl": false
+ },
+ {
+  "site": "turkcemanga.com",
+  "home": "https://turkcemanga.com",
+  "family": "madara",
+  "lang": "tr",
+  "crawl": true,
+  "list": "https://turkcemanga.com/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Turkce Manga, Turkish"
  },
  {
   "site": "tvymanga3.com",
@@ -950,6 +1407,15 @@
   "crawl": false
  },
  {
+  "site": "webtoonia.fun",
+  "home": "https://webtoonia.fun",
+  "family": "madara",
+  "lang": "tr",
+  "crawl": true,
+  "list": "https://webtoonia.fun/seri/page/{page}/?m_orderby=alphabet",
+  "label": "Turkish, former diamondfansub.com, some NSFW"
+ },
+ {
   "site": "webtoons.com",
   "home": "https://www.webtoons.com/en",
   "family": "api",
@@ -978,6 +1444,15 @@
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "yurionair.top",
+  "home": "https://yurionair.top",
+  "family": "madara",
+  "lang": "pt",
+  "crawl": true,
+  "list": "https://yurionair.top/manga/page/{page}/?m_orderby=alphabet",
+  "label": "Yuri Verso, Portuguese, yuri, some adult titles"
  },
  {
   "site": "zonatmo.org",

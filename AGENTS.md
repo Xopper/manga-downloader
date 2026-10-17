@@ -141,8 +141,12 @@ page. Measure before touching any of it (a load takes ~0.6 s, a search for
   `crawlers` by `init`): `themesia` (`/manga/list-mode/`, else the
   `/manga/?page=N` grid), `madara` (`/manga/page/N/?m_orderby=alphabet`: the default order is
   "latest update", which shifts between requests so pages overlap and the
-  walk stops early), `single` (one entry:
-  the home page). They run without a browser, through `http.GetText` with
+  walk stops early; a site whose series live elsewhere, `/title/` or
+  `/seri/`, has that in its `list`), `single` (one entry: the home page),
+  `gigaviewer` (Hatena's GigaViewer hosts: one page, `/series` or `/comics`,
+  whose episode links each stand for a series; the title comes from the
+  link's `data-series-title`, a title element, or its picture's alt, with a
+  paperback's "３巻"/"【…】" cut off). They run without a browser, through `http.GetText` with
   `DisableRetry` (a 404 is how a paged list ends), paced by `pagePause`, and
   stop when a page adds nothing new (a site that ignores `page=`). Tests use
   `withFakeFetch` and trimmed fixtures under `catalog/testdata/<family>/`.
