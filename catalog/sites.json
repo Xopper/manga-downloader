@@ -9,6 +9,42 @@
   "label": "Arabic, former 3asq.org"
  },
  {
+  "site": "4porncomic.com",
+  "home": "https://4porncomic.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "4PornComic",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "akazascans.org",
+  "home": "https://akazascans.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Akaza Scans",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "allporncomic.com",
+  "home": "https://allporncomic.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "AllPornComic",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "allporncomic.io",
+  "home": "https://allporncomic.io",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "AllPornComic.io",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "anikiga.com",
   "home": "https://anikiga.com",
   "family": "madara",
@@ -42,6 +78,15 @@
   "label": "AnzManga, Spanish"
  },
  {
+  "site": "apcomics.org",
+  "home": "https://apcomics.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "AP Comics",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "apollcomics.es",
   "home": "https://apollcomics.es",
   "family": "madara",
@@ -68,6 +113,15 @@
   "label": "Asmodeus Scans"
  },
  {
+  "site": "asterscans.com",
+  "home": "https://asterscans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Aster Scans",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "asurascans.com",
   "home": "https://asurascans.com",
   "family": "astro",
@@ -76,12 +130,30 @@
   "label": "Asura Scans, former asuratoon.com"
  },
  {
+  "site": "athreascans.com",
+  "home": "https://athreascans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Athrea Scans",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "atsu.moe",
   "home": "https://atsu.moe",
   "family": "custom",
   "lang": "en",
   "crawl": false,
   "label": "Atsumaru"
+ },
+ {
+  "site": "auntmanhwa.com",
+  "home": "https://auntmanhwa.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Aunt Manhwa",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
   "site": "azorafly.com",
@@ -115,6 +187,15 @@
   "label": "Blue Solo, French scantrad"
  },
  {
+  "site": "bunmanga.com",
+  "home": "https://bunmanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Bun Manga",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "chainsawman-chapter.online",
   "home": "https://w2.chainsawman-chapter.online",
   "family": "single",
@@ -129,6 +210,24 @@
   "lang": "en",
   "crawl": true,
   "label": "Chainsaw Man"
+ },
+ {
+  "site": "cocomic.co",
+  "home": "https://cocomic.co",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Cocomic",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "coffeemanga.net",
+  "home": "https://coffeemanga.net",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Coffee Manga (Unoriginal)",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
   "site": "comic-action.com",
@@ -221,6 +320,24 @@
   "browser": true
  },
  {
+  "site": "cosplaytele.com",
+  "home": "https://cosplaytele.com",
+  "family": "custom",
+  "lang": "all",
+  "crawl": false,
+  "label": "CosplayTele",
+  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
+ },
+ {
+  "site": "cucumbermanga.com",
+  "home": "https://cucumbermanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Cucumber Manga",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "danke.moe",
   "home": "https://danke.moe",
   "family": "custom",
@@ -246,6 +363,15 @@
   "label": "MangaDemon / Demonic Scans"
  },
  {
+  "site": "doujindistrict.com",
+  "home": "https://doujindistrict.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "HM2D",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "dragonballmangaa.com",
   "home": "https://dragonballmangaa.com",
   "family": "single",
@@ -268,6 +394,15 @@
   "lang": "en",
   "crawl": false,
   "label": "Drake Scans, former drakecomic.org"
+ },
+ {
+  "site": "dresdencodak.com",
+  "home": "https://dresdencodak.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Dark Science",
+  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
  },
  {
   "site": "dynasty-scans.com",
@@ -374,6 +509,15 @@
   "crawl": false
  },
  {
+  "site": "gakamangas.com",
+  "home": "https://gakamangas.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "GakaMangas",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "gdscans.com",
   "home": "https://gdscans.com",
   "family": "madara",
@@ -445,6 +589,51 @@
   "label": "Spanish"
  },
  {
+  "site": "hentai1.io",
+  "home": "https://hentai1.io",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Hentai1.io",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "hentai20.lol",
+  "home": "https://hentai20.lol",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Hentai20 (Unoriginal)",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "hentaixcomic.com",
+  "home": "https://hentaixcomic.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "HentaiXComic",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "hentaixdickgirl.com",
+  "home": "https://hentaixdickgirl.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "HentaiXDickgirl",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "hentaixyuri.com",
+  "home": "https://hentaixyuri.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "HentaiXYuri",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "hivetoons.org",
   "home": "https://hivetoons.org",
   "family": "custom",
@@ -508,12 +697,39 @@
   "label": "Kayn Scans, former kaynscan.org"
  },
  {
+  "site": "kingcomix.com",
+  "home": "https://kingcomix.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "KingComiX",
+  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
+ },
+ {
   "site": "kingofshojo.com",
   "home": "https://kingofshojo.com",
   "family": "themesia",
   "lang": "id",
   "crawl": true,
   "list": "https://kingofshojo.com/manga/list-mode/"
+ },
+ {
+  "site": "kitsunedawn.com",
+  "home": "https://kitsunedawn.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Kitsune Dawn",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "kokomangas.com",
+  "home": "https://kokomangas.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "KokoMangas",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
   "site": "kombatch.cc",
@@ -633,6 +849,15 @@
   "crawl": false
  },
  {
+  "site": "linkmanga.com",
+  "home": "https://linkmanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "LinkManga",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "luacomic.org",
   "home": "https://luacomic.org",
   "family": "nextjs",
@@ -693,6 +918,15 @@
   "label": "Lilyreader, yuri"
  },
  {
+  "site": "manga18free.com",
+  "home": "https://manga18free.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manga18Free",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "mangaball.com",
   "home": "https://mangaball.com",
   "family": "nextjs",
@@ -714,6 +948,15 @@
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "mangacrazy.net",
+  "home": "https://mangacrazy.net",
+  "family": "custom",
+  "lang": "all",
+  "crawl": false,
+  "label": "MangaCrazy",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
   "site": "mangadelsiglotvmanga.com.mx",
@@ -739,6 +982,15 @@
   "label": "MangaDex"
  },
  {
+  "site": "mangadistrict.com",
+  "home": "https://mangadistrict.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manga District",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "mangaeclipse.com",
   "home": "https://mangaeclipse.com",
   "family": "madara",
@@ -754,6 +1006,33 @@
   "lang": "en",
   "crawl": false,
   "browser": true
+ },
+ {
+  "site": "mangaforfree.com",
+  "home": "https://mangaforfree.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Mangaforfree.com",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "mangaforfree.net",
+  "home": "https://mangaforfree.net",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaForFree.net",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "mangafree.info",
+  "home": "https://mangafree.info",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Jinmangas",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
   "site": "mangahere.cc",
@@ -820,6 +1099,15 @@
   "crawl": true,
   "list": "https://mangalivre.to/manga/page/{page}/?m_orderby=alphabet",
   "label": "Manga Livre, former mangalivre.tv/mangalivre.net"
+ },
+ {
+  "site": "mangamaniacs.org",
+  "home": "https://mangamaniacs.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MangaManiacs",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
   "site": "manganato.gg",
@@ -909,6 +1197,15 @@
   "crawl": false
  },
  {
+  "site": "mangatrend.org",
+  "home": "https://mangatrend.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manga Trend",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "mangavault.lat",
   "home": "https://mangavault.lat",
   "family": "astro",
@@ -951,6 +1248,24 @@
   "label": "Mangitto"
  },
  {
+  "site": "manhuahot.com",
+  "home": "https://manhuahot.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "ManhuaHot",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "manhuanext.com",
+  "home": "https://manhuanext.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manhuanext",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "manhuaplus.com",
   "home": "https://manhuaplus.com",
   "family": "madara",
@@ -975,11 +1290,56 @@
   "browser": true
  },
  {
+  "site": "manhwabuddy.com",
+  "home": "https://manhwabuddy.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "ManhwaBuddy",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "manhwaclub.net",
+  "home": "https://manhwaclub.net",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "ManhwaClub.net",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "manhwahub.to",
+  "home": "https://manhwahub.to",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "ManhwaHub.to",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "manhwanex.com",
+  "home": "https://manhwanex.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "ManhwaNex",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "manhwaonline.org",
   "home": "https://manhwaonline.org",
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "manhwareads.com",
+  "home": "https://manhwareads.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Manhwa Reads",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
   "site": "manhwatop.com",
@@ -1021,6 +1381,15 @@
   "label": "Spanish"
  },
  {
+  "site": "myreadingcomic.com",
+  "home": "https://myreadingcomic.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "MyReadingComic",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "natomanga.com",
   "home": "https://www.natomanga.com",
   "family": "custom",
@@ -1055,6 +1424,15 @@
   "label": "NoraNoFansub, Spanish"
  },
  {
+  "site": "nyanukafe.com",
+  "home": "https://nyanukafe.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Nyanu Kafe",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "nyraxmanga.com",
   "home": "https://nyraxmanga.com",
   "family": "themesia",
@@ -1064,12 +1442,30 @@
   "label": "Nyrax, some adult titles"
  },
  {
+  "site": "octopusmanga.com",
+  "home": "https://octopusmanga.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "OctopusManga",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
   "site": "onma.top",
   "home": "https://onma.top",
   "family": "custom",
   "lang": "ar",
   "crawl": false,
   "label": "Arabic"
+ },
+ {
+  "site": "orchisasia.org",
+  "home": "https://orchisasia.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Orchisasia",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
   "site": "oremanga.net",
@@ -1087,6 +1483,33 @@
   "crawl": true,
   "label": "Japanese, Our Feel (GigaViewer)",
   "list": "https://ourfeel.jp/comics"
+ },
+ {
+  "site": "paritehaber.com",
+  "home": "https://paritehaber.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Paritehaber",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "petrotechsociety.org",
+  "home": "https://petrotechsociety.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Petrotechsociety",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "pornhwaz.com",
+  "home": "https://pornhwaz.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Pornhwaz",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
   "site": "projectsuki.com",
@@ -1149,6 +1572,24 @@
   ]
  },
  {
+  "site": "reader.decadencescans.com",
+  "home": "https://reader.decadencescans.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Decadence Scans",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "reader.mangatellers.gr",
+  "home": "https://reader.mangatellers.gr",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Mangatellers",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "ritharscans.com",
   "home": "https://ritharscans.com",
   "family": "custom",
@@ -1188,6 +1629,15 @@
   "label": "Rüya Manga, Turkish"
  },
  {
+  "site": "s2read.com",
+  "home": "https://s2read.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "S2Manga",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
   "site": "sacachispa.site",
   "home": "https://sacachispa.site",
   "family": "custom",
@@ -1209,6 +1659,15 @@
   "lang": "fr",
   "crawl": false,
   "label": "ScanVF"
+ },
+ {
+  "site": "seraphic-deviltry.com",
+  "home": "https://seraphic-deviltry.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "SeraphicDeviltry",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
  },
  {
   "site": "setsuscans.com",
@@ -1306,6 +1765,15 @@
   "crawl": true,
   "label": "Japanese, Young Jump (GigaViewer)",
   "list": "https://tonarinoyj.jp/series"
+ },
+ {
+  "site": "toongod.cc",
+  "home": "https://toongod.cc",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "ToonGod (Unoriginal)",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
  },
  {
   "site": "toongod.org",
@@ -1444,6 +1912,33 @@
   "family": "custom",
   "lang": "en",
   "crawl": false
+ },
+ {
+  "site": "yakshacomics.com",
+  "home": "https://yakshacomics.com",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "YakshaComics",
+  "note": "listed by its Tachiyomi source; read by the PlainHTML grabber"
+ },
+ {
+  "site": "yaoihub.org",
+  "home": "https://yaoihub.org",
+  "family": "custom",
+  "lang": "en",
+  "crawl": false,
+  "label": "Yaoihub",
+  "note": "listed by its Tachiyomi source; read by the Tcb grabber"
+ },
+ {
+  "site": "yaoimangaonline.com",
+  "home": "https://yaoimangaonline.com",
+  "family": "custom",
+  "lang": "all",
+  "crawl": false,
+  "label": "Yaoi Manga Online",
+  "note": "listed by its Tachiyomi source; read by the WordPressCategory grabber"
  },
  {
   "site": "yurionair.top",
