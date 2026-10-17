@@ -81,7 +81,7 @@ var gallerySeriesEngines = []galleryEngine{
 		// picture each
 		name: "megatokyo",
 		match: func(doc *goquery.Document) bool {
-			return doc.Find(`div.content ul li a[href^="./strip/"]`).Length() > 0
+			return doc.Find(megaTokyoStrips).Length() > 0
 		},
 		titleOf: func(g *Gallery) string {
 			title, _, _ := strings.Cut(g.doc.Find("title").Text(), " - ")
@@ -331,17 +331,23 @@ func oppaiPages(g *Gallery, c *GalleryChapter) ([]string, error) {
 	return urls, nil
 }
 
+// megaTokyoStrips are the archive's strips, by date (a <ul>) or by
+// chapter (an <ol> per chapter)
+const megaTokyoStrips = `div.content li a[href^="./strip/"]`
+
 // megaTokyoStripRe is a strip's number in its link
 var megaTokyoStripRe = regexp.MustCompile(`strip/(\d+)`)
 
 // megaTokyoChapters reads the archive: "0001 - E3 Nightmare Begins"
 func megaTokyoChapters(g *Gallery) ([]*GalleryChapter, error) {
 	var chapters []*GalleryChapter
-	g.doc.Find(`div.content ul li a[href^="./strip/"]`).Each(func(_ int, s *goquery.Selection) {
+	seen := map[string]bool{}
+	g.doc.Find(megaTokyoStrips).Each(func(_ int, s *goquery.Selection) {
 		m := megaTokyoStripRe.FindStringSubmatch(s.AttrOr("href", ""))
-		if m == nil {
+		if m == nil || seen[m[1]] {
 			return
 		}
+		seen[m[1]] = true
 		n, _ := strconv.ParseFloat(m[1], 64)
 		_, title, _ := strings.Cut(strings.TrimSpace(s.Text()), " - ")
 		chapters = append(chapters, &GalleryChapter{
