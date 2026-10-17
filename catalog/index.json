@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-17T18:13:49.039527Z",
+ "generated": "2026-10-17T18:48:01.873524Z",
  "sites": [
   {
    "site": "18porncomic.com",
@@ -2006,9 +2006,9 @@
   {
    "site": "mangalib.me",
    "file": "mangalib.me.json.gz",
-   "entries": 20000,
-   "crawled": "2026-10-17T18:04:41.374822Z",
-   "sha256": "e888217a9f0d659cfa6d3d02c3066cea17ab92f03e652f696f329516a7819be7"
+   "entries": 57499,
+   "crawled": "2026-10-17T18:47:50.948973Z",
+   "sha256": "c95e32c405936098413b3356c511073f2dd0c2104edc5d488146b39032521512"
   },
   {
    "site": "mangalivre.to",
@@ -3886,7 +3886,7 @@
    "file": "sources.json",
    "entries": 0,
    "crawled": "0001-01-01T00:00:00Z",
-   "sha256": "9b9c971697ad2cea455086d976fdc82ee88e879ea442aa095f4c23db230d4c02"
+   "sha256": "1bbef483ffd6d85909b75f7a5042d16e109a7ad736f30e1d11ec30106c0f091c"
   }
  ]
 }
