@@ -324,8 +324,66 @@ var plainHTMLSelectors = []SiteSelector{
 		Image:            "img.myImage, #pages img",
 		SeriesLink:       `h1 a[href^="/series/"]`,
 		FollowSeriesLink: true,
-		// paid rows overlay a lock icon (lock-open is a different icon)
-		Locked: `img[src*="material-symbols:lock.svg"]`,
+		// paid rows overlay a lock icon (lock-open is a different icon);
+		// early-access ones carry an "Upcoming" clock badge instead (kewnscans)
+		Locked: `img[src*="material-symbols:lock.svg"], img[src*="mdi:clock.svg"]`,
+	},
+	// comicasura.net (an "Asura Scans" mirror on the 2xstorage CDN): rows
+	// carry data-chapter-num (the "first chapter" button outside them is
+	// left out), and the reader is plain <img>s in div.center wrappers.
+	{
+		Title:        "h1.comic-title-content",
+		Rows:         "div.chapter-items[data-chapter-num] a",
+		Chapter:      "div.text-sm",
+		ChapterTitle: "div.text-sm",
+		Image:        "div.center > img.object-cover",
+		// the reader's "All chapters are in <series>" line
+		SeriesLink: `p.text-sm > a[href*="/manga/"]`,
+	},
+	// MangaCatalog one-series sites (ww12.readsnk.com,
+	// ww6.readjujutsukaisen.com, ww4.readsololeveling.org…): each row is a
+	// bg-bg-secondary card whose first column links the chapter, and the
+	// reader is img.js-page; the image CDN wants the site's Referer.
+	{
+		Title:        "h1.my-3",
+		Rows:         "div.bg-bg-secondary div.col-span-4",
+		Link:         "a",
+		Chapter:      "a",
+		ChapterTitle: "div.text-xs",
+		Image:        "img.js-page",
+	},
+	// colorizedmangas.com (Next.js, rendered on the server): each chapter
+	// card is an a.group with the number in a bold span and the title in a
+	// truncated div; the reader's pictures are on jsDelivr (…/pages/N/001.webp).
+	{
+		Title:        "h1",
+		Rows:         `a.group.rounded-xl[href*="/chapter/"]:has(span.text-sm.font-bold)`,
+		Chapter:      "span.text-sm.font-bold",
+		ChapterTitle: "div.truncate",
+		Image:        `main img[src*="/pages/"]`,
+	},
+	// honeytoon.com: each episode row is an a.comic-list__item titled
+	// "Episode N", numbered from its /comic/{slug}/{N} link; paid rows link
+	// to javascript:void(0) (a lock or token icon), so they number nothing
+	// and are left out. The reader's slices are .single__item images.
+	{
+		Title:    "h1.comic-book__title",
+		Rows:     ".comic-list-items > a.comic-list__item",
+		Chapter:  ".comic-list__title-desc",
+		NumberRe: `/comic/[^/]+/(\d+(?:\.\d+)?)/?$`,
+		Image:    ".single__item img",
+		Locked:   ".lock-ico, .token-ico",
+	},
+	// vgperson.com's manga viewer: a table of "Chapter N" links (?m=1&c=N)
+	// with the title in the next cell; a chapter page holds every page as an
+	// <img alt="Page N">, all but the first hidden.
+	{
+		Title:        "h2.title",
+		Rows:         "table.chaptertable tr:has(a)",
+		Link:         "a",
+		Chapter:      "a",
+		ChapterTitle: "td:nth-child(2)",
+		Image:        `img[alt^="Page "]`,
 	},
 	// en-thunderscans.com: mangastream/themesia theme (reader page uses
 	// ts_reader.run, already handled generically). Some recent chapters
@@ -1558,8 +1616,10 @@ func getPlainHTMLImageURL(selector string, doc *goquery.Document) []string {
 	// templetoons.com's reader (Next.js RSC streaming) embeds the page list
 	// as a flat JSON array inside a double-escaped JS string, i.e. the raw
 	// HTML literally contains `\"pages\":[\"https://...\",...]`. Extract it
-	// and unescape the `\"` delimiters.
-	re = regexp.MustCompile(`\\"pages\\":\[([^\]]+)\]`)
+	// and unescape the `\"` delimiters. The array must hold strings: other
+	// Next.js readers (colorizedmangas.com) name page sizes the same way,
+	// `\"pages\":[{\"n\":1,\"w\":1080}]`, and their <img>s are the pages.
+	re = regexp.MustCompile(`\\"pages\\":\[(\\"[^\]]+)\]`)
 	matches = re.FindStringSubmatch(html)
 	if len(matches) > 1 {
 		urls := regexp.MustCompile(`"([^"\\]+)\\?"`).FindAllStringSubmatch(matches[1], -1)

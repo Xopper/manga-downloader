@@ -172,7 +172,8 @@ func (g Guya) seriesData(probe bool) (*guyaSeriesFeed, error) {
 
 // slug returns the manga slug from the URL (i.e.
 // "Kaguya-Wants-To-Be-Confessed-To" for
-// https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/)
+// https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/, or
+// "infinite-loop" for https://hachirumi.com/reader/series/infinite-loop/)
 func (g Guya) slug() (string, error) {
 	re := regexp.MustCompile(`/(?:manga|reader/series)/([^/]+)`)
 	matches := re.FindStringSubmatch(g.URL)

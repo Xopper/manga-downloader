@@ -8,240 +8,185 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	stdhttp "net/http"
 	"net/url"
+	"path"
 	"regexp"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/elboletaire/manga-downloader/http"
 )
 
-var (
-	// kemonoHostRe matches kemono on the domains it has used (its sister
-	// coomer runs the same API but archives photo and video sites, not comics)
-	kemonoHostRe = regexp.MustCompile(`(?i)^https?://(?:www\.)?kemono\.(?:cr|su|party)(?:[/?#]|$)`)
-	// kemonoCreatorRe matches a creator's path, or one of their posts
-	kemonoCreatorRe = regexp.MustCompile(`^/([a-z0-9_-]+)/user/([^/?#]+)(?:/post/[^/?#]+)?/?$`)
-	// kemonoImageExtRe matches the attachments that are pictures
-	kemonoImageExtRe = regexp.MustCompile(`(?i)\.(?:jpe?g|png|gif|webp)$`)
-)
-
-const (
-	// kemonoAPIAccept is what the API demands: it answers anything else
-	// (JSON included) with a 403 telling scrapers to send `Accept: text/css`
-	kemonoAPIAccept = "text/css"
-	// kemonoPageSize is the posts one listing page holds (fixed by the API)
-	kemonoPageSize = 50
-	// kemonoMaxListPages bounds the walk over a creator's posts
-	kemonoMaxListPages = 400
-	// kemonoListPause spaces the listing's requests: the API rate-limits hard
-	kemonoListPause = 500 * time.Millisecond
-	// kemonoProbeTimeout bounds the check that the full-size file servers
-	// answer at all
-	kemonoProbeTimeout = 15 * time.Second
-)
-
-// Kemono is a grabber for kemono.cr, an archive of creators'
-// paywalled posts (Patreon, Fanbox, Fantia…). A creator is a series and each
-// of their posts with pictures a chapter, numbered oldest first; posts with
-// only text, video or archives are left out. The JSON API lists 50 posts per
-// request with their main file and attachments, which is all a chapter needs.
-//
-// Full-size files (`/data/…`) redirect to numbered file servers (n1…n4) that
-// some networks can't reach at all (the connection just hangs), while the
-// thumbnail server (`img.` host, `/thumbnail/data/…`, ~800px tall) works, so
-// FetchChapter checks once whether a full-size file answers and falls back
-// to thumbnails when it doesn't, as Tachiyomi's extension does.
+// Kemono is a grabber for the Kemono archive software (kemono.cr, coomer.st,
+// pawchive.pw): a creator's page (/{service}/user/{id}) is the series and
+// each of their posts with pictures a chapter. The JSON API lists the posts
+// 50 at a time with their files, so the pages are known without a request
+// per post
 type Kemono struct {
 	*Grabber
-	profile *kemonoProfile
-	// probeOnce guards fullOK, whether the full-size file servers answered
-	probeOnce sync.Once
-	fullOK    bool
+	title string
+	posts []kemonoPost
 }
 
-// NewKemono returns a kemono grabber
+// KemonoChapter is a post with pictures
+type KemonoChapter struct {
+	Chapter
+	Files []string
+}
+
+// kemonoHost is how one Kemono instance serves its files
+type kemonoHost struct {
+	// files is the origin serving /data/{hash path}, "" for the site itself
+	// (which redirects to its file servers)
+	files string
+	// userAgent replaces the browser one for the files: pawchive's file
+	// server refuses browser-looking clients and asks for one that names
+	// itself
+	userAgent string
+	// pacer spaces the file requests to the instance's stated limit
+	pacer *pacer
+}
+
+// kemonoHosts are the known instances, by domain
+var kemonoHosts = map[string]kemonoHost{
+	"kemono.cr":    {pacer: &pacer{interval: time.Second / 4}},
+	"kemono.su":    {pacer: &pacer{interval: time.Second / 4}},
+	"kemono.party": {pacer: &pacer{interval: time.Second / 4}},
+	"coomer.st":    {pacer: &pacer{interval: time.Second / 4}},
+	"coomer.su":    {pacer: &pacer{interval: time.Second / 4}},
+	"coomer.party": {pacer: &pacer{interval: time.Second / 4}},
+	// pawchive asks for at most one request a second and 5 downloads at once
+	"pawchive.pw": {
+		files:     "https://file.pawchive.pw",
+		userAgent: "manga-downloader (+https://github.com/elboletaire/manga-downloader)",
+		pacer:     &pacer{interval: time.Second},
+	},
+}
+
+// kemonoMaxConcurrency keeps within the instances' download limits
+var kemonoMaxConcurrency = MaxConcurrency{Chapters: 1, Pages: 4}
+
+// kemonoPageSize is how many posts the API lists per request
+const kemonoPageSize = 50
+
+// kemonoMaxListPages bounds the listing walk (25000 posts)
+const kemonoMaxListPages = 500
+
+// kemonoCreatorRe captures the service and creator id of a creator or post
+// path (/fanbox/user/123, /onlyfans/user/name/post/456)
+var kemonoCreatorRe = regexp.MustCompile(`^/([a-z0-9]+)/user/([^/]+)`)
+
+// kemonoImageExts are the file extensions kept as pages; videos and archives
+// are left out
+var kemonoImageExts = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true, ".avif": true, ".bmp": true}
+
 func NewKemono(g *Grabber) *Kemono {
 	return &Kemono{Grabber: g}
 }
 
-// KemonoChapter is a post, keeping its picture paths for FetchChapter
-type KemonoChapter struct {
-	Chapter
-	Paths []string
+// Test returns true for a creator or post URL of a known instance
+func (k *Kemono) Test() (bool, error) {
+	_, ok := k.host()
+	if !ok {
+		return false, nil
+	}
+	service, _ := k.creator()
+
+	return service != "", nil
 }
 
-// kemonoProfile is a creator as /profile returns it
-type kemonoProfile struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Service   string `json:"service"`
-	PostCount int    `json:"post_count"`
+// host returns the URL's instance
+func (k Kemono) host() (kemonoHost, bool) {
+	for domain, host := range kemonoHosts {
+		if hostMatchesDomain(k.URL, domain) {
+			return host, true
+		}
+	}
+	return kemonoHost{}, false
 }
 
-// kemonoFile is a post's main file or one of its attachments
+// creator returns the service and creator id of the URL, both "" when it
+// names no creator
+func (k Kemono) creator() (service, id string) {
+	u, err := url.Parse(k.URL)
+	if err != nil {
+		return "", ""
+	}
+	matches := kemonoCreatorRe.FindStringSubmatch(u.Path)
+	if matches == nil {
+		return "", ""
+	}
+	return matches[1], matches[2]
+}
+
+// apiURL returns the creator's API URL with the given suffix
+func (k Kemono) apiURL(suffix string) string {
+	service, id := k.creator()
+	return fmt.Sprintf("%s/api/v1/%s/user/%s%s", k.BaseUrl(), service, url.PathEscape(id), suffix)
+}
+
+// getJSON fetches an API URL and decodes it into v. The API answers
+// "text/css" only: coomer refuses the default Accept. kemono.cr gzips its
+// answers whether asked or not, and the shared transport doesn't decompress.
+func (k Kemono) getJSON(uri string, v any) error {
+	body, err := http.GetText(http.RequestParams{
+		URL:     uri,
+		Referer: k.URL,
+		Accept:  "text/css",
+	})
+	if err != nil {
+		return err
+	}
+	data := []byte(body)
+	if len(data) > 2 && data[0] == 0x1f && data[1] == 0x8b {
+		zr, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+		if data, err = io.ReadAll(zr); err != nil {
+			return err
+		}
+	}
+	return json.Unmarshal(data, v)
+}
+
+// FetchTitle returns the creator's name
+func (k *Kemono) FetchTitle() (string, error) {
+	if k.title != "" {
+		return k.title, nil
+	}
+	profile := struct {
+		Name string `json:"name"`
+	}{}
+	if err := k.getJSON(k.apiURL("/profile"), &profile); err != nil {
+		return "", err
+	}
+	k.title = sanitizeTitle(profile.Name)
+
+	return k.title, nil
+}
+
+// kemonoPost is a post as the API lists it
+type kemonoPost struct {
+	ID          string       `json:"id"`
+	Title       string       `json:"title"`
+	File        kemonoFile   `json:"file"`
+	Attachments []kemonoFile `json:"attachments"`
+}
+
+// kemonoFile is a post's file or attachment
 type kemonoFile struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 }
 
-// kemonoPost is a post as the listing returns it
-type kemonoPost struct {
-	ID          string       `json:"id"`
-	Title       string       `json:"title"`
-	Published   string       `json:"published"`
-	File        kemonoFile   `json:"file"`
-	Attachments []kemonoFile `json:"attachments"`
-}
-
-// Test matches kemono URLs by domain
-func (k *Kemono) Test() (bool, error) {
-	return kemonoHostRe.MatchString(k.URL), nil
-}
-
-// creator returns the service and creator id the URL names, a creator's page
-// or one of their posts
-func (k *Kemono) creator() (service, id string, err error) {
-	u, err := url.Parse(k.URL)
-	if err != nil {
-		return "", "", err
-	}
-	m := kemonoCreatorRe.FindStringSubmatch(u.Path)
-	if m == nil {
-		return "", "", errSeriesNotFound(k.URL)
-	}
-	return m[1], m[2], nil
-}
-
-// get fetches an API path and decodes its JSON. Some answers come gzipped
-// although the request never offers gzip (the shared client doesn't, so it
-// doesn't unpack them either), hence the check for gzip's magic bytes.
-func (k *Kemono) get(path string, v any) error {
-	text, err := http.GetText(http.RequestParams{URL: k.BaseUrl() + "/api/v1" + path, Accept: kemonoAPIAccept})
-	if err != nil {
-		return err
-	}
-	data, err := kemonoGunzip([]byte(text))
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, v)
-}
-
-// kemonoGunzip unpacks a gzipped body, passing anything else through
-func kemonoGunzip(data []byte) ([]byte, error) {
-	if len(data) < 2 || data[0] != 0x1f || data[1] != 0x8b {
-		return data, nil
-	}
-	r, err := gzip.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	return io.ReadAll(r)
-}
-
-// fetchProfile fetches the creator once
-func (k *Kemono) fetchProfile() (*kemonoProfile, error) {
-	if k.profile != nil {
-		return k.profile, nil
-	}
-	service, id, err := k.creator()
-	if err != nil {
-		return nil, err
-	}
-	p := &kemonoProfile{}
-	if err := k.get("/"+service+"/user/"+url.PathEscape(id)+"/profile", p); err != nil {
-		return nil, err
-	}
-	if p.Service == "" {
-		p.Service = service
-	}
-	if p.ID == "" {
-		p.ID = id
-	}
-	k.profile = p
-	return p, nil
-}
-
-// FetchTitle returns the creator's name
-func (k *Kemono) FetchTitle() (string, error) {
-	p, err := k.fetchProfile()
-	if err != nil {
-		return "", err
-	}
-	return sanitizeTitle(p.Name), nil
-}
-
-// FetchChapters lists every post that has pictures, oldest first
-func (k *Kemono) FetchChapters() (Filterables, []error) {
-	p, err := k.fetchProfile()
-	if err != nil {
-		return nil, []error{err}
-	}
-	var posts []kemonoPost
-	for page := range kemonoMaxListPages {
-		if page > 0 {
-			time.Sleep(kemonoListPause)
-		}
-		var batch []kemonoPost
-		path := fmt.Sprintf("/%s/user/%s/posts?o=%d", p.Service, url.PathEscape(p.ID), page*kemonoPageSize)
-		if err := k.get(path, &batch); err != nil {
-			if len(posts) == 0 {
-				return nil, []error{err}
-			}
-			return kemonoChapters(posts), []error{err}
-		}
-		posts = append(posts, batch...)
-		if len(batch) < kemonoPageSize || (p.PostCount > 0 && len(posts) >= p.PostCount) {
-			break
-		}
-	}
-	chapters := kemonoChapters(posts)
-	if len(chapters) == 0 {
-		return nil, []error{fmt.Errorf("%s has no posts with pictures", p.Name)}
-	}
-	return chapters, nil
-}
-
-// kemonoChapters turns the listing (newest first) into chapters numbered
-// oldest first, keeping only posts with pictures
-func kemonoChapters(posts []kemonoPost) Filterables {
-	sort.SliceStable(posts, func(i, j int) bool { return posts[i].Published < posts[j].Published })
-	var chapters Filterables
-	seen := map[string]bool{}
-	for _, post := range posts {
-		if seen[post.ID] {
-			continue
-		}
-		seen[post.ID] = true
-		paths := kemonoImagePaths(post)
-		if len(paths) == 0 {
-			continue
-		}
-		chapters = append(chapters, &KemonoChapter{
-			Chapter: Chapter{
-				Number: float64(len(chapters) + 1),
-				Title:  sanitizeTitle(post.Title),
-				ID:     post.ID,
-				Label:  Label{Style: LabelNumbered},
-			},
-			Paths: paths,
-		})
-	}
-	return chapters
-}
-
-// kemonoImagePaths returns a post's pictures: its main file, then its
-// attachments, once each (the main file is usually repeated among them)
-func kemonoImagePaths(post kemonoPost) []string {
+// images returns the paths of the post's pictures, the main file first and
+// each once (the main file is often an attachment too)
+func (p kemonoPost) images() []string {
 	var paths []string
 	seen := map[string]bool{}
-	for _, f := range append([]kemonoFile{post.File}, post.Attachments...) {
-		if f.Path == "" || seen[f.Path] || !kemonoImageExtRe.MatchString(f.Path) {
+	for _, f := range append([]kemonoFile{p.File}, p.Attachments...) {
+		if f.Path == "" || seen[f.Path] || !kemonoImageExts[strings.ToLower(path.Ext(f.Path))] {
 			continue
 		}
 		seen[f.Path] = true
@@ -250,70 +195,97 @@ func kemonoImagePaths(post kemonoPost) []string {
 	return paths
 }
 
-// FetchChapter builds the post's image URLs, full size when the file
-// servers answer
-func (k *Kemono) FetchChapter(f Filterable) (*Chapter, error) {
-	kc, ok := f.(*KemonoChapter)
-	if !ok || len(kc.Paths) == 0 {
-		return nil, fmt.Errorf("no pictures in post %s", f.GetTitle())
+// listPosts walks the creator's posts, newest first, once
+func (k *Kemono) listPosts() ([]kemonoPost, error) {
+	if k.posts != nil {
+		return k.posts, nil
 	}
-	full := k.fullSizeReachable(k.fullURL(kc.Paths[0]))
-	chapter := &Chapter{
-		Title:      kc.Title,
-		Number:     kc.Number,
-		Label:      labelOf(f),
-		ID:         kc.ID,
-		PagesCount: int64(len(kc.Paths)),
-	}
-	for i, p := range kc.Paths {
-		u := k.fullURL(p)
-		if !full {
-			u = k.thumbnailURL(p)
+	posts := []kemonoPost{}
+	for page := 0; page < kemonoMaxListPages; page++ {
+		var batch []kemonoPost
+		if err := k.getJSON(k.apiURL(fmt.Sprintf("/posts?o=%d", page*kemonoPageSize)), &batch); err != nil {
+			return nil, err
 		}
-		chapter.Pages = append(chapter.Pages, Page{Number: int64(i + 1), URL: u})
+		posts = append(posts, batch...)
+		if len(batch) < kemonoPageSize {
+			break
+		}
 	}
+	k.posts = posts
+
+	return posts, nil
+}
+
+// FetchChapters returns the creator's posts that have pictures, numbered from
+// the oldest, so a new post doesn't renumber the others
+func (k *Kemono) FetchChapters() (Filterables, []error) {
+	posts, err := k.listPosts()
+	if err != nil {
+		return nil, []error{err}
+	}
+
+	chapters := Filterables{}
+	for i := len(posts) - 1; i >= 0; i-- {
+		images := posts[i].images()
+		if len(images) == 0 {
+			continue
+		}
+		chapters = append(chapters, &KemonoChapter{
+			Chapter: Chapter{
+				Number: float64(len(chapters) + 1),
+				Title:  posts[i].Title,
+				ID:     posts[i].ID,
+				Label:  Label{Style: LabelNumbered},
+			},
+			Files: images,
+		})
+	}
+
+	return chapters, nil
+}
+
+// FetchChapter returns the post's pictures, already listed with it
+func (k Kemono) FetchChapter(f Filterable) (*Chapter, error) {
+	kchap := f.(*KemonoChapter)
+	host, _ := k.host()
+	files := host.files
+	if files == "" {
+		files = k.BaseUrl()
+	}
+	var headers map[string]string
+	if host.userAgent != "" {
+		headers = map[string]string{"User-Agent": host.userAgent}
+	}
+
+	chapter := &Chapter{
+		Title:      f.GetTitle(),
+		Label:      labelOf(f),
+		Number:     f.GetNumber(),
+		PagesCount: int64(len(kchap.Files)),
+		ID:         kchap.ID,
+	}
+	for i, p := range kchap.Files {
+		chapter.Pages = append(chapter.Pages, Page{
+			Number:  int64(i + 1),
+			URL:     files + "/data" + p,
+			Headers: headers,
+		})
+	}
+
 	return chapter, nil
 }
 
-// fullURL is a file's full-size URL
-func (k *Kemono) fullURL(path string) string {
-	return k.BaseUrl() + "/data" + path
-}
-
-// thumbnailURL is a file's copy on the thumbnail server
-func (k *Kemono) thumbnailURL(path string) string {
-	u, err := url.Parse(k.BaseUrl())
-	if err != nil {
-		return k.BaseUrl() + "/thumbnail/data" + path
-	}
-	host := strings.TrimPrefix(u.Host, "www.")
-	return u.Scheme + "://img." + host + "/thumbnail/data" + path
-}
-
-// fullSizeReachable checks once whether a full-size file downloads: a HEAD
-// that follows the redirect to its file server
-func (k *Kemono) fullSizeReachable(sample string) bool {
-	k.probeOnce.Do(func() {
-		client := &stdhttp.Client{Timeout: kemonoProbeTimeout}
-		req, err := stdhttp.NewRequest(stdhttp.MethodHead, sample, nil)
-		if err != nil {
-			return
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
-		resp, err := client.Do(req)
-		if err != nil {
-			return
-		}
-		resp.Body.Close()
-		k.fullOK = resp.StatusCode == stdhttp.StatusOK
-	})
-	return k.fullOK
-}
-
-// GetMaxConcurrency caps the downloads: the file servers rate-limit
+// GetMaxConcurrency caps the configured concurrency at the instances' limits
 func (k *Kemono) GetMaxConcurrency() MaxConcurrency {
-	m := k.Grabber.GetMaxConcurrency()
-	m.Chapters = min(m.Chapters, 2)
-	m.Pages = min(m.Pages, 4)
-	return m
+	mc := k.Grabber.GetMaxConcurrency()
+	mc.Chapters = min(mc.Chapters, kemonoMaxConcurrency.Chapters)
+	mc.Pages = min(mc.Pages, kemonoMaxConcurrency.Pages)
+	return mc
+}
+
+// WaitPage paces file downloads to the instance's limit (PagePacer)
+func (k *Kemono) WaitPage() {
+	if host, ok := k.host(); ok && host.pacer != nil {
+		host.pacer.wait()
+	}
 }

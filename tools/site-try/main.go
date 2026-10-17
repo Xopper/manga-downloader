@@ -101,6 +101,10 @@ func try(u string) (r Result) {
 		}
 		return
 	}
+	// locked (paid) chapters are left out, as the CLI and the app do
+	if open, _ := core.SplitLocked(chapters); len(open) > 0 {
+		chapters = open
+	}
 	r.Step = "chapter"
 	ch, err := site.FetchChapter(chapters[0])
 	if err != nil {
