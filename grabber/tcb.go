@@ -160,6 +160,14 @@ func (t *Tcb) FetchTitle() (string, error) {
 	h1 = h1.Clone()
 	h1.Find(".manga-title-badges").Remove()
 	t.title = sanitizeTitle(h1.Text())
+	if t.title == "" {
+		// a theme without the heading (toonizy.com) still names the series
+		// for Open Graph, one tag bare and another with the site's name
+		body.Find(`meta[property="og:title"]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
+			t.title = sanitizeTitle(s.AttrOr("content", ""))
+			return strings.Contains(t.title, " - ")
+		})
+	}
 
 	return t.title, nil
 }

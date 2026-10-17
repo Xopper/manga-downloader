@@ -265,6 +265,11 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewWebcomic(g),
 		NewWarForRayuba(g),
 		NewBakkin(g),
+		NewTapas(g),
+		NewNamiComi(g),
+		NewManta(g),
+		NewComicsKingdom(g),
+		NewWebComic(g),
 		// fetch-testing, ahead of PlainHTML: the Iken series page renders only
 		// the newest chapters, which a generic entry would take for the list
 		NewIken(g),
@@ -306,7 +311,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 	// are WordPress posts too, and the fallback resolves those to their series.
 	// Their errors surface only when nothing matches.
 	var markupErrs []error
-	for _, s := range []Site{NewWordPressCategory(g), NewBlogger(g)} {
+	for _, s := range []Site{NewComicWorld(g), NewComicEasel(g), NewWordPressCategory(g), NewBlogger(g), NewSingleManga(g)} {
 		ok, err := s.Test()
 		if err != nil {
 			markupErrs = append(markupErrs, err)
