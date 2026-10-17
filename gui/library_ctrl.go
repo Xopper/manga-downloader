@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/elboletaire/manga-downloader/catalog"
 	"slices"
 
 	"github.com/elboletaire/manga-downloader/browser"
@@ -27,6 +28,10 @@ func (c *Controller) SetLibrary(l *Library) {
 	dir, format := c.settings.OutputDir, c.settings.Format
 	c.mu.Unlock()
 	if err := l.AdoptFiles(dir, format); err != nil {
+		c.addLog(LogWarn, "could not save the library: "+err.Error())
+	}
+	// a site that was search-only when the series was followed may be read now
+	if err := l.MarkDownloadable(func(site string) bool { _, ok := catalog.SiteByHost(site); return ok }); err != nil {
 		c.addLog(LogWarn, "could not save the library: "+err.Error())
 	}
 	c.emit()

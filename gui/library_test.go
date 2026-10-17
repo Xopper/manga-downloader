@@ -301,3 +301,21 @@ func TestLoadTakesAnOldMarkAsOneChapterSaved(t *testing.T) {
 		t.Errorf("y saved = %v", f.Saved)
 	}
 }
+
+// a series followed while its site was search-only becomes downloadable once
+// the site is read, and none is ever turned back
+func TestMarkDownloadable(t *testing.T) {
+	l := NewLibrary("")
+	_ = l.Follow(Followed{URL: "https://akuma.moe/g/x", Site: "akuma.moe"})
+	_ = l.Follow(Followed{URL: "https://kemono.cr/patreon/user/1", Site: "kemono.cr"})
+	_ = l.Follow(Followed{URL: "https://gone.example/manga/y", Site: "gone.example", Downloadable: true})
+	if err := l.MarkDownloadable(func(site string) bool { return site == "akuma.moe" }); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{"akuma.moe": true, "kemono.cr": false, "gone.example": true}
+	for _, f := range l.List() {
+		if f.Downloadable != want[f.Site] {
+			t.Errorf("%s downloadable = %v, want %v", f.Site, f.Downloadable, want[f.Site])
+		}
+	}
+}

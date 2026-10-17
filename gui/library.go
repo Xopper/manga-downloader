@@ -308,6 +308,27 @@ func (l *Library) MarkSavedFiles(url string, saved []float64, files []SavedFile,
 	})
 }
 
+// MarkDownloadable turns on Downloadable for the followed series of the sites
+// the downloader reads now (is), followed when their site was search-only;
+// the library is saved when one changed. It never turns one off: a site
+// that drops out of the table keeps the series its user could download.
+func (l *Library) MarkDownloadable(is func(site string) bool) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	changed := false
+	for i := range l.followed {
+		f := &l.followed[i]
+		if !f.Downloadable && is(f.Site) {
+			f.Downloadable = true
+			changed = true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	return l.saveLocked()
+}
+
 // SetCover records the cover file name of url; a URL not followed is a no-op
 func (l *Library) SetCover(url, name string) error {
 	return l.Update(url, func(f *Followed) { f.Cover = name })
