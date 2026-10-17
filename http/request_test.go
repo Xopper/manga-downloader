@@ -655,3 +655,18 @@ func TestPageMemorySkipsABigPage(t *testing.T) {
 		t.Errorf("server saw %d calls, want 2", calls)
 	}
 }
+
+// TestRequestAccepts2xx reads the body of any 2xx answer: manganow.to's
+// image list comes back as a 202 Accepted
+func TestRequestAccepts2xx(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprint(w, `{"status":true}`)
+	}))
+	defer srv.Close()
+
+	text, err := GetText(RequestParams{URL: srv.URL})
+	if err != nil || text != `{"status":true}` {
+		t.Errorf("GetText() = %q, %v; want the body", text, err)
+	}
+}

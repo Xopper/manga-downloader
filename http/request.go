@@ -304,7 +304,8 @@ func doRequest(t string, params Params) (body io.ReadCloser, contentType string,
 		SetCookie(domain, c.Name, c.Value)
 	}
 
-	if resp.StatusCode != 200 {
+	// any 2xx is an answer: manganow.to's image list comes back as a 202
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		// drain a bounded amount before closing so the connection can go
 		// back to the pool instead of being torn down on every failure
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))

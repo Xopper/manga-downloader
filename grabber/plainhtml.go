@@ -427,13 +427,14 @@ var plainHTMLSelectors = []SiteSelector{
 	// manhwaonline.org: English manhwa on a custom WordPress theme (not
 	// Madara's ajax chapters, so tcb can't serve it). The full list ships
 	// in one ul.chapter-list of plain links, and reader pages are plain
-	// <img> tags inside .reading-content.
+	// <img> tags inside .reading-content. manhwalike.com has the same list
+	// markup, its title in .main-head and its pages in .page-chapter.
 	{
-		Title:        "h1.main-info-title",
+		Title:        "h1.main-info-title, .main-head h1",
 		Rows:         "ul.chapter-list li a",
 		Chapter:      ".chapter-name",
 		ChapterTitle: ".chapter-name",
-		Image:        ".reading-content img",
+		Image:        ".reading-content img, .chapter-content .page-chapter img",
 	},
 	// komikindo.ch: custom WordPress theme. The full list is #chapter_list
 	// (the "Chapter Awal" box above it has different markup). Reader pages

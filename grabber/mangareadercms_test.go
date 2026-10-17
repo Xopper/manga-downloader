@@ -25,7 +25,7 @@ func TestMangaReaderCMS(t *testing.T) {
 
 	var site SiteSelector
 	for _, s := range plainHTMLSelectors {
-		if s.NumberRe != "" {
+		if s.NumberRe != "" && strings.Contains(s.Rows, "chapter-title-rtl") {
 			site = s
 		}
 	}
