@@ -2250,8 +2250,9 @@
   "lang": "ru",
   "crawl": true,
   "label": "MangaLib",
-  "list": "https://mangalib.me/sitemap/manga-1",
-  "series": "/ru/manga/[^/]+$"
+  "list": "https://mangalib.me/sitemap",
+  "series": "/ru/manga/[^/]+$",
+  "sitemaps": "/sitemap/manga-\\d+$"
  },
  {
   "site": "mangalivre.to",
