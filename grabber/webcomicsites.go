@@ -3,7 +3,9 @@
 package grabber
 
 import (
+	"encoding/json"
 	"errors"
+	"html"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -12,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/elboletaire/manga-downloader/http"
 )
 
 // WebComic is a grabber for hand-made web comic sites, one comic each, that
@@ -72,6 +75,9 @@ type webComicSite struct {
 	// Next selects the link to the archive's next page, for an archive split
 	// over pages
 	Next string
+	// OneChapter makes a single chapter of everything the archive lists, for
+	// a series that is itself one chapter (a storyline of comicaurora.com)
+	OneChapter bool
 	// NoReferer downloads the pictures without the site's Referer, for an
 	// image host that refuses it (kiutaku.com's mitaku.net)
 	NoReferer bool
@@ -191,6 +197,14 @@ func (w *WebComic) FetchChapters() (Filterables, []error) {
 	}
 	if w.site.NewestFirst {
 		slices.Reverse(entries)
+	}
+	if w.site.OneChapter && len(entries) > 0 {
+		one := wcEntry{Number: 1, HasNumber: true}
+		for _, e := range entries {
+			one.Strips = append(one.Strips, e.Strips...)
+			one.Pictures = append(one.Pictures, e.Pictures...)
+		}
+		entries = []wcEntry{one}
 	}
 	if len(entries) == 0 {
 		return nil, []error{errNoStrips(w.BaseUrl())}
@@ -492,6 +506,27 @@ var webComicSites = []webComicSite{
 			return strings.ReplaceAll(comic, "_", " ")
 		},
 	},
+	{
+		// comicaurora.com (Webcomic plugin): a storyline's archive is a
+		// series of one chapter, its pages shown 10 at a time
+		Hosts:      []string{"comicaurora.com"},
+		List:       webcomicPluginPictures,
+		Next:       `link[rel="next"]`,
+		OneChapter: true,
+		Title: func(_ *url.URL, doc *goquery.Document) string {
+			name, site, _ := strings.Cut(sanitizeTitle(doc.Find("title").First().Text()), " - ")
+			return strings.TrimSpace(site + " - " + strings.TrimSuffix(name, " Archives"))
+		},
+	},
+	{
+		// mehgazone.com hosts a comic per subdomain, whose posts are filed
+		// under chapters
+		Hosts: []string{"mehgazone.com"},
+		List:  wpChapterTaxonomy,
+		Title: func(_ *url.URL, doc *goquery.Document) string {
+			return wpSiteName(doc)
+		},
+	},
 	// Photo galleries (NSFW): each post is a series of one chapter
 	{
 		Hosts: []string{"everia.club"},
@@ -677,6 +712,96 @@ func galleryTitle(_ *url.URL, doc *goquery.Document) string {
 		return h1
 	}
 	return smPageName(doc.Find("title").First().Text())
+}
+
+// webcomicPluginPictures reads an archive page of the Webcomic plugin
+// (comicaurora.com), which shows each page's picture, as a thumbnail whose
+// srcset holds the original
+func webcomicPluginPictures(doc *goquery.Document) ([]wcEntry, error) {
+	var entries []wcEntry
+	doc.Find(`article[class*="type-webcomic"] .entry a.webcomic-link img`).Each(func(_ int, img *goquery.Selection) {
+		if src := wcLargestImage(img, docURL(doc)); src != "" {
+			entries = append(entries, wcEntry{Pictures: []string{src}})
+		}
+	})
+	return entries, nil
+}
+
+// wpChapterTaxonomy reads a WordPress comic that files its posts under a
+// "chapter" taxonomy (the mehgazone.com comics) through the REST API: every
+// post, oldest first, with its pictures, grouped by chapter in the order the
+// chapters start
+func wpChapterTaxonomy(doc *goquery.Document) ([]wcEntry, error) {
+	base := docURL(doc).Scheme + "://" + docURL(doc).Host + "/wp-json/wp/v2/"
+	get := func(path string, v any) error {
+		body, err := http.GetText(http.RequestParams{URL: base + path, Referer: base})
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal([]byte(body), v)
+	}
+
+	var terms []struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+	if err := get("chapter?per_page=100&_fields=id,name", &terms); err != nil {
+		return nil, err
+	}
+	names := map[int]string{}
+	for _, t := range terms {
+		names[t.ID] = sanitizeTitle(html.UnescapeString(t.Name))
+	}
+
+	byTerm := map[int]*wcEntry{}
+	var entries []*wcEntry
+	for page := 1; page <= 100; page++ {
+		var posts []struct {
+			Chapter []int `json:"chapter"`
+			Content struct {
+				Rendered string `json:"rendered"`
+			} `json:"content"`
+		}
+		err := get(fmt.Sprintf("posts?per_page=%d&page=%d&orderby=date&order=asc&_fields=chapter,content", wpPerPage, page), &posts)
+		var statusErr *http.StatusError
+		if page > 1 && errors.As(err, &statusErr) && statusErr.Code == 400 {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range posts {
+			if len(p.Chapter) == 0 {
+				continue
+			}
+			e := byTerm[p.Chapter[0]]
+			if e == nil {
+				e = &wcEntry{Title: names[p.Chapter[0]]}
+				byTerm[p.Chapter[0]] = e
+				entries = append(entries, e)
+			}
+			content, err := goquery.NewDocumentFromReader(strings.NewReader(p.Content.Rendered))
+			if err != nil {
+				continue
+			}
+			content.Url = docURL(doc)
+			e.Pictures = append(e.Pictures, wcComicImages(content, `img[class*="wp-image-"]`)...)
+		}
+		if len(posts) < wpPerPage {
+			break
+		}
+	}
+
+	list := make([]wcEntry, 0, len(entries))
+	titles := make([]string, 0, len(entries))
+	for _, e := range entries {
+		list = append(list, *e)
+		titles = append(titles, e.Title)
+	}
+	for i, n := range wcNumbers(titles) {
+		list[i].Number, list[i].HasNumber = n, true
+	}
+	return list, nil
 }
 
 // holoearthEpisodeRe reads an episode link of a holoearth.com manga: the

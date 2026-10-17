@@ -71,9 +71,9 @@ func wcStripChapter(s wcStrip, n int) Chapter {
 }
 
 // wcNumbers numbers named chapters by the numbers their names start with
-// ("Chapter 3", "14. Zam's Amporiam") when most names have one and no two
-// share it, the others being 0 (a "Misc" chapter); otherwise by their
-// position from 1
+// ("Chapter 3", "14. Zam's Amporiam") when at least half the names have one
+// and no two share it, the others being 0 (a "Misc" chapter); otherwise by
+// their position from 1
 func wcNumbers(names []string) []float64 {
 	numbers := make([]float64, len(names))
 	seen := map[float64]bool{}
@@ -91,7 +91,7 @@ func wcNumbers(names []string) []float64 {
 		numbers[i] = n
 		numbered++
 	}
-	if 2*numbered <= len(names) {
+	if numbered == 0 || 2*numbered < len(names) {
 		for i := range numbers {
 			numbers[i] = float64(i + 1)
 		}
@@ -136,6 +136,10 @@ func wcChapter(name string, number float64) Chapter {
 	m := ChapterTitlePrefix.FindStringSubmatchIndex(name)
 	if m == nil {
 		m = wcNumberPrefix.FindStringSubmatchIndex(name)
+	}
+	if m == nil && number == 0 {
+		// an unnumbered chapter among numbered ones ("Misc.") is its name
+		ch.Label.Style = LabelTitle
 	}
 	if m != nil {
 		if n, err := strconv.ParseFloat(name[m[2]:m[3]], 64); err == nil && n == number {
