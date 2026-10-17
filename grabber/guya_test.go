@@ -188,3 +188,15 @@ func TestGuyaTestByAPI(t *testing.T) {
 		}
 	}
 }
+
+// TestGuyaReaderSeriesSlug reads the slug of an instance that renamed its
+// series path to /reader/series/{slug}/ (mahoushoujobu.com)
+func TestGuyaReaderSeriesSlug(t *testing.T) {
+	g := Guya{Grabber: &Grabber{URL: "https://mahoushoujobu.com/reader/series/GhoStop/"}}
+	if slug, err := g.slug(); err != nil || slug != "GhoStop" {
+		t.Errorf("slug() = %q, %v; want GhoStop", slug, err)
+	}
+	if !guyaReadRe.MatchString(g.URL) {
+		t.Errorf("guyaReadRe doesn't match %s", g.URL)
+	}
+}

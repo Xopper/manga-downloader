@@ -40,12 +40,14 @@ type GuyaChapter struct {
 
 var (
 	guyaHostRe = regexp.MustCompile(`(guya\.(moe|cubari\.moe)|danke\.moe)`)
-	// guyaReadRe is the reader path every Guya instance shares
-	guyaReadRe = regexp.MustCompile(`/read/manga/[^/]+`)
+	// guyaReadRe is the reader path every Guya instance shares, or the
+	// series path of the ones that renamed it (mahoushoujobu.com)
+	guyaReadRe = regexp.MustCompile(`/(?:read/manga|reader/series)/[^/]+`)
 )
 
 // Test returns true if the URL is a guya.moe/guya.cubari.moe or danke.moe URL,
-// or a /read/manga/{slug} one of another instance, told by its series API.
+// or a /read/manga/{slug} (or /reader/series/{slug}) one of another
+// instance, told by its series API.
 func (g *Guya) Test() (bool, error) {
 	if guyaHostRe.MatchString(g.URL) {
 		return true, nil
@@ -172,7 +174,7 @@ func (g Guya) seriesData(probe bool) (*guyaSeriesFeed, error) {
 // "Kaguya-Wants-To-Be-Confessed-To" for
 // https://guya.moe/read/manga/Kaguya-Wants-To-Be-Confessed-To/)
 func (g Guya) slug() (string, error) {
-	re := regexp.MustCompile(`/manga/([^/]+)`)
+	re := regexp.MustCompile(`/(?:manga|reader/series)/([^/]+)`)
 	matches := re.FindStringSubmatch(g.URL)
 	if len(matches) != 2 {
 		return "", fmt.Errorf("could not find manga slug in url %s", g.URL)
