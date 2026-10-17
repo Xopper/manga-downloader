@@ -209,6 +209,36 @@
   "downloadable": false
  },
  {
+  "site": "anikiga.com",
+  "name": "Turkish",
+  "lang": "tr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 19,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "animeallstar1.com",
+  "name": "AnimeAllStar, Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 20,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "animeallstar30.com",
+  "name": "AnimeAllStar, Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 47,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "anisascans.in",
   "name": "Anisa Scans",
   "lang": "en",
@@ -219,6 +249,16 @@
   "links": "fetched",
   "fetched": 200,
   "downloadable": false
+ },
+ {
+  "site": "anzmanga25.com",
+  "name": "AnzManga, Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 238,
+  "complete": true,
+  "downloadable": true
  },
  {
   "site": "apcomics.org",
@@ -401,6 +441,16 @@
   "downloadable": true
  },
  {
+  "site": "azorafly.com",
+  "name": "Azorafly, Arabic",
+  "lang": "ar",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 1515,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "bakkin.moe",
   "name": "Bakkin",
   "lang": "en",
@@ -475,6 +525,16 @@
   "entries": 1,
   "complete": false,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "bluesolo.org",
+  "name": "Blue Solo, French scantrad",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 96,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -680,6 +740,16 @@
   "complete": true,
   "links": "templated",
   "fetched": 1,
+  "downloadable": true
+ },
+ {
+  "site": "comic-ogyaaa.com",
+  "name": "Japanese, Comic Ogyaaa (GigaViewer)",
+  "lang": "ja",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 52,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -1527,6 +1597,16 @@
   "downloadable": true
  },
  {
+  "site": "fmteam.fr",
+  "name": "",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 20,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "foamgirl.net",
   "name": "FoamGirl",
   "lang": "all",
@@ -1568,6 +1648,16 @@
   "entries": 38,
   "complete": true,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "furyosociety.com",
+  "name": "",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 37,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -1813,6 +1903,16 @@
   "nsfw": false,
   "sourceId": "",
   "entries": 1,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "heavenmanga.com",
+  "name": "Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 9255,
   "complete": true,
   "downloadable": true
  },
@@ -2310,6 +2410,16 @@
   "downloadable": false
  },
  {
+  "site": "inmanga.com",
+  "name": "",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 5249,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "irovedout.com",
   "name": "I Roved Out",
   "lang": "en",
@@ -2342,6 +2452,16 @@
   "links": "templated",
   "fetched": 1,
   "downloadable": false
+ },
+ {
+  "site": "jestful.net",
+  "name": "",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 9357,
+  "complete": true,
+  "downloadable": true
  },
  {
   "site": "jjcos.com",
@@ -2623,6 +2743,26 @@
   "downloadable": true
  },
  {
+  "site": "komikindo.ch",
+  "name": "",
+  "lang": "id",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 9388,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "komikmanga.com",
+  "name": "MangaReader, English",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 527,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "komikstation.org",
   "name": "Indonesian",
   "lang": "id",
@@ -2667,6 +2807,16 @@
   "downloadable": true
  },
  {
+  "site": "kuragebunch.com",
+  "name": "Japanese, Kurage Bunch (GigaViewer)",
+  "lang": "ja",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 416,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "kuramanga.com",
   "name": "KuraManga",
   "lang": "en",
@@ -2694,9 +2844,19 @@
   "lang": "en",
   "nsfw": false,
   "sourceId": "7925933833035450162",
-  "entries": 133,
+  "entries": 136,
   "complete": true,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "leercapitulo.co",
+  "name": "",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 28064,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -2706,6 +2866,26 @@
   "nsfw": false,
   "sourceId": "",
   "entries": 324,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "lelscanfr.com",
+  "name": "French",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 69,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "lelscans.net",
+  "name": "French",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 34,
   "complete": true,
   "downloadable": true
  },
@@ -2935,6 +3115,16 @@
   "downloadable": true
  },
  {
+  "site": "maid.my.id",
+  "name": "",
+  "lang": "id",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 666,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "manga-bay.biz",
   "name": "Manga-Bay",
   "lang": "en",
@@ -2999,6 +3189,16 @@
   "complete": false,
   "failed": true,
   "downloadable": false
+ },
+ {
+  "site": "manga.smuglo.li",
+  "name": "Lilyreader, yuri",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 43,
+  "complete": true,
+  "downloadable": true
  },
  {
   "site": "manga.uno",
@@ -3092,6 +3292,16 @@
   "downloadable": true
  },
  {
+  "site": "mangaberri.com",
+  "name": "",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 417,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "mangabolt.com",
   "name": "MangaBolt",
   "lang": "en",
@@ -3157,6 +3367,26 @@
   "complete": false,
   "links": "fetched",
   "fetched": 200,
+  "downloadable": true
+ },
+ {
+  "site": "mangadelsiglotvmanga.com.mx",
+  "name": "Manga del Siglo TV Manga, Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 27,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "mangadenizi.net",
+  "name": "",
+  "lang": "tr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 108,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -3401,7 +3631,7 @@
   "lang": "en",
   "nsfw": true,
   "sourceId": "2528986671771677900",
-  "entries": 0,
+  "entries": 98116,
   "complete": false,
   "failed": true,
   "downloadable": true
@@ -3517,6 +3747,16 @@
   "downloadable": false
  },
  {
+  "site": "manganato.gg",
+  "name": "MangaNato",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 98116,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "manganel.me",
   "name": "MangaNel",
   "lang": "en",
@@ -3570,6 +3810,16 @@
   "entries": 5012,
   "complete": true,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "mangapark.cc",
+  "name": "MangaPark",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 4698,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -3684,6 +3934,16 @@
   "downloadable": true
  },
  {
+  "site": "mangasusuku.com",
+  "name": "Indonesian, mostly NSFW",
+  "lang": "id",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 1756,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "mangataro.org",
   "name": "MangaTaro",
   "lang": "en",
@@ -3762,6 +4022,16 @@
   "downloadable": true
  },
  {
+  "site": "mangavault.lat",
+  "name": "MangaVault",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 1545,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "mangavyvy.net",
   "name": "VyvyManga",
   "lang": "en",
@@ -3771,6 +4041,16 @@
   "complete": true,
   "links": "joined",
   "downloadable": false
+ },
+ {
+  "site": "mangaworld.mx",
+  "name": "MangaWorld, Italian",
+  "lang": "it",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 3319,
+  "complete": true,
+  "downloadable": true
  },
  {
   "site": "mangawow.org",
@@ -4505,9 +4785,19 @@
   "lang": "en",
   "nsfw": true,
   "sourceId": "1024627298672457456",
-  "entries": 0,
+  "entries": 98116,
   "complete": false,
   "failed": true,
+  "downloadable": true
+ },
+ {
+  "site": "natsu.one",
+  "name": "NatsuID, Indonesian, some adult titles, former natsu.id",
+  "lang": "id",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 6862,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -4585,6 +4875,16 @@
   "complete": false,
   "failed": true,
   "downloadable": false
+ },
+ {
+  "site": "noranofansub.com",
+  "name": "NoraNoFansub, Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 79,
+  "complete": true,
+  "downloadable": true
  },
  {
   "site": "novelcool.com",
@@ -4778,6 +5078,16 @@
   "downloadable": true
  },
  {
+  "site": "onma.top",
+  "name": "Arabic",
+  "lang": "ar",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 253,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "orchisasia.org",
   "name": "Orchisasia",
   "lang": "en",
@@ -4787,6 +5097,16 @@
   "complete": false,
   "links": "fetched",
   "fetched": 200,
+  "downloadable": true
+ },
+ {
+  "site": "oremanga.net",
+  "name": "Oremanga, Thai",
+  "lang": "th",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 12039,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -5084,6 +5404,16 @@
   "downloadable": true
  },
  {
+  "site": "rawkuma.net",
+  "name": "",
+  "lang": "ja",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 9734,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "razure.org",
   "name": "Razure",
   "lang": "en",
@@ -5093,6 +5423,16 @@
   "complete": true,
   "failed": true,
   "downloadable": false
+ },
+ {
+  "site": "re-yume.my.id",
+  "name": "Re-Yume, Indonesian",
+  "lang": "id",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 28,
+  "complete": true,
+  "downloadable": true
  },
  {
   "site": "read-horimiya.online",
@@ -5442,6 +5782,16 @@
   "downloadable": true
  },
  {
+  "site": "scan-vf.net",
+  "name": "ScanVF",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 26,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "scans.gg",
   "name": "ScansGG",
   "lang": "en",
@@ -5640,6 +5990,16 @@
   "downloadable": true
  },
  {
+  "site": "sushiscan.net",
+  "name": "",
+  "lang": "fr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 4347,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "swordscomic.com",
   "name": "Swords Comic",
   "lang": "en",
@@ -5714,7 +6074,7 @@
   "lang": "en",
   "nsfw": true,
   "sourceId": "4210732525216763379",
-  "entries": 0,
+  "entries": 301,
   "complete": false,
   "failed": true,
   "downloadable": true
@@ -5951,12 +6311,32 @@
   "downloadable": true
  },
  {
+  "site": "trmanga.com",
+  "name": "",
+  "lang": "tr",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 2557,
+  "complete": true,
+  "downloadable": true
+ },
+ {
   "site": "turkcemanga.com",
   "name": "Turkce Manga, Turkish",
   "lang": "tr",
   "nsfw": false,
   "sourceId": "",
   "entries": 46,
+  "complete": true,
+  "downloadable": true
+ },
+ {
+  "site": "tvymanga3.com",
+  "name": "Tv y Manga, Spanish",
+  "lang": "es",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 67,
   "complete": true,
   "downloadable": true
  },
@@ -5969,6 +6349,16 @@
   "entries": 6858,
   "complete": false,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "twmanga.com",
+  "name": "包子漫画, baozimh.com mirror",
+  "lang": "zh",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 14652,
+  "complete": true,
   "downloadable": true
  },
  {
@@ -5991,6 +6381,16 @@
   "entries": 13,
   "complete": true,
   "links": "joined",
+  "downloadable": true
+ },
+ {
+  "site": "utoon.us",
+  "name": "UToon, home of reset-scans' content",
+  "lang": "en",
+  "nsfw": false,
+  "sourceId": "",
+  "entries": 248,
+  "complete": true,
   "downloadable": true
  },
  {
