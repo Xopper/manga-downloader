@@ -161,6 +161,25 @@ func TestSingleSeriesThemes(t *testing.T) {
 			"https://imgsrv5.com/mg1/fastcdn/cdn_mangaraw/dusk-divide/chapter-29/0.jpg",
 			"https://imgsrv5.com/mg1/fastcdn/cdn_mangaraw/dusk-divide/chapter-29/1.jpg",
 		},
+	}, {
+		name: "hentaisco",
+		series: `<html><body><h1 class="mt-2 font-display text-4xl">I’ll Plug It In!</h1>
+<ol class="mt-4 grid gap-1 sm:grid-cols-2" data-chapter-list>
+<li data-chapter-number="15" data-chapter-name="chapter 15"><a href="/hentai/ill-plug-it-in/chapter-15/" class="flex items-center"><span class="truncate">Chapter 15</span><time class="shrink-0 text-xs">2 days ago</time></a></li>
+<li data-chapter-number="14" data-chapter-name="chapter 14"><a href="/hentai/ill-plug-it-in/chapter-14/" class="flex items-center"><span class="truncate">Chapter 14</span><time class="shrink-0 text-xs">9 days ago</time></a></li>
+</ol></body></html>`,
+		reader: `<html><body>
+<img src="https://cdn.hentaisco.cc/manga_6a2c469a6c626/chapter-15/001.jpg" alt="Page 1" class="reader-page" data-page="1">
+<img src="https://cdn.hentaisco.cc/manga_6a2c469a6c626/chapter-15/002.jpg" alt="Page 2" class="reader-page" loading="lazy" data-page="2">
+</body></html>`,
+		wantRows:   "ol[data-chapter-list] li[data-chapter-number]",
+		wantTitle:  "I’ll Plug It In!",
+		wantNums:   []float64{15, 14},
+		seriesPath: "/hentai/ill-plug-it-in/",
+		wantPages: []string{
+			"https://cdn.hentaisco.cc/manga_6a2c469a6c626/chapter-15/001.jpg",
+			"https://cdn.hentaisco.cc/manga_6a2c469a6c626/chapter-15/002.jpg",
+		},
 	}}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) { checkPlainHTMLEntry(t, c) })
