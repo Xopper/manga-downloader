@@ -204,6 +204,7 @@ func (g *Grabber) IdentifySite() (Site, []error) {
 		NewTapas(g),
 		NewNamiComi(g),
 		NewManta(g),
+		NewComicsKingdom(g),
 		NewWebComic(g),
 		plainHTML,
 		NewTcb(g),
