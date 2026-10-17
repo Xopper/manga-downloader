@@ -229,6 +229,21 @@ export function MoreOptions({ state, onOptions, onError }: Omit<Props, 'onChoose
             disabled={browser.disabled}
             onChange={(browserVisible) => set({ browserVisible })}
           />
+          <TextField
+            label="FlareSolverr"
+            value={o.flaresolverr}
+            placeholder="http://127.0.0.1:8191"
+            mono
+            disabled={locked}
+            hint={
+              <>
+                For sites behind a Cloudflare check the built-in browser can't open: the address of a FlareSolverr
+                server (<code>github.com/FlareSolverr/FlareSolverr</code>). Leave it empty to not use one.
+              </>
+            }
+            onCommit={(flaresolverr) => onOptions({ flaresolverr })}
+            onError={onError}
+          />
         </div>
       </details>
     </>

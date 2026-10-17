@@ -61,6 +61,10 @@ type Settings struct {
 	// BrowserVisible shows the browser window for sites that need one, so
 	// interactive challenges (e.g. cloudflare) can be solved manually
 	BrowserVisible bool
+	// FlareSolverr is the address of a FlareSolverr server that earns the
+	// clearance of sites behind a Cloudflare challenge ("" for none; see
+	// http.SetFlareSolverr)
+	FlareSolverr string
 	// Retry is the number of retries for failed page downloads
 	Retry uint8
 }

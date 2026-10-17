@@ -15,8 +15,12 @@ var session = struct {
 	userAgent string
 	// cookies per registrable domain: domain -> name -> value
 	cookies map[string]map[string]string
+	// agents is the user agent of a domain whose clearance cookies were
+	// earned by another browser (FlareSolverr's), which they're bound to
+	agents map[string]string
 }{
 	cookies: map[string]map[string]string{},
+	agents:  map[string]string{},
 }
 
 // SetUserAgent overrides the user agent sent with every request. Cloudflare
@@ -37,6 +41,28 @@ func SetCookie(domain, name, value string) {
 		session.cookies[domain] = map[string]string{}
 	}
 	session.cookies[domain][name] = value
+}
+
+// SetHostUserAgent sets the user agent of requests to domain and its
+// subdomains, over the one SetUserAgent sets for every site
+func SetHostUserAgent(domain, ua string) {
+	session.Lock()
+	defer session.Unlock()
+	session.agents[domain] = ua
+}
+
+// sessionUserAgentFor returns the user agent of host: its own (see
+// SetHostUserAgent), else the harvested one, else fallback
+func sessionUserAgentFor(host, fallback string) string {
+	session.RLock()
+	for domain, ua := range session.agents {
+		if host == domain || strings.HasSuffix(host, "."+domain) {
+			session.RUnlock()
+			return ua
+		}
+	}
+	session.RUnlock()
+	return sessionUserAgent(fallback)
 }
 
 // sessionUserAgent returns the harvested user agent, or fallback if none

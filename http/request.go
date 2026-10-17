@@ -3,6 +3,7 @@
 package http
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -47,6 +48,9 @@ type RequestParams struct {
 	// DefaultTimeout. A background fetch (the app's covers) sets a shorter
 	// one.
 	Timeout time.Duration
+	// solved marks the retry after FlareSolverr earned the site's
+	// clearance, which never asks it again
+	solved bool
 }
 
 // DefaultTimeout bounds an attempt that sets no Timeout: a page or an image
@@ -257,7 +261,7 @@ func doRequest(t string, params Params) (body io.ReadCloser, contentType string,
 		// malformed URL: never going to succeed
 		return nil, "", 0, false, err
 	}
-	req.Header.Set("User-Agent", sessionUserAgent(userAgent))
+	req.Header.Set("User-Agent", sessionUserAgentFor(req.URL.Hostname(), userAgent))
 	if cookies := sessionCookies(req.URL.Hostname()); cookies != "" {
 		req.Header.Set("Cookie", cookies)
 	}
@@ -286,6 +290,16 @@ func doRequest(t string, params Params) (body io.ReadCloser, contentType string,
 		req.Header.Set(k, v)
 	}
 
+	// a site whose clearance doesn't carry over is read through FlareSolverr;
+	// what it can't read (a picture) is asked for directly
+	if t == http.MethodGet && accept != ImageAccept && isProxied(req.URL.Hostname()) {
+		if sol, ferr := flareCall(req.URL.String()); ferr == nil {
+			if page, ctype, ok := flarePage(sol); ok {
+				return io.NopCloser(strings.NewReader(page)), ctype, 0, false, nil
+			}
+		}
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		// transport-level failures (connection reset, timeout, DNS hiccup)
@@ -308,8 +322,33 @@ func doRequest(t string, params Params) (body io.ReadCloser, contentType string,
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		// drain a bounded amount before closing so the connection can go
 		// back to the pool instead of being torn down on every failure
+		head, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4<<10))
 		resp.Body.Close()
+
+		// Cloudflare's challenge, with FlareSolverr on: it earns the site's
+		// clearance, and the request goes again with it (see flaresolverr.go)
+		if t == http.MethodGet && !rp.solved && FlareSolverr() != "" && isChallenge(resp, head) {
+			host := req.URL.Hostname()
+			sol, serr := solve(req.URL.String(), host)
+			if serr == nil || errors.Is(serr, errFlareRecent) {
+				again := rp
+				again.solved = true
+				b, ct, ra, retry, rerr := doRequest(t, again)
+				var se *StatusError
+				if rerr == nil || !errors.As(rerr, &se) || (se.Code != http.StatusForbidden && se.Code != http.StatusServiceUnavailable) {
+					return b, ct, ra, retry, rerr
+				}
+				if sol != nil {
+					// the clearance doesn't carry over: FlareSolverr reads this site
+					dropClearance(host)
+					if page, ctype, ok := flarePage(sol); ok {
+						return io.NopCloser(strings.NewReader(page)), ctype, 0, false, nil
+					}
+				}
+				return b, ct, ra, retry, rerr
+			}
+		}
 
 		ra := ParseRetryAfter(resp.Header.Get("Retry-After"))
 		return nil, "", ra, isRetryableStatus(resp.StatusCode), &StatusError{Code: resp.StatusCode, RetryAfter: ra}

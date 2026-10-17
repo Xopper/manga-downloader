@@ -273,6 +273,7 @@ function defaultOptions(shot: boolean, epub: boolean): Options {
     skipPages: '',
     filenameTemplate: TEMPLATE_DEFAULT,
     browserVisible: false,
+    flaresolverr: '',
   };
 }
 

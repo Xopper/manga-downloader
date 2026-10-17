@@ -11,8 +11,10 @@ import (
 
 	"github.com/elboletaire/manga-downloader/core"
 	"github.com/elboletaire/manga-downloader/grabber"
+	"github.com/elboletaire/manga-downloader/http"
 	"github.com/elboletaire/manga-downloader/notice"
 	"github.com/elboletaire/manga-downloader/packer"
+	"strings"
 )
 
 // OptionsDTO are the options the window exposes. The frontend edits them and
@@ -28,6 +30,8 @@ type OptionsDTO struct {
 	SkipPages        string `json:"skipPages"`
 	FilenameTemplate string `json:"filenameTemplate"`
 	BrowserVisible   bool   `json:"browserVisible"`
+	// FlareSolverr is a FlareSolverr server's address, "" when none is used
+	FlareSolverr string `json:"flaresolverr"`
 }
 
 // How the chapters are packed: the window's "Pack as" choice
@@ -109,6 +113,7 @@ func optionsOf(s grabber.Settings) OptionsDTO {
 		SkipPages:        s.SkipPages,
 		FilenameTemplate: s.FilenameTemplate,
 		BrowserVisible:   s.BrowserVisible,
+		FlareSolverr:     s.FlareSolverr,
 	}
 }
 
@@ -125,6 +130,9 @@ func applyOptions(s *grabber.Settings, o OptionsDTO) {
 	s.SkipPages = o.SkipPages
 	s.FilenameTemplate = o.FilenameTemplate
 	s.BrowserVisible = o.BrowserVisible
+	s.FlareSolverr = strings.TrimSpace(o.FlareSolverr)
+	// one server for every request of the session, not a per-series setting
+	http.SetFlareSolverr(s.FlareSolverr)
 }
 
 // guiConfigPath is where the options are saved, next to the Manga Plus secret

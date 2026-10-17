@@ -13,6 +13,7 @@ const base: Options = {
   skipPages: '',
   filenameTemplate: '{{.Series}}',
   browserVisible: false,
+  flaresolverr: '',
 };
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));

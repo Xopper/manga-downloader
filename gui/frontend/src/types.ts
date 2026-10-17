@@ -21,6 +21,8 @@ export interface Options {
   skipPages: string;
   filenameTemplate: string;
   browserVisible: boolean;
+  /** A FlareSolverr server's address for Cloudflare-challenged sites, "" when none is used */
+  flaresolverr: string;
 }
 
 export interface Run {

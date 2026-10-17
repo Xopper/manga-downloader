@@ -6,6 +6,9 @@
 // chapter's first page. It prints one JSON line per URL. Not part of the app.
 //
 //	go run ./tools/site-try URL...        or a URL per line on stdin
+//
+// FLARESOLVERR=http://127.0.0.1:8191 lets it ask a FlareSolverr server for
+// the sites behind a Cloudflare challenge, as the app's option does.
 package main
 
 import (
@@ -52,6 +55,7 @@ func main() {
 			}
 		}
 	}
+	http.SetFlareSolverr(os.Getenv("FLARESOLVERR"))
 	out := json.NewEncoder(os.Stdout)
 	for _, u := range urls {
 		done := make(chan Result, 1)

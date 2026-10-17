@@ -239,6 +239,7 @@ export namespace main {
 	    skipPages: string;
 	    filenameTemplate: string;
 	    browserVisible: boolean;
+	    flaresolverr: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new OptionsDTO(source);
@@ -256,6 +257,7 @@ export namespace main {
 	        this.skipPages = source["skipPages"];
 	        this.filenameTemplate = source["filenameTemplate"];
 	        this.browserVisible = source["browserVisible"];
+	        this.flaresolverr = source["flaresolverr"];
 	    }
 	}
 	export class RunDTO {
