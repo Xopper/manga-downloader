@@ -5,7 +5,9 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -314,14 +316,14 @@ func TestChooseFolderStartsAtAFolderThatExists(t *testing.T) {
 
 func TestStartRefusalsComeBackAsErrors(t *testing.T) {
 	a, _, _ := newTestApp(t, 2)
-	if err := a.Start(); err == nil {
+	if _, err := a.Start(); err == nil {
 		t.Error("Start without a series succeeded")
 	}
 	if err := a.Load("https://example.com/manga/test"); err != nil {
 		t.Fatal(err)
 	}
 	waitUntil(t, "the load", func() bool { return !a.State().Loading })
-	if err := a.Start(); err == nil {
+	if _, err := a.Start(); err == nil {
 		t.Error("Start with nothing selected succeeded")
 	}
 }
@@ -413,44 +415,70 @@ func TestFollowTheLoadedSeriesRecordsItsCount(t *testing.T) {
 	}
 }
 
-func TestDownloadNewSelectsAboveTheMarkAndStarts(t *testing.T) {
+func TestDownloadNewFetchesTheListAndSavesWhatIsNew(t *testing.T) {
 	a, _, _ := newTestApp(t, 5)
 	url := "https://example.com/manga/test"
 	// followed with none known (all five came out since), 1 and 2 saved
-	if err := a.ctrl.Library().Follow(Followed{URL: url, SavedUpTo: 2, Saved: []float64{1, 2}, Baselined: true, Downloadable: true}); err != nil {
+	if err := a.ctrl.Library().Follow(Followed{URL: url, Title: "Test", SavedUpTo: 2, Saved: []float64{1, 2}, Baselined: true, New: 3, Downloadable: true}); err != nil {
 		t.Fatal(err)
 	}
-	if err := a.DownloadNew(url); err != nil {
+	queued, err := a.DownloadNew(url)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if queued {
+		t.Error("the first job must start, not wait")
 	}
 	waitUntil(t, "the run", func() bool { st := a.State(); return st.Summary != nil && !st.Running })
-	if st := a.State(); st.Summary.Saved != 3 {
-		t.Errorf("saved %d, want 3", st.Summary.Saved)
+	st := a.State()
+	if st.Summary.Saved != 3 || !st.Run.Fresh || st.Run.Title != "Test Series" || st.Run.Chapters != 3 {
+		t.Errorf("saved %d, run %+v", st.Summary.Saved, st.Run)
 	}
-	f := a.State().Library.Followed[0]
+	// the loaded series is left alone: nothing was loaded
+	if st.Loaded || st.URL != "" {
+		t.Errorf("the job loaded the series into the window: %q", st.URL)
+	}
+	f := st.Library.Followed[0]
 	if f.SavedUpTo != 5 || f.New != 0 {
 		t.Errorf("entry = %+v", f)
 	}
 }
 
-func TestDownloadNewWithNothingNewStops(t *testing.T) {
+func TestDownloadNewWithNothingNewIsRefused(t *testing.T) {
 	a, _, _ := newTestApp(t, 3)
 	url := "https://example.com/manga/test"
 	_ = a.ctrl.Library().Follow(Followed{URL: url, SavedUpTo: 3, Downloadable: true})
-	if err := a.DownloadNew(url); err != nil {
-		t.Fatal(err)
+	if _, err := a.DownloadNew(url); !errors.Is(err, errNothingNew) {
+		t.Errorf("DownloadNew with nothing new = %v, want errNothingNew", err)
 	}
-	waitUntil(t, "the load", func() bool { return a.State().Loaded && !a.State().Loading })
-	time.Sleep(20 * time.Millisecond)
-	if st := a.State(); st.Running || st.Summary != nil {
-		t.Errorf("a run started with nothing new: %+v", st.Run)
+	if st := a.State(); st.Running || len(st.Queue) != 0 {
+		t.Errorf("a job was queued with nothing new: %+v", st.Run)
 	}
-	if err := a.DownloadNew("https://not.followed/x"); err == nil {
+	if _, err := a.DownloadNew("https://not.followed/x"); err == nil {
 		t.Error("an unfollowed series must be refused")
 	}
 }
 
-func TestDownloadAllNewRunsEachSeriesInTurn(t *testing.T) {
+// TestDownloadNewFindsNothingNewOnceFetched is the library's count being
+// stale: the job fetches, finds every chapter known, and ends with nothing
+func TestDownloadNewFindsNothingNewOnceFetched(t *testing.T) {
+	a, _, _ := newTestApp(t, 3)
+	url := "https://example.com/manga/test"
+	_ = a.ctrl.Library().Follow(Followed{URL: url, Title: "Test", Known: []float64{1, 2, 3}, Baselined: true, New: 1, Downloadable: true})
+	if _, err := a.DownloadNew(url); err != nil {
+		t.Fatal(err)
+	}
+	waitUntil(t, "the run", func() bool { st := a.State(); return st.Summary != nil && !st.Running })
+	st := a.State()
+	if st.Summary.Saved != 0 || st.Summary.Error != "" || len(st.Summary.Failures) != 0 {
+		t.Errorf("summary = %+v", st.Summary)
+	}
+	if !strings.Contains(fmt.Sprint(a.Log()), "nothing new to download") {
+		t.Errorf("log = %v", a.Log())
+	}
+}
+
+func TestDownloadAllNewQueuesEachSeries(t *testing.T) {
 	a, _, _ := newTestApp(t, 4)
 	first := "https://example.com/manga/test"
 	second := "https://example.com/manga/second"
@@ -458,21 +486,27 @@ func TestDownloadAllNewRunsEachSeriesInTurn(t *testing.T) {
 	_ = lib.Follow(Followed{URL: first, Title: "First", SavedUpTo: 3, Saved: []float64{1, 2, 3}, Baselined: true, Chapters: 4, Latest: 4, New: 1, Downloadable: true})
 	_ = lib.Follow(Followed{URL: second, Title: "Second", Baselined: true, Chapters: 4, Latest: 4, New: 4, Downloadable: true})
 	_ = lib.Follow(Followed{URL: "https://example.com/manga/done", Title: "Done", SavedUpTo: 4, Chapters: 4, Latest: 4, New: 0, Downloadable: true})
-	if err := a.DownloadAllNew(); err != nil {
+	n, err := a.DownloadAllNew()
+	if err != nil {
 		t.Fatal(err)
 	}
-	waitUntil(t, "the batch", func() bool { return !a.State().Library.Batch.Active })
-	waitUntil(t, "the last run", func() bool { st := a.State(); return !st.Running && st.Summary != nil })
+	if n != 2 {
+		t.Errorf("queued %d jobs, want 2", n)
+	}
+	waitUntil(t, "both runs", func() bool {
+		st := a.State()
+		return !st.Running && len(st.Queue) == 0 && st.Summary != nil && st.Run.ID == 2
+	})
 	st := a.State()
-	if st.URL != second || st.Summary.Saved != 4 {
-		t.Errorf("after the batch: url %q, saved %d", st.URL, st.Summary.Saved)
+	if st.Run.Title != "Test Series" || st.Summary.Saved != 4 {
+		t.Errorf("after the queue: run %+v, saved %d", st.Run, st.Summary.Saved)
 	}
 	for _, f := range st.Library.Followed {
 		if f.New != 0 || (f.Title != "Done" && f.LastSaved == "") {
 			t.Errorf("entry = %+v", f)
 		}
 	}
-	if err := a.DownloadAllNew(); err == nil {
+	if _, err := a.DownloadAllNew(); err == nil {
 		t.Error("nothing new must be refused")
 	}
 }

@@ -18,6 +18,16 @@ interface Props {
 export function ActivityPanel({ state, onOpenFolder }: Props) {
   const summary = state.running ? null : state.summary;
 
+  if (state.running && state.run.fetching) {
+    return (
+      <div className="activity empty-activity">
+        <p className="muted">
+          <Spinner /> Fetching the chapter list of {state.run.title}…
+        </p>
+        <p className="muted small">The new chapters show up here once the site answers.</p>
+      </div>
+    );
+  }
   if (state.jobs.length === 0 && summary === null) {
     return (
       <div className="activity empty-activity">

@@ -56,12 +56,14 @@ func (c *Controller) Checking() (on bool, done, total int) {
 // downloader can read, one at a time, and records each one's count and
 // what's new (or the failure) in the library. The loaded series, its
 // selection and filters are left alone. It's refused while a series loads
-// or a download runs, and they're refused while it runs. It stops early when
+// or a download runs (the two share the browser and the sites; refusing is
+// simpler than sharing them), and loads and downloads are refused while it
+// runs. It stops early when
 // ctx ends or CancelCheck is called; the series already checked keep their
 // new counts.
 func (c *Controller) CheckLibrary(ctx context.Context) error {
 	c.mu.Lock()
-	if c.busyLocked() {
+	if c.busyLocked() || c.active != nil {
 		c.mu.Unlock()
 		return errBusy
 	}
@@ -212,89 +214,4 @@ func (c *Controller) SelectNumbers(numbers []float64) (int, error) {
 	c.mu.Unlock()
 	c.emit()
 	return n, nil
-}
-
-// batchState is a download of every followed series' new chapters, one
-// series after the other
-type batchState struct {
-	done, total int
-	// current and currentURL are the series being downloaded
-	current    string
-	currentURL string
-	cancel     context.CancelFunc
-}
-
-// BatchInfo is the batch's standing for the window
-type BatchInfo struct {
-	Active      bool
-	Done, Total int
-	Current     string
-	CurrentURL  string
-}
-
-// Batch returns the batch's standing; Active is false when none runs
-func (c *Controller) Batch() BatchInfo {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.batch == nil {
-		return BatchInfo{}
-	}
-	return BatchInfo{Active: true, Done: c.batch.done, Total: c.batch.total, Current: c.batch.current, CurrentURL: c.batch.currentURL}
-}
-
-// beginBatch starts a batch of total series; it's refused while one runs
-func (c *Controller) beginBatch(total int) (context.Context, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.batch != nil {
-		return nil, errors.New("a download of every new chapter is already running")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	c.batch = &batchState{total: total, cancel: cancel}
-	return ctx, nil
-}
-
-// batchStep records the series the batch moves on to
-func (c *Controller) batchStep(current, url string, done int) {
-	c.mu.Lock()
-	if c.batch != nil {
-		c.batch.current = current
-		c.batch.currentURL = url
-		c.batch.done = done
-	}
-	c.mu.Unlock()
-	c.emit()
-}
-
-// endBatch ends the batch
-func (c *Controller) endBatch() {
-	c.mu.Lock()
-	if c.batch != nil {
-		c.batch.cancel()
-		c.batch = nil
-	}
-	c.mu.Unlock()
-	c.emit()
-}
-
-// BatchActive reports whether a batch runs
-func (c *Controller) BatchActive() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.batch != nil
-}
-
-// CancelBatch stops the batch after the series being downloaded, whose run
-// is cancelled too
-func (c *Controller) CancelBatch() {
-	c.mu.Lock()
-	var cancel context.CancelFunc
-	if c.batch != nil {
-		cancel = c.batch.cancel
-	}
-	c.mu.Unlock()
-	if cancel != nil {
-		cancel()
-		c.Cancel()
-	}
 }

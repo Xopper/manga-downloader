@@ -2,8 +2,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { createMockApi } from './mock';
-import { ProgressStrip } from './ProgressStrip';
-import type { State } from './types';
+import { ProgressStrip, STRIP_QUEUE_ROWS } from './ProgressStrip';
+import type { QueuedJob, State } from './types';
 
 function render(state: State, dismissed = false, runShownElsewhere = false): string {
   return renderToStaticMarkup(
@@ -13,10 +13,15 @@ function render(state: State, dismissed = false, runShownElsewhere = false): str
       runShownElsewhere,
       onDetails: () => undefined,
       onCancel: () => undefined,
+      onRemoveQueued: () => undefined,
       onOpenFolder: () => undefined,
       onDismiss: () => undefined,
     }),
   );
+}
+
+function waiting(n: number): QueuedJob[] {
+  return Array.from({ length: n }, (_, i) => ({ id: i + 2, url: `https://example.com/manga/s${i}`, title: `Series ${i + 1}`, chapters: i + 1, fresh: i === 0 }));
 }
 
 describe('ProgressStrip', () => {
@@ -31,7 +36,33 @@ describe('ProgressStrip', () => {
     expect(markup).toMatch(/\d+ of 12 chapters done/);
     expect(markup).toContain('role="progressbar"');
     expect(markup).toContain('>Details<');
-    expect(markup).toContain('Cancel');
+    expect(markup).toContain('Stop');
+    expect(markup).not.toContain('strip-queue');
+  });
+  it('lists the downloads waiting their turn, each with a remove button, and folds the rest', async () => {
+    const base = await createMockApi({ scenario: 'running', freeze: true }).state();
+    const markup = render({ ...base, queue: waiting(2) });
+    expect(markup).toContain('aria-label="Waiting downloads"');
+    expect(markup).toContain('Series 1');
+    expect(markup).toContain('1 new chapter');
+    expect(markup).toContain('2 chapters');
+    expect(markup).toContain('aria-label="Remove Series 2 from the queue"');
+    const many = render({ ...base, queue: waiting(STRIP_QUEUE_ROWS + 2) });
+    expect(many).toContain(`Series ${STRIP_QUEUE_ROWS}`);
+    expect(many).not.toContain(`Series ${STRIP_QUEUE_ROWS + 1}<`);
+    expect(many).toContain('and 2 more downloads');
+  });
+  it('shows only the queue when the page shows the run already', async () => {
+    const base = await createMockApi({ scenario: 'running', freeze: true }).state();
+    const markup = render({ ...base, queue: waiting(1) }, false, true);
+    expect(markup).toContain('Series 1');
+    expect(markup).not.toContain('role="progressbar"');
+  });
+  it('says a fresh job is fetching its list', async () => {
+    const base = await createMockApi({ scenario: 'running', freeze: true }).state();
+    const markup = render({ ...base, run: { ...base.run, fresh: true, fetching: true, title: 'Berserk' } });
+    expect(markup).toContain('Fetching the chapter list of Berserk');
+    expect(markup).not.toContain('role="progressbar"');
   });
   it('leaves the running download out when the page shows it already, but not how it ended', async () => {
     const running = await createMockApi({ scenario: 'running', freeze: true }).state();
@@ -41,7 +72,7 @@ describe('ProgressStrip', () => {
   });
   it('says the run is cancelling', async () => {
     const state = await createMockApi({ scenario: 'cancelling', freeze: true }).state();
-    expect(render(state)).toContain('Cancelling…');
+    expect(render(state)).toContain('Stopping…');
   });
   it('shows how the run ended, until dismissed', async () => {
     const state = await createMockApi({ scenario: 'done', freeze: true }).state();

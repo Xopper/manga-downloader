@@ -25,7 +25,7 @@ func TestAChapterWhosePagesAreAllGoneSaysSoOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -47,7 +47,7 @@ func TestAChapterMissingSomePagesNamesThem(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	waitFinished(t, c)
@@ -64,7 +64,7 @@ func TestAPageFailingOtherwiseKeepsTheRawLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	waitFinished(t, c)

@@ -1,25 +1,5 @@
 export namespace main {
 	
-	export class BatchDTO {
-	    active: boolean;
-	    done: number;
-	    total: number;
-	    current: string;
-	    currentURL: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new BatchDTO(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.active = source["active"];
-	        this.done = source["done"];
-	        this.total = source["total"];
-	        this.current = source["current"];
-	        this.currentURL = source["currentURL"];
-	    }
-	}
 	export class CatalogDTO {
 	    sites: number;
 	    entries: number;
@@ -92,6 +72,10 @@ export namespace main {
 	    chapters: number;
 	    latest: number;
 	    savedUpTo: number;
+	    known: number[];
+	    baselined: boolean;
+	    saved: number[];
+	    everSaved: number[];
 	    new: number;
 	    followedAt: string;
 	    checkedAt: string;
@@ -112,6 +96,10 @@ export namespace main {
 	        this.chapters = source["chapters"];
 	        this.latest = source["latest"];
 	        this.savedUpTo = source["savedUpTo"];
+	        this.known = source["known"];
+	        this.baselined = source["baselined"];
+	        this.saved = source["saved"];
+	        this.everSaved = source["everSaved"];
 	        this.new = source["new"];
 	        this.followedAt = source["followedAt"];
 	        this.checkedAt = source["checkedAt"];
@@ -181,7 +169,6 @@ export namespace main {
 	    checking: boolean;
 	    checkDone: number;
 	    checkTotal: number;
-	    batch: BatchDTO;
 	
 	    static createFrom(source: any = {}) {
 	        return new LibraryDTO(source);
@@ -193,7 +180,6 @@ export namespace main {
 	        this.checking = source["checking"];
 	        this.checkDone = source["checkDone"];
 	        this.checkTotal = source["checkTotal"];
-	        this.batch = this.convertValues(source["batch"], BatchDTO);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -262,7 +248,32 @@ export namespace main {
 	        this.flaresolverr = source["flaresolverr"];
 	    }
 	}
+	export class QueuedDTO {
+	    id: number;
+	    url: string;
+	    title: string;
+	    chapters: number;
+	    fresh: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new QueuedDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.title = source["title"];
+	        this.chapters = source["chapters"];
+	        this.fresh = source["fresh"];
+	    }
+	}
 	export class RunDTO {
+	    id: number;
+	    url: string;
+	    title: string;
+	    fresh: boolean;
+	    fetching: boolean;
 	    chapters: number;
 	    bundle: boolean;
 	    volumes: boolean;
@@ -274,6 +285,11 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.url = source["url"];
+	        this.title = source["title"];
+	        this.fresh = source["fresh"];
+	        this.fetching = source["fetching"];
 	        this.chapters = source["chapters"];
 	        this.bundle = source["bundle"];
 	        this.volumes = source["volumes"];
@@ -394,6 +410,7 @@ export namespace main {
 	    browserAlert: string;
 	    catalog: CatalogDTO;
 	    library: LibraryDTO;
+	    queue: QueuedDTO[];
 	    filenameTemplateDefault: string;
 	    filenameTemplateWarning: string;
 	
@@ -432,6 +449,7 @@ export namespace main {
 	        this.browserAlert = source["browserAlert"];
 	        this.catalog = this.convertValues(source["catalog"], CatalogDTO);
 	        this.library = this.convertValues(source["library"], LibraryDTO);
+	        this.queue = this.convertValues(source["queue"], QueuedDTO);
 	        this.filenameTemplateDefault = source["filenameTemplateDefault"];
 	        this.filenameTemplateWarning = source["filenameTemplateWarning"];
 	    }

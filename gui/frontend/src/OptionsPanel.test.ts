@@ -99,7 +99,7 @@ describe('Filename template', () => {
     const custom: State = { ...base, options: { ...base.options, filenameTemplate: '{{.Series}}' } };
     expect(options(custom)).toMatch(/<div class="input-wrap">.*<div class="input-action"><button[^>]*aria-label="Use default template"/);
 
-    const locked: State = { ...custom, running: true };
+    const locked: State = { ...custom, loading: true };
     expect(options(locked)).toMatch(/<button[^>]*aria-label="Use default template"[^>]*disabled=""/);
   });
 

@@ -11,7 +11,6 @@ import (
 	"github.com/elboletaire/manga-downloader/grabber"
 )
 
-
 func TestLoadMarksTheSeriesSeen(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(5, 2)...)
 	if err := c.Load(testURL); err != nil {
@@ -48,7 +47,7 @@ func TestRunRaisesTheSavedMark(t *testing.T) {
 	if _, err := c.SelectRange("1-3"); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -71,7 +70,7 @@ func TestCancelledRunBeforeAnythingSavedKeepsTheMark(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	<-site.entered
@@ -98,7 +97,7 @@ func TestCancelledBundleKeepsTheMark(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	<-site.entered
@@ -122,7 +121,7 @@ func TestWrittenBundleMovesTheMark(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -200,7 +199,7 @@ func TestCheckIsRefusedWhileRunningAndTheOtherWayRound(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	<-site.entered
@@ -232,7 +231,7 @@ func TestCheckIsRefusedWhileRunningAndTheOtherWayRound(t *testing.T) {
 	if err := c.BeginLoad(testURL); !errors.Is(err, errBusy) {
 		t.Errorf("BeginLoad during a check = %v, want errBusy", err)
 	}
-	if err := c.Start(); !errors.Is(err, errBusy) {
+	if _, err := c.Start(); !errors.Is(err, errBusy) {
 		t.Errorf("Start during a check = %v, want errBusy", err)
 	}
 	close(hold)

@@ -81,9 +81,40 @@ pages, filename template, the browser window switch, the catalogs line
 
 While a download runs, a strip: title, "chapter X · a of b done", bar,
 percentage, *Details* (opens the Activity drawer: today's panel) and
-*Cancel*. When it ends, the strip shows the summary headline with *Open
-folder* and *Details* until dismissed or the next load. Under it the status
-bar as today (log toggle, last line, version, update badge).
+*Stop*. Under it, the downloads waiting their turn (see "The download
+queue"), each with a remove button. When a run ends, the strip shows the
+summary headline with *Open folder* and *Details* until dismissed or the
+next run. Under it the status bar as today (log toggle, last line, version,
+update badge).
+
+### The download queue (added 2026-10-18)
+
+A download never locks the window. Once started, a run keeps its own copy
+of everything it needs (site, chapters, settings, output folder), so the
+user can open, search and follow other series, change options and pick
+chapters while it goes. Pressing *Download* while a run is active appends
+the selection to a queue, first in first out, instead of being refused; the
+next job starts when the running one ends, whether it finished, failed or
+was stopped (remove the waiting ones first to stop everything). The dock
+shows the run's progress only on the page of the series it downloads; on
+another series it keeps *Download*, with a line saying these start after
+the current one.
+
+Two kinds of job. A *selection* job (Download on the series page) keeps the
+chapters picked from the list loaded at the time and downloads exactly
+those; a *fresh* job (*Download N new*, *Download all new*) names a followed
+series and fetches its list when it starts, then takes what the library
+counts as new. *Download all new* queues one fresh job per series instead of
+owning a run. The same series and chapters queued twice are refused.
+
+The library check stays refused while a download runs (and a download while
+it runs): the two share the browser and the sites, and refusing is simpler
+than sharing. The window says so on the button.
+
+The queue is the desktop app's alone: the CLI downloads what it's given and
+exits, so there is nothing to queue there. This is one of the deliberate
+one-sided features (see "Design every feature for both the CLI and the
+desktop app" in `AGENTS.md`).
 
 ## The library on disk
 
@@ -124,9 +155,10 @@ bar as today (log toggle, last line, version, update badge).
   turn without touching the loaded one, updating its count, latest, new and
   error. Refused while a series loads or a download runs; loads and
   downloads are refused while it runs. It reports progress ("3 of 5").
-- *Download new* for one series: load, select above the saved mark, start.
-  *Download all new*: the same for each series with new chapters, one after
-  the other, with progress in the strip.
+- *Download new* for one series queues a fresh job (its list is fetched
+  when it starts, the loaded series is left alone). *Download all new*
+  queues one per series with new chapters; they run one after the other,
+  with the queue in the strip (see "The download queue").
 
 ## Out of scope, noted
 

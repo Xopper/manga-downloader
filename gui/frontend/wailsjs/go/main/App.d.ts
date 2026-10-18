@@ -4,8 +4,6 @@ import {main} from '../models';
 
 export function Cancel():Promise<void>;
 
-export function CancelBatch():Promise<void>;
-
 export function CancelCheck():Promise<void>;
 
 export function CatalogStatus():Promise<main.CatalogDTO>;
@@ -16,15 +14,15 @@ export function CheckLibrary():Promise<void>;
 
 export function ChooseFolder():Promise<string>;
 
-export function CountChapters(arg1:string):Promise<number>;
-
 export function Clear():Promise<void>;
+
+export function CountChapters(arg1:string):Promise<number>;
 
 export function DismissBrowserAlert():Promise<void>;
 
-export function DownloadAllNew():Promise<void>;
+export function DownloadAllNew():Promise<number>;
 
-export function DownloadNew(arg1:string):Promise<void>;
+export function DownloadNew(arg1:string):Promise<boolean>;
 
 export function Follow(arg1:main.FollowedDTO):Promise<void>;
 
@@ -34,9 +32,11 @@ export function Log():Promise<Array<main.LogDTO>>;
 
 export function OpenFolder():Promise<void>;
 
-export function RevealSaved(arg1:string):Promise<void>;
-
 export function Options():Promise<main.OptionsDTO>;
+
+export function RemoveQueued(arg1:number):Promise<void>;
+
+export function RevealSaved(arg1:string):Promise<void>;
 
 export function Search(arg1:string,arg2:string):Promise<Array<main.HitDTO>>;
 
@@ -60,14 +60,14 @@ export function ShowBrowser():Promise<void>;
 
 export function Sites():Promise<Array<main.SiteDTO>>;
 
-export function Start():Promise<void>;
+export function Start():Promise<boolean>;
 
 export function State():Promise<main.State>;
 
 export function Unfollow(arg1:string):Promise<void>;
 
-export function UpdateCatalog():Promise<void>;
-
 export function Update():Promise<void>;
+
+export function UpdateCatalog():Promise<void>;
 
 export function Version():Promise<string>;

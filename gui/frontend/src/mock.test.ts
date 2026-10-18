@@ -57,20 +57,77 @@ describe('createMockApi', () => {
     expect(await api.selection()).toEqual([2, 4]);
   });
 
-  it('refuses to change the selection, pick a folder or start while a download runs', async () => {
+  it('lets the selection and the options change while a download runs, and queues the next', async () => {
     const api = createMockApi({ scenario: 'running', freeze: true });
-    const busy = 'a series is loading or a download is running';
-    await expect(api.setSelected(0, false)).rejects.toBe(busy);
-    await expect(api.setSelectedMany([0], false)).rejects.toBe(busy);
-    await expect(api.setAll(false)).rejects.toBe(busy);
-    await expect(api.selectRange('1')).rejects.toBe(busy);
-    await expect(api.chooseFolder()).rejects.toBe(busy);
-    await expect(api.start()).rejects.toBe(busy);
+    // Start took the selection: the run has it
+    expect((await api.state()).selectedCount).toBe(0);
+    await api.setSelectedMany([20, 21], true);
+    await api.setOptions({ ...(await api.state()).options, format: 'epub' });
+    expect(await api.start()).toBe(true);
+    const state = await api.state();
+    expect(state.running).toBe(true);
+    expect(state.run.id).toBe(1);
+    expect(state.queue).toEqual([{ id: 2, url: 'https://example.com/manga/one-piece', title: 'One Piece', chapters: 2, fresh: false }]);
+    expect(state.selectedCount).toBe(0);
+    // the same chapters again are refused
+    await api.setSelectedMany([20, 21], true);
+    await expect(api.start()).rejects.toBe('those chapters are being downloaded, or waiting their turn, already');
+    // a load works meanwhile, and the run goes on
+    await api.load('https://example.com/manga/other');
+    const after = await api.state();
+    expect(after.url).toBe('https://example.com/manga/other');
+    expect(after.running).toBe(true);
+    expect(after.run.title).toBe('One Piece');
+    expect(after.queue.length).toBe(1);
+  });
+
+  it('starts the next job when the run ends, and drops a removed one', async () => {
+    const api = createMockApi({ scenario: 'loaded' });
+    await api.setSelectedMany([0], true);
+    expect(await api.start()).toBe(false);
+    await api.setSelectedMany([1], true);
+    expect(await api.start()).toBe(true);
+    await api.setSelectedMany([2], true);
+    expect(await api.start()).toBe(true);
+    let state = await api.state();
+    expect(state.queue.map((j) => j.id)).toEqual([2, 3]);
+    await api.removeQueued(2);
+    await expect(api.removeQueued(2)).rejects.toBe("that download isn't waiting any more");
+    expect((await api.state()).queue.map((j) => j.id)).toEqual([3]);
+    await api.cancel();
+    await vi.waitFor(async () => {
+      state = await api.state();
+      expect(state.run.id).toBe(3);
+    });
+    expect(state.queue).toEqual([]);
+    await vi.waitFor(async () => {
+      state = await api.state();
+      expect(state.running).toBe(false);
+      expect(state.summary?.saved).toBe(1);
+    }, { timeout: 5000 });
+  });
+
+  it('queues the new chapters of a followed series as a job that fetches its list', async () => {
+    const api = createMockApi({ scenario: 'empty', freeze: true });
+    expect(await api.downloadNew('https://example.com/manga/one-piece')).toBe(false);
+    const state = await api.state();
+    expect(state.running).toBe(true);
+    expect(state.run.fresh).toBe(true);
+    expect(state.run.title).toBe('One Piece');
+    expect(state.run.chapters).toBe(12);
+    expect(state.loaded).toBe(false);
+    await expect(api.downloadNew('https://www.mangaread.org/manga/berserk/')).rejects.toBe('nothing new to download');
+    await expect(api.downloadAllNew()).rejects.toBe('nothing new in the library');
   });
 
   it('refuses to start while a series loads', async () => {
     const api = createMockApi({ scenario: 'loading', freeze: true });
-    await expect(api.start()).rejects.toBe('a series is loading or a download is running');
+    await expect(api.start()).rejects.toBe('a series is loading or the library is being checked');
+  });
+
+  it('refuses a library check while a download runs', async () => {
+    const api = createMockApi({ scenario: 'running', freeze: true });
+    await expect(api.checkLibrary()).rejects.toBe('a download is running: wait for it to finish, or stop it, first');
   });
 
   it('keeps the bundle flag a run started with', async () => {
@@ -197,7 +254,7 @@ describe('createMockApi', () => {
   it('refuses to clear while a series loads', async () => {
     const api = createMockApi({ chapters: 30 });
     const loading = api.load('https://example.com/series/a');
-    await expect(api.clear()).rejects.toBe('a series is loading or a download is running');
+    await expect(api.clear()).rejects.toBe('a series is loading or the library is being checked');
     await loading;
     expect((await api.state()).loaded).toBe(true);
   });

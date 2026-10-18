@@ -6,10 +6,6 @@ export function Cancel() {
   return window['go']['main']['App']['Cancel']();
 }
 
-export function CancelBatch() {
-  return window['go']['main']['App']['CancelBatch']();
-}
-
 export function CancelCheck() {
   return window['go']['main']['App']['CancelCheck']();
 }
@@ -26,16 +22,16 @@ export function CheckLibrary() {
   return window['go']['main']['App']['CheckLibrary']();
 }
 
-export function CountChapters(arg1) {
-  return window['go']['main']['App']['CountChapters'](arg1);
-}
-
 export function ChooseFolder() {
   return window['go']['main']['App']['ChooseFolder']();
 }
 
 export function Clear() {
   return window['go']['main']['App']['Clear']();
+}
+
+export function CountChapters(arg1) {
+  return window['go']['main']['App']['CountChapters'](arg1);
 }
 
 export function DismissBrowserAlert() {
@@ -66,12 +62,16 @@ export function OpenFolder() {
   return window['go']['main']['App']['OpenFolder']();
 }
 
-export function RevealSaved(arg1) {
-  return window['go']['main']['App']['RevealSaved'](arg1);
-}
-
 export function Options() {
   return window['go']['main']['App']['Options']();
+}
+
+export function RemoveQueued(arg1) {
+  return window['go']['main']['App']['RemoveQueued'](arg1);
+}
+
+export function RevealSaved(arg1) {
+  return window['go']['main']['App']['RevealSaved'](arg1);
 }
 
 export function Search(arg1, arg2) {
@@ -130,12 +130,12 @@ export function Unfollow(arg1) {
   return window['go']['main']['App']['Unfollow'](arg1);
 }
 
-export function UpdateCatalog() {
-  return window['go']['main']['App']['UpdateCatalog']();
-}
-
 export function Update() {
   return window['go']['main']['App']['Update']();
+}
+
+export function UpdateCatalog() {
+  return window['go']['main']['App']['UpdateCatalog']();
 }
 
 export function Version() {

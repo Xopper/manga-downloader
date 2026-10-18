@@ -28,7 +28,10 @@ interface Props {
 }
 
 export function TopBar({ state, query, onQuery, onLoad, onHome, onCheck, onCancelCheck, onSettings, settingsOpen, problem, onDismiss }: Props) {
-  const busy = state.loading || state.running || state.library.checking || state.library.batch.active;
+  // a load waits for a load or a check; a download running doesn't stop it
+  const busy = state.loading || state.library.checking;
+  // the check also waits for a download: the two share the browser and the sites
+  const checkBusy = busy || state.running;
   const expression = useExpression(state);
   const library = state.library;
   const canCheck = library.followed.some((f) => f.downloadable);
@@ -116,7 +119,13 @@ export function TopBar({ state, query, onQuery, onLoad, onHome, onCheck, onCance
               </button>
             </div>
           ) : (
-            <button type="button" className="btn" disabled={busy} onClick={onCheck} title="Ask every followed site for its chapter list">
+            <button
+              type="button"
+              className="btn"
+              disabled={checkBusy}
+              onClick={onCheck}
+              title={state.running ? 'Wait for the download to finish, or stop it, before checking' : 'Ask every followed site for its chapter list'}
+            >
               <RefreshIcon /> Check for new chapters
             </button>
           ))}

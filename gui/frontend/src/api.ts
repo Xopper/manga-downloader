@@ -39,8 +39,12 @@ export interface Api {
   openURL(url: string): void;
   /** The clipboard's text, for the Paste button; rejects when the runtime isn't there */
   readClipboard(): Promise<string>;
-  start(): Promise<void>;
+  /** Downloads the selected chapters, or queues them after the download going: resolves with true when they wait */
+  start(): Promise<boolean>;
+  /** Stops the running download; the next job waiting starts when it ends */
   cancel(): Promise<void>;
+  /** Drops a waiting download (state.queue); rejects when it isn't waiting any more */
+  removeQueued(id: number): Promise<void>;
   /** Downloads and runs the installer, then quits; rejects with the reason (also logged) when it can't */
   update(): Promise<void>;
   /** Brings the browser window to the front again */
@@ -65,14 +69,13 @@ export interface Api {
   /** Follows a series (or updates its entry); the loaded series fills in its own count */
   follow(f: Followed): Promise<void>;
   unfollow(url: string): Promise<void>;
-  /** Fetches every followed series' chapter list in the background; refused while busy or already checking */
+  /** Fetches every followed series' chapter list in the background; refused while a series loads, a download runs or a check is on */
   checkLibrary(): Promise<void>;
   cancelCheck(): Promise<void>;
-  /** Loads a followed series, selects the chapters above its saved mark and starts; refused while busy */
-  downloadNew(url: string): Promise<void>;
-  /** The same for every followed series with new chapters, one after the other; progress in state.library.batch */
-  downloadAllNew(): Promise<void>;
-  cancelBatch(): Promise<void>;
+  /** Queues a followed series' new chapters as a job that fetches its list when it starts; true when it waits for another */
+  downloadNew(url: string): Promise<boolean>;
+  /** The same for every followed series with new chapters, one job each; resolves with how many were queued */
+  downloadAllNew(): Promise<number>;
 
   // Pushes. Each returns a function that stops the callback.
   onState(cb: (s: State) => void): Unsubscribe;
@@ -137,6 +140,7 @@ export function createWailsApi(): Api {
     readClipboard: async () => ClipboardGetText(),
     start: () => app.Start(),
     cancel: () => app.Cancel(),
+    removeQueued: (id) => app.RemoveQueued(id),
     update: () => app.Update(),
     showBrowser: () => app.ShowBrowser(),
     dismissBrowserAlert: () => app.DismissBrowserAlert(),
@@ -156,7 +160,6 @@ export function createWailsApi(): Api {
     cancelCheck: () => app.CancelCheck(),
     downloadNew: (url) => app.DownloadNew(url),
     downloadAllNew: () => app.DownloadAllNew(),
-    cancelBatch: () => app.CancelBatch(),
 
     onState: (cb) => state.subscribe(cb),
     onChapters: (cb) => chapters.subscribe(cb),

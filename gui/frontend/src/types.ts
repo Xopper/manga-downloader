@@ -27,7 +27,17 @@ export interface Options {
   flaresolverr: string;
 }
 
+/** The run in progress, or the last one (see queue.go: a run is one job of the queue) */
 export interface Run {
+  /** The job's number, 0 before the first run */
+  id: number;
+  /** The series the run downloads from */
+  url: string;
+  title: string;
+  /** A job of a followed series' new chapters, whose list is fetched when it starts */
+  fresh: boolean;
+  /** The fresh job is fetching its list: no chapter is known yet */
+  fetching: boolean;
   chapters: number;
   bundle: boolean;
   /** The run packs one file per volume */
@@ -50,6 +60,16 @@ export interface Job {
   status: string;
   /** The row of a volume rather than a chapter */
   volume: boolean;
+}
+
+/** A download waiting its turn, after the running one (state.run) */
+export interface QueuedJob {
+  id: number;
+  url: string;
+  title: string;
+  /** How many chapters it downloads; a fresh job's is the library's count of new chapters until its list is fetched */
+  chapters: number;
+  fresh: boolean;
 }
 
 export interface Summary {
@@ -120,8 +140,10 @@ export interface State {
   browserAlert: string;
   /** The search catalogs: how many sites and titles are on disk, and their standing */
   catalog: CatalogInfo;
-  /** The followed series, with the check or batch download in progress */
+  /** The followed series, with the check in progress */
   library: LibraryInfo;
+  /** The downloads waiting for the running one, first to start first */
+  queue: QueuedJob[];
   /** The filename template a blank option stands for */
   filenameTemplateDefault: string;
   /** What is wrong with options.filenameTemplate; "" when nothing */
@@ -164,23 +186,12 @@ export interface Followed {
   cover: string;
 }
 
-/** The download of every followed series' new chapters, one after the other */
-export interface BatchInfo {
-  active: boolean;
-  done: number;
-  total: number;
-  /** The title of the series being downloaded, and its URL as the library keys it */
-  current: string;
-  currentURL: string;
-}
-
 export interface LibraryInfo {
   followed: Followed[];
   /** The followed series are being checked for new chapters, checkDone of checkTotal so far */
   checking: boolean;
   checkDone: number;
   checkTotal: number;
-  batch: BatchInfo;
 }
 
 /** A search result: a series of a site's catalog */

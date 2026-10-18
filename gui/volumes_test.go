@@ -101,7 +101,7 @@ func TestDownloadVolumes(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	if r := c.Run(); !r.Volumes || r.Rows != 3 || r.Chapters != 5 {
@@ -148,7 +148,7 @@ func TestDownloadVolumesWithFailingChapter(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -179,7 +179,7 @@ func TestStartVolumesWithoutSiteVolumes(t *testing.T) {
 		t.Fatalf("volumes %q, %q for a site without any", text, site)
 	}
 	c.SetAll(true)
-	if err := c.Start(); !errors.Is(err, core.ErrNoVolumes) {
+	if _, err := c.Start(); !errors.Is(err, core.ErrNoVolumes) {
 		t.Fatalf("Start() = %v, want ErrNoVolumes", err)
 	}
 	if c.Running() {
@@ -242,7 +242,7 @@ func TestVolumeProgressNeverGoesBack(t *testing.T) {
 		overallLast = overall
 	}
 
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	waitFinished(t, c)

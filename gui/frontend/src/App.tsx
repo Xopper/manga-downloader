@@ -5,10 +5,13 @@
 //   page        the library (home), the search results (while the box holds
 //               a title), or the series: its chapters, with what belongs to
 //               it on the right (facts, Follow, Save as, Download)
-//   strip       what's happening now: the running download, then how it ended
+//   strip       what's happening now: the running download and the ones
+//               waiting their turn, then how the last one ended
 //   status bar  the latest log line (the full log opens as a drawer), version
 //
-// Settings and the download's details open as drawers over the window.
+// Settings and the download's details open as drawers over the window. A
+// download never locks the window: the series, the search and the library
+// stay usable, and Download on another series queues it (see queue.go).
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityDrawer } from './ActivityDrawer';
@@ -24,6 +27,7 @@ import { Mascot } from './Mascot';
 import { createOptionsWriter } from './optionsWriter';
 import { ProgressStrip } from './ProgressStrip';
 import { type BlockedHit, ResultsPanel } from './ResultsPanel';
+import { runningHere } from './run';
 import { SeriesAside } from './SeriesAside';
 import { SettingsDrawer } from './SettingsDrawer';
 import { TopBar } from './TopBar';
@@ -63,6 +67,18 @@ export function App({ api }: { api: Api }) {
   const [queued, setQueued] = useState('');
   const [actionError, setActionError] = useState('');
   const [optionError, setOptionError] = useState('');
+  // "Added to the queue" under the Download button for a moment
+  const [queuedNote, setQueuedNote] = useState('');
+  const noteTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
+  const noteQueued = (queued: boolean) => {
+    if (!queued) {
+      return;
+    }
+    setQueuedNote('Added to the queue: it starts when the download running is done.');
+    clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => setQueuedNote(''), 4000);
+  };
   // options are written one at a time, each patch over the last set sent
   const [optionsWriter] = useState(() =>
     createOptionsWriter((options, load) =>
@@ -130,9 +146,10 @@ export function App({ api }: { api: Api }) {
     );
   }
 
-  const busy = state.loading || state.running;
+  // only a load locks the series page; a download works on its own copies
+  const busy = state.loading;
   const library = state.library;
-  const libraryBusy = busy || library.checking || library.batch.active;
+  const libraryBusy = busy || library.checking;
   // until the backend's state names the series asked for, the series page
   // shows that one loading, never the previous series under its name
   const target = pending !== '' && urlKey(pending) !== urlKey(state.url) ? pending : '';
@@ -145,19 +162,11 @@ export function App({ api }: { api: Api }) {
 
   // opens the series page of target and loads it. While another series
   // loads, target waits its turn (the page shows it loading meanwhile);
-  // while a download or a library check runs, nothing can load, and the
-  // message says what to do.
+  // while the library is checked nothing can load, and the message says what
+  // to do. A download running doesn't stop a load: it has its own copies.
   const load = (target: string) => {
     setLoadRefusal('');
     setActionError('');
-    if (state.running) {
-      setLoadRefusal('A download is running. Wait for it to finish, or stop it, before opening another series.');
-      return;
-    }
-    if (library.batch.active) {
-      setLoadRefusal('Every new chapter is being downloaded. Wait for it to finish, or stop it, before opening another series.');
-      return;
-    }
     if (library.checking) {
       setLoadRefusal('The library is being checked for new chapters. Wait for it to finish, or stop it, before opening a series.');
       return;
@@ -344,14 +353,11 @@ export function App({ api }: { api: Api }) {
             onOpen={(f) => openSeries(f.url)}
             onDownloadNew={(url) => {
               setActionError('');
-              api.downloadNew(url).catch(fail(setActionError));
+              api.downloadNew(url).then(noteQueued).catch(fail(setActionError));
             }}
             onDownloadAllNew={() => {
               setActionError('');
               api.downloadAllNew().catch(fail(setActionError));
-            }}
-            onCancelBatch={() => {
-              api.cancelBatch().catch(() => undefined);
             }}
             onUnfollow={(f) => unfollow(f.url)}
             onOpenURL={(url) => api.openURL(url)}
@@ -409,6 +415,7 @@ export function App({ api }: { api: Api }) {
             selected={target === '' ? selected : []}
             followed={followed}
             actionError={actionError}
+            note={queuedNote}
             onFollow={followLoaded}
             onUnfollow={() => unfollow(view.url)}
             onOpenURL={(url) => api.openURL(url)}
@@ -420,13 +427,14 @@ export function App({ api }: { api: Api }) {
             onError={setOptionError}
             onStart={() => {
               setActionError('');
-              api.start().catch(fail(setActionError));
+              api.start().then(noteQueued).catch(fail(setActionError));
             }}
             onStartNew={(indices) => {
               setActionError('');
               api
                 .setSelectedMany(indices, true)
                 .then(() => api.start())
+                .then(noteQueued)
                 .catch(fail(setActionError));
             }}
             onDetails={() => setActivityOpen(true)}
@@ -440,11 +448,14 @@ export function App({ api }: { api: Api }) {
       <ProgressStrip
         state={state}
         dismissed={stripDismissed}
-        // the series page's dock shows the run itself: one progress bar, not two
-        runShownElsewhere={!results && page !== 'home' && target === ''}
+        // the series page's dock shows the run of its own series: one progress bar, not two
+        runShownElsewhere={!results && page !== 'home' && target === '' && runningHere(state)}
         onDetails={() => setActivityOpen(true)}
         onCancel={() => {
           api.cancel().catch(fail(setActionError));
+        }}
+        onRemoveQueued={(id) => {
+          api.removeQueued(id).catch(fail(setActionError));
         }}
         onOpenFolder={() => {
           api.openFolder().catch(fail(setActionError));
@@ -468,6 +479,9 @@ export function App({ api }: { api: Api }) {
           state={state}
           onOpenFolder={() => {
             api.openFolder().catch(fail(setActionError));
+          }}
+          onRemoveQueued={(id) => {
+            api.removeQueued(id).catch(fail(setActionError));
           }}
           onClose={() => setActivityOpen(false)}
         />

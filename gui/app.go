@@ -251,8 +251,11 @@ type State struct {
 	BrowserAlert string `json:"browserAlert"`
 	// Catalog sums the search catalogs up
 	Catalog CatalogDTO `json:"catalog"`
-	// Library is the followed series, with the check or batch in progress
+	// Library is the followed series, with the check in progress
 	Library LibraryDTO `json:"library"`
+	// Queue is the downloads waiting for the running one, first to start
+	// first (see queue.go); never null
+	Queue []QueuedDTO `json:"queue"`
 	// FilenameTemplateDefault is the template a blank option stands for, and
 	// FilenameTemplateWarning what is wrong with the current one, "" when nothing
 	FilenameTemplateDefault string `json:"filenameTemplateDefault"`
@@ -286,6 +289,14 @@ type FilterDTO struct {
 
 // RunDTO describes the run in progress, or the last one
 type RunDTO struct {
+	// ID numbers the job, 0 before the first run; URL and Title name its series
+	ID    int    `json:"id"`
+	URL   string `json:"url"`
+	Title string `json:"title"`
+	// Fresh is a job of a followed series' new chapters; Fetching is set
+	// while it fetches its list, before any chapter is known
+	Fresh    bool `json:"fresh"`
+	Fetching bool `json:"fetching"`
 	Chapters int  `json:"chapters"`
 	Bundle   bool `json:"bundle"`
 	Volumes  bool `json:"volumes"`
@@ -310,6 +321,17 @@ type JobDTO struct {
 	Status string `json:"status"`
 	// Volume is set on the row of a volume
 	Volume bool `json:"volume"`
+}
+
+// QueuedDTO is a download waiting its turn
+type QueuedDTO struct {
+	ID    int    `json:"id"`
+	URL   string `json:"url"`
+	Title string `json:"title"`
+	// Chapters is how many it downloads: for a fresh job, the library's count
+	// of new chapters until its list is fetched
+	Chapters int  `json:"chapters"`
+	Fresh    bool `json:"fresh"`
 }
 
 // SummaryDTO is the outcome of a finished run
@@ -372,7 +394,7 @@ func (a *App) state() State {
 		SelectedCount:      c.SelectedCount(),
 		Running:            c.Running(),
 		Cancelling:         c.Cancelling(),
-		Run:                runDTO(c.Run()),
+		Run:                runDTO(c.Run(), c.Fetching()),
 		Jobs:               []JobDTO{},
 		Summary:            summaryDTO(c.Summary()),
 		Options:            optionsOf(c.Settings()),
@@ -384,6 +406,7 @@ func (a *App) state() State {
 		BrowserAlert:       c.BrowserAlert(),
 		Catalog:            catalogDTO(c.CatalogInfo()),
 		Library:            libraryDTO(c),
+		Queue:              queueDTO(c.Queue()),
 
 		FilenameTemplateDefault: packer.FilenameTemplateDefault,
 	}
@@ -474,9 +497,6 @@ func (a *App) Load(url string) error {
 	if url == "" {
 		return errors.New("enter the URL of a series first")
 	}
-	if a.ctrl.BatchActive() {
-		return errBatch
-	}
 	gen := a.ctrl.ListGen()
 	if err := a.ctrl.BeginLoad(url); err != nil {
 		return err
@@ -504,9 +524,6 @@ func (a *App) SetOptionsAndLoad(o OptionsDTO, url string) error {
 	if url == "" {
 		return errors.New("enter the URL of a series first")
 	}
-	if a.ctrl.BatchActive() {
-		return errBatch
-	}
 	gen := a.ctrl.ListGen()
 	if err := a.ctrl.ConfigureLoad(func(s *grabber.Settings) { applyOptions(s, o) }, url); err != nil {
 		return err
@@ -529,7 +546,7 @@ func (a *App) finishLoad(url string) {
 }
 
 // SetSelected selects or deselects the chapter at index. It's refused while a
-// series loads or a download runs.
+// series loads.
 func (a *App) SetSelected(index int, on bool) error {
 	return a.ctrl.SetSelected(index, on)
 }
@@ -541,7 +558,7 @@ func (a *App) SetSelectedMany(indices []int, on bool) error {
 }
 
 // SetAll selects or deselects every chapter. It's refused while a series
-// loads or a download runs.
+// loads.
 func (a *App) SetAll(on bool) error {
 	return a.ctrl.SetAll(on)
 }
@@ -564,7 +581,7 @@ func (a *App) Options() OptionsDTO {
 }
 
 // SetOptions applies the options and saves them for the next run. It's
-// refused while a series loads or a download runs.
+// refused while a series loads; a download going keeps its own copy.
 func (a *App) SetOptions(o OptionsDTO) error {
 	if err := a.ctrl.Configure(func(s *grabber.Settings) { applyOptions(s, o) }); err != nil {
 		return err
@@ -591,7 +608,7 @@ func (a *App) save() {
 // the current one. A picked folder becomes the output folder; "" means the
 // picker was cancelled.
 func (a *App) ChooseFolder() (string, error) {
-	if a.ctrl.Loading() || a.ctrl.Running() {
+	if a.ctrl.Loading() {
 		return "", errBusy
 	}
 	current := optionsOf(a.ctrl.Settings()).OutputDir
@@ -690,13 +707,16 @@ func openInFileManager(dir string) error {
 	return nil
 }
 
-// Start downloads the selected chapters in the background. Refusals (nothing
-// selected, invalid options, a run already going) are returned here.
-func (a *App) Start() error {
+// Start downloads the selected chapters in the background, or queues them
+// after the download going (true then; see queue.go). Refusals (nothing
+// selected, invalid options, the same chapters queued already) are returned
+// here.
+func (a *App) Start() (bool, error) {
 	return a.ctrl.Start()
 }
 
-// Cancel stops the run from starting new chapters
+// Cancel stops the running download from starting new chapters; the next
+// job waiting starts when it ends
 func (a *App) Cancel() {
 	a.ctrl.Cancel()
 }
@@ -850,8 +870,16 @@ func filterDTO(f *Filter) *FilterDTO {
 	return &FilterDTO{Values: f.Values, All: f.All, Selected: f.Selected}
 }
 
-func runDTO(r RunInfo) RunDTO {
-	return RunDTO{Chapters: r.Chapters, Bundle: r.Bundle, Volumes: r.Volumes, Rows: r.Rows}
+func runDTO(r RunInfo, fetching bool) RunDTO {
+	return RunDTO{ID: r.ID, URL: r.URL, Title: r.Title, Fresh: r.Fresh, Fetching: fetching, Chapters: r.Chapters, Bundle: r.Bundle, Volumes: r.Volumes, Rows: r.Rows}
+}
+
+func queueDTO(queue []Queued) []QueuedDTO {
+	out := make([]QueuedDTO, 0, len(queue))
+	for _, q := range queue {
+		out = append(out, QueuedDTO{ID: q.ID, URL: q.URL, Title: q.Title, Chapters: q.Chapters, Fresh: q.Fresh})
+	}
+	return out
 }
 
 func summaryDTO(s *Summary) *SummaryDTO {

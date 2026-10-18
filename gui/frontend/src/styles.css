@@ -2547,18 +2547,6 @@ a.version:hover {
   height: 32px;
 }
 
-.batch-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 4px 0 10px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-weight: 500;
-}
-
 .lib-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
@@ -3242,6 +3230,77 @@ a.version:hover {
 
 .strip-pct {
   font-weight: 600;
+  color: var(--accent-text);
+}
+
+/* the running strip with the downloads waiting their turn under it */
+.strip-block {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.strip-block .strip {
+  border-top: 0;
+}
+
+.strip-queue {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.strip-block > .strip-queue:first-child {
+  padding-top: 8px;
+}
+
+.strip-queue li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.queue-pos {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.queue-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strip-queue .btn.icon-only {
+  margin-left: auto;
+}
+
+.queue-more .btn {
+  padding-left: 0;
+}
+
+.activity-queue {
+  padding: 0 16px 16px;
+}
+
+.activity-queue .strip-queue {
+  padding: 0;
+}
+
+.dock-note {
   color: var(--accent-text);
 }
 

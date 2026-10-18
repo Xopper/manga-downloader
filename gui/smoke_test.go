@@ -36,7 +36,7 @@ func TestSmokeRealSite(t *testing.T) {
 	if n, err := c.SelectRange(os.Getenv("GUI_SMOKE_RANGE")); err != nil || n == 0 {
 		t.Fatalf("range selected %d chapters, err %v", n, err)
 	}
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)

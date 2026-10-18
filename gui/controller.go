@@ -24,8 +24,9 @@ import (
 const maxLogLines = 2000
 
 // errBusy is returned when an action is refused because a series is loading
-// or a download is running
-var errBusy = errors.New("a series is loading or a download is running")
+// or the library is being checked. A download running refuses nothing but
+// the library check (see queue.go): it works on its own copies.
+var errBusy = errors.New("a series is loading or the library is being checked")
 
 // LogLevel is the severity of a log line
 type LogLevel int
@@ -85,6 +86,14 @@ type Job struct {
 
 // RunInfo describes the run in progress, or the last one
 type RunInfo struct {
+	// ID numbers the job (see queue.go), 0 before the first run
+	ID int
+	// URL and Title are the series the run downloads from
+	URL   string
+	Title string
+	// Fresh is a job of a followed series' new chapters, whose list is
+	// fetched when it starts
+	Fresh bool
 	// Chapters is how many chapters the run was started with
 	Chapters int
 	Bundle   bool
@@ -164,14 +173,10 @@ type Controller struct {
 	// Configure only while nothing is running
 	settings *grabber.Settings
 
-	url     string
-	series  *core.Series
-	loading bool
-	running bool
-	// cancelling is set once a run has been asked to stop, so repeated
-	// cancels log once
-	cancelling bool
-	selected   []bool
+	url      string
+	series   *core.Series
+	loading  bool
+	selected []bool
 	// hasDuplicates is core.HasDuplicateChapterNumbers for the loaded list, and
 	// hasGroupDuplicates is core.HasGroupDuplicates
 	hasDuplicates      bool
@@ -230,36 +235,20 @@ type Controller struct {
 	checkDone   int
 	checkTotal  int
 	checkCancel context.CancelFunc
-	// batch is the download of every followed series' new chapters in turn
-	// (see App.DownloadAllNew), nil when none runs
-	batch *batchState
 	// selGen and logGen count changes to the selection and the log, so a view
 	// that pushes state can skip re-sending either when it hasn't moved
 	selGen uint64
 	logGen uint64
 
-	cancel  context.CancelFunc
-	runinfo RunInfo
-	rng     string
-	jobs    []*Job
-	byChap  map[*grabber.Chapter]*Job
-	bundle  *Job
-	failedC map[*grabber.Chapter]bool
-	// held404 is the raw "error downloading page" lines of a chapter's 404
-	// pages, held back until its failure says whether the site lost them
-	// (see lostpages.go)
-	held404 map[*grabber.Chapter][]string
-	// the rows of the volumes, by volume, by listed chapter (for a failed
-	// fetch) and by fetched chapter
-	byVolume  map[*core.Volume]*Job
-	listedVol map[grabber.Filterable]*Job
-	chapVol   map[*grabber.Chapter]*Job
-	// fetching holds the rows of the chapters whose page list is being
-	// fetched, by listed chapter, until Fetched moves them to byChap
-	fetching map[grabber.Filterable]*Job
-	stats    runStats
-	summary  *Summary
-	log      []LogLine
+	// active is the download going, nil when none; last the one that ended
+	// last, what the window shows until the next starts; queue the jobs
+	// waiting their turn, first to start first (see queue.go); nextID
+	// numbers them
+	active *run
+	last   *run
+	queue  []*run
+	nextID int
+	log    []LogLine
 }
 
 // NewController returns a controller that works on its own copy of settings
@@ -474,7 +463,6 @@ func (c *Controller) showSavedLocked(url string) {
 	c.hasGroupDuplicates = core.HasGroupDuplicates(chapters)
 	c.siteVolumes = core.SiteVolumes(chapters)
 	c.volumesText = c.siteVolumes
-	c.resetResultsLocked()
 }
 
 // SetLists gives the controller the store of saved lists (see lists.go)
@@ -574,10 +562,12 @@ func chapterNumbers(chapters grabber.Filterables) []float64 {
 	return out
 }
 
-// busyLocked reports whether a load, a download or a library check is on:
-// what refuses the actions that would race it. The caller holds mu.
+// busyLocked reports whether a load or a library check is on: what refuses
+// the actions that would race it. A download running is not busy: it works
+// on its own copies (see queue.go), so the series, the selection and the
+// options can change under it. The caller holds mu.
 func (c *Controller) busyLocked() bool {
-	return c.loading || c.running || c.checking
+	return c.loading || c.checking
 }
 
 func (c *Controller) load(url string, s *grabber.Settings) error {
@@ -674,7 +664,6 @@ func (c *Controller) load(url string, s *grabber.Settings) error {
 	c.hasGroupDuplicates = core.HasGroupDuplicates(series.Chapters)
 	c.siteVolumes = core.SiteVolumes(series.Chapters)
 	c.volumesText = c.siteVolumes
-	c.resetResultsLocked()
 	c.appendLogLocked(LogInfo, fmt.Sprintf("Loaded %s: %d chapters", series.Title, len(series.Chapters)))
 	return nil
 }
@@ -684,8 +673,13 @@ func (c *Controller) load(url string, s *grabber.Settings) error {
 // ScanlatorLister) is reused. The site comes back even on a fetch error.
 func (c *Controller) listingFor(url string, s *grabber.Settings, reuse grabber.Site, useCache bool) (*core.Listing, grabber.Site, error) {
 	c.mu.Lock()
+	// the site of the running job reads that job's settings until it ends:
+	// a load of the same series meanwhile gets a site of its own
+	if c.siteInUseLocked(reuse) {
+		reuse = nil
+	}
 	if useCache {
-		if listing := c.listings.get(url, s); listing != nil {
+		if listing := c.listings.get(url, s); listing != nil && !c.siteInUseLocked(listing.Site) {
 			c.mu.Unlock()
 			setSiteSettings(listing.Site, s)
 			return listing, listing.Site, nil
@@ -727,16 +721,6 @@ func setSiteSettings(site grabber.Site, s *grabber.Settings) {
 	if su, ok := site.(interface{ SetSettings(*grabber.Settings) }); ok {
 		su.SetSettings(s)
 	}
-}
-
-// resetResultsLocked forgets the last run's jobs and summary, so the previous
-// series' results don't show next to a new title. The caller holds c.mu.
-func (c *Controller) resetResultsLocked() {
-	c.jobs, c.bundle, c.byChap, c.failedC, c.held404 = nil, nil, nil, nil, nil
-	c.byVolume, c.listedVol, c.chapVol, c.fetching = nil, nil, nil, nil
-	c.summary = nil
-	c.runinfo = RunInfo{}
-	c.stats = runStats{}
 }
 
 // dropUnmatchedFilters handles a load that found nothing for a filter the
@@ -948,8 +932,8 @@ func commonLanguage(chapters grabber.Filterables) string {
 
 // Clear forgets the loaded series: its URL, title, chapters, selection, the
 // outcome of its load and the last run's results (the Activity tab), so the
-// window starts from nothing. The options and the log stay. It's refused while a
-// series loads or a download runs.
+// window starts from nothing. The options, the log and a download going or
+// waiting stay. It's refused while a series loads or the library is checked.
 func (c *Controller) Clear() error {
 	c.mu.Lock()
 	if c.busyLocked() {
@@ -970,18 +954,24 @@ func (c *Controller) Clear() error {
 	c.listings = nil
 	c.loadErr = nil
 	c.attention = nil
-	c.resetResultsLocked()
-	// done with the series: its browser (and maybe window) can go. Nothing
-	// can be using it, as Clear is refused while loading or running. It's
-	// closed in the background, as that can take seconds; added under mu so
-	// a load that starts next is sure to wait for it.
-	c.closing.Add(1)
+	if c.active == nil {
+		c.last = nil
+	}
+	// done with the series: its browser (and maybe window) can go, unless a
+	// download is using it. It's closed in the background, as that can take
+	// seconds; added under mu so a load that starts next is sure to wait for it.
+	closeBrowser := c.active == nil && len(c.queue) == 0
+	if closeBrowser {
+		c.closing.Add(1)
+	}
 	c.mu.Unlock()
 	c.emit()
-	go func() {
-		defer c.closing.Done()
-		c.closeBrowser()
-	}()
+	if closeBrowser {
+		go func() {
+			defer c.closing.Done()
+			c.closeBrowser()
+		}()
+	}
 	return nil
 }
 
@@ -1030,11 +1020,11 @@ func (c *Controller) LoadError() error {
 	return c.loadErr
 }
 
-// Cancelling reports whether a run has been asked to stop
+// Cancelling reports whether the running download has been asked to stop
 func (c *Controller) Cancelling() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.cancelling
+	return c.active != nil && c.active.cancelling
 }
 
 // SelectionGen changes whenever the selection does (see selGen)
@@ -1070,7 +1060,7 @@ func (c *Controller) Loading() bool {
 func (c *Controller) Running() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.running
+	return c.active != nil
 }
 
 // Title is the loaded series' title
@@ -1291,11 +1281,26 @@ func (c *Controller) runVolumes() string {
 	return c.volumesText
 }
 
-// Run describes the current or last run
+// Run describes the current or last run; a zero RunInfo before the first
 func (c *Controller) Run() RunInfo {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.runinfo
+	r := c.shownRunLocked()
+	if r == nil {
+		return RunInfo{}
+	}
+	info := r.info
+	// a fresh job has no info until its list is fetched: name it meanwhile
+	info.ID, info.URL, info.Title, info.Fresh = r.id, r.url, r.title, r.fresh
+	return info
+}
+
+// Fetching reports whether the running job is fetching its chapter list (a
+// fresh job, before any chapter is known)
+func (c *Controller) Fetching() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.active != nil && c.active.fetching
 }
 
 // Jobs returns a copy of the progress rows of the current or last run, in
@@ -1303,8 +1308,12 @@ func (c *Controller) Run() RunInfo {
 func (c *Controller) Jobs() []Job {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	out := make([]Job, len(c.jobs))
-	for i, j := range c.jobs {
+	r := c.shownRunLocked()
+	if r == nil {
+		return nil
+	}
+	out := make([]Job, len(r.jobs))
+	for i, j := range r.jobs {
 		out[i] = *j
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Number < out[j].Number })
@@ -1316,11 +1325,11 @@ func (c *Controller) Jobs() []Job {
 func (c *Controller) Summary() *Summary {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.summary == nil {
+	if c.active != nil || c.last == nil || c.last.summary == nil {
 		return nil
 	}
-	s := *c.summary
-	s.Failures = append([]string(nil), c.summary.Failures...)
+	s := *c.last.summary
+	s.Failures = append([]string(nil), c.last.summary.Failures...)
 	return &s
 }
 
@@ -1331,31 +1340,38 @@ func (c *Controller) Log() []LogLine {
 	return append([]LogLine(nil), c.log...)
 }
 
-// Start validates the settings and starts downloading the selected chapters
-// in the background. Validation errors are returned synchronously.
-func (c *Controller) Start() error {
+// Start downloads the selected chapters: now, when nothing runs, or after
+// the jobs going and waiting (queued is then true; see queue.go). The job
+// keeps its own copy of the series, the chapters and the settings, and the
+// selection is cleared, as it became the job. Validation errors are returned
+// synchronously; a job for the same chapters already going or waiting is
+// refused. It's refused while the series loads or the library is checked.
+func (c *Controller) Start() (queued bool, err error) {
 	c.mu.Lock()
 	if c.busyLocked() {
 		c.mu.Unlock()
-		return errBusy
+		return false, errBusy
 	}
 	if c.series == nil {
 		c.mu.Unlock()
-		return errors.New("load a series first")
+		return false, errors.New("load a series first")
 	}
 	if c.filtersChanged() {
 		c.mu.Unlock()
-		return errors.New("the language or scanlator changed: reload the series first")
+		return false, errors.New("the language or scanlator changed: reload the series first")
 	}
-	// volume mode packs the Volumes box, which isn't saved with the options
-	volumes := c.settings.Volumes != ""
+	// the job's own settings: an option changed later doesn't reach it. Volume
+	// mode packs the Volumes box, which isn't saved with the options.
+	settings := new(grabber.Settings)
+	*settings = *c.settings
+	volumes := settings.Volumes != ""
 	if volumes {
-		c.settings.Volumes = c.runVolumes()
+		settings.Volumes = c.runVolumes()
 	}
-	skip, err := core.Validate(c.settings)
+	skip, err := core.Validate(settings)
 	if err != nil {
 		c.mu.Unlock()
-		return err
+		return false, err
 	}
 
 	var chapters grabber.Filterables
@@ -1370,166 +1386,64 @@ func (c *Controller) Start() error {
 	}
 	if len(chapters) == 0 {
 		c.mu.Unlock()
-		return errors.New("select at least one chapter")
+		return false, errors.New("select at least one chapter")
 	}
 	// a chapter whose file is already in this folder, in this format, isn't
 	// saved again (a bundle or volumes pack every chosen chapter)
 	already := 0
-	if !c.settings.Bundle && !volumes {
+	if !settings.Bundle && !volumes {
 		chapters, already = c.dropSavedLocked(chapters)
 		if len(chapters) == 0 {
 			c.mu.Unlock()
-			return fmt.Errorf("the %s chosen already in this folder, as %s", plural(already, "chapter is", "chapters are"), formatName(c.settings.Format))
+			return false, fmt.Errorf("the %s chosen already in this folder, as %s", plural(already, "chapter is", "chapters are"), formatName(settings.Format))
 		}
 	}
-	rows := len(chapters)
-	if c.settings.Bundle {
-		rows = 1
+	r := &run{
+		url:                c.url,
+		title:              c.series.Title,
+		series:             c.series,
+		settings:           settings,
+		chapters:           chapters,
+		hasDuplicates:      c.hasDuplicates,
+		hasGroupDuplicates: c.hasGroupDuplicates,
+		skip:               skip,
+		rng:                bundleRange(numbers, selected),
 	}
-	if volumes {
-		// grouped here too, so a site without volumes is refused before the
-		// run starts rather than failing it
-		spec, _ := core.ParseVolumes(c.settings.Volumes)
-		groups, loose, err := core.GroupVolumes(chapters, spec)
-		if err != nil {
-			c.mu.Unlock()
-			return err
-		}
-		rows = len(groups) + len(loose)
+	if err := prepareRunLocked(r); err != nil {
+		c.mu.Unlock()
+		return false, err
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancel = cancel
-	c.running = true
-	c.rng = bundleRange(numbers, selected)
-	c.runinfo = RunInfo{Chapters: len(chapters), Bundle: c.settings.Bundle, Volumes: volumes, Rows: rows}
-	c.cancelling = false
-	c.jobs = nil
-	c.byChap = map[*grabber.Chapter]*Job{}
-	c.failedC = map[*grabber.Chapter]bool{}
-	c.held404 = map[*grabber.Chapter][]string{}
-	c.byVolume = map[*core.Volume]*Job{}
-	c.listedVol = map[grabber.Filterable]*Job{}
-	c.chapVol = map[*grabber.Chapter]*Job{}
-	c.fetching = map[grabber.Filterable]*Job{}
-	c.bundle = nil
-	c.stats = runStats{}
-	c.summary = nil
-	if c.settings.Bundle {
-		c.bundle = &Job{Title: "Bundle: chapters " + c.rng, Status: "Gathering info..."}
-		c.jobs = append(c.jobs, c.bundle)
+	if c.sameJobLocked(r) {
+		c.mu.Unlock()
+		return false, errors.New("those chapters are being downloaded, or waiting their turn, already")
 	}
-	series := c.series
-	settings := c.settings
-	rng := c.rng
-	url := c.url
-	c.appendLogLocked(LogInfo, fmt.Sprintf("Downloading %d chapter(s) of %s", len(chapters), series.Title))
+	// the selection became the job
+	for i := range c.selected {
+		c.selected[i] = false
+	}
+	c.selGen++
+	queued = c.enqueueLocked(r)
+	c.appendLogLocked(LogInfo, queueLine(r, queued))
 	if already > 0 {
 		c.appendLogLocked(LogInfo, fmt.Sprintf("Skipping %s already in %s", plural(already, "chapter", "chapters"), settings.OutputDir))
 	}
 	c.mu.Unlock()
 	c.emit()
-
-	// the browser's visibility is read when it starts, so it must follow the
-	// option as of this run, not the one in force when the series was loaded
-	browser.SetVisible(settings.BrowserVisible)
-	// Hold keeps the browser open; releasing closes it when the download is done
-	release := browser.Hold()
-	go func() {
-		defer release()
-		c.run(ctx, url, series, settings, chapters, skip, rng)
-	}()
-	return nil
+	return queued, nil
 }
 
-// run is the download goroutine
-func (c *Controller) run(ctx context.Context, url string, series *core.Series, settings *grabber.Settings, chapters grabber.Filterables, skip []ranges.Range, rng string) {
-	file, err := series.Download(ctx, chapters, skip, rng, events{c})
-
-	c.mu.Lock()
-	defer func() {
-		saved := c.stats.savedNumbers
-		files := c.stats.savedFiles
-		for i := range files {
-			files[i].Dir, files[i].Format = settings.OutputDir, settings.Format
-		}
-		numbers := chapterNumbers(series.Chapters)
-		c.mu.Unlock()
-		// a run that saved something adds its chapters to the library's entry
-		if len(saved) > 0 {
-			c.onDisk.forget()
-			if lerr := c.library.MarkSavedFiles(url, saved, files, numbers); lerr != nil {
-				c.addLog(LogWarn, "could not save the library: "+lerr.Error())
-			}
-		}
-		c.emit()
-	}()
-
-	s := &Summary{
-		Dir:      settings.OutputDir,
-		Bundled:  c.bundle != nil,
-		Saved:    c.stats.saved,
-		Volumes:  c.stats.volumes,
-		Skipped:  c.stats.skipped,
-		Failures: c.stats.failures,
-	}
-	switch {
-	case err != nil && c.runinfo.Volumes && !errors.Is(err, context.Canceled):
-		// only the volumes check Start already ran can fail a volume run
-		s.Err = err
-		s.Failures = append(s.Failures, "volumes: "+err.Error())
-		c.appendLogLocked(LogError, "volumes: "+err.Error())
-	case errors.Is(err, context.Canceled):
-		// a cancelled bundle is never packed: the chapters it never started
-		// would be silently missing from it
-		s.Cancelled = true
-	case err != nil:
-		s.Err = err
-		s.Failures = append(s.Failures, "packing bundle: "+err.Error())
-		c.appendLogLocked(LogError, "packing bundle: "+err.Error())
-	case c.bundle != nil && c.stats.saved == 0:
-		// core still packs an empty bundle when every chapter failed (as the
-		// CLI does), so the file it leaves behind is not a result
-		s.Err = errors.New("no chapter could be downloaded")
-		s.Failures = append(s.Failures, "packing bundle: no chapter could be downloaded")
-		c.appendLogLocked(LogError, "packing bundle: no chapter could be downloaded")
-	default:
-		s.Bundle = file
-		// the bundle's chapters reached the disk with it
-		if c.bundle != nil && c.stats.saved > 0 {
-			c.stats.savedNumbers = append(c.stats.savedNumbers, c.stats.downloaded...)
-			for _, n := range c.stats.downloaded {
-				c.stats.savedFiles = append(c.stats.savedFiles, SavedFile{Number: n, Name: file})
-			}
-		}
-	}
-	if c.bundle != nil {
-		if s.Bundle == "" {
-			c.bundle.State = JobFailed
-		} else {
-			c.bundle.State = JobDone
-			c.bundle.Done = c.bundle.Total
-		}
-		c.bundle.Status = ""
-	}
-	c.summary = s
-	c.running = false
-	// released under the lock, in the same step that clears running: once
-	// running is false a new Start may replace c.cancel
-	if c.cancel != nil {
-		c.cancel()
-		c.cancel = nil
-	}
-}
-
-// Cancel stops the run from starting new chapters. Chapters already in
-// flight finish. It's a no-op when nothing runs or a cancel already happened.
+// Cancel stops the running download from starting new chapters. Chapters
+// already in flight finish. The next job waiting starts when it ends; remove
+// the waiting ones first to stop everything. It's a no-op when nothing runs
+// or a cancel already happened.
 func (c *Controller) Cancel() {
 	c.mu.Lock()
-	cancel := c.cancel
-	first := cancel != nil && !c.cancelling
-	if first {
-		c.cancelling = true
+	var cancel context.CancelFunc
+	first := false
+	if r := c.active; r != nil && r.cancel != nil && !r.cancelling {
+		r.cancelling = true
+		cancel = r.cancel
+		first = true
 		c.appendLogLocked(LogInfo, "Cancelling: chapters already downloading will finish, no new ones start")
 	}
 	c.mu.Unlock()
@@ -1543,10 +1457,13 @@ func (c *Controller) Cancel() {
 // the browser to close, so a stuck render can't hang the window's exit
 const shutdownWait = 3 * time.Second
 
-// Shutdown cancels any run and closes the browser, so Chrome doesn't outlive
-// the app. It waits at most shutdownWait for each step. Safe to call more
-// than once.
+// Shutdown drops the waiting jobs, cancels any run and closes the browser, so
+// Chrome doesn't outlive the app. It waits at most shutdownWait for each
+// step. Safe to call more than once.
 func (c *Controller) Shutdown() {
+	c.mu.Lock()
+	c.queue = nil
+	c.mu.Unlock()
 	c.Cancel()
 	deadline := time.Now().Add(shutdownWait)
 	for c.Running() && time.Now().Before(deadline) {
@@ -1563,41 +1480,44 @@ func (c *Controller) Shutdown() {
 	}
 }
 
-// events maps core.Events onto the controller's state. Each method takes the
-// lock itself; core calls them from several goroutines at once.
-type events struct{ c *Controller }
+// events maps core.Events onto a run's progress. Each method takes the
+// controller's lock itself; core calls them from several goroutines at once.
+type events struct {
+	c *Controller
+	r *run
+}
 
 var _ core.Events = events{}
 
 // jobFor returns the row of a chapter, nil when it has none (bundle mode has
 // a single row, and a chapter whose fetch failed never got one).
 // Callers must hold mu.
-func (c *Controller) jobFor(ch *grabber.Chapter) *Job {
-	if c.bundle != nil {
-		return c.bundle
+func (r *run) jobFor(ch *grabber.Chapter) *Job {
+	if r.bundle != nil {
+		return r.bundle
 	}
-	if j := c.chapVol[ch]; j != nil {
+	if j := r.chapVol[ch]; j != nil {
 		return j
 	}
-	return c.byChap[ch]
+	return r.byChap[ch]
 }
 
 // releaseLabel names a release the way the chapter list does: the language and
-// group only when the loaded list has copies that need them. Callers hold mu.
-func (c *Controller) releaseLabel(f grabber.Filterable) string {
-	return core.ReleaseLabel(f, c.hasDuplicates, c.hasGroupDuplicates)
+// group only when the run's list has copies that need them. Callers hold mu.
+func (r *run) releaseLabel(f grabber.Filterable) string {
+	return core.ReleaseLabel(f, r.hasDuplicates, r.hasGroupDuplicates)
 }
 
 // releaseTags is the bracketed part of releaseLabel, which a job row shows
 // apart from its title. Callers hold mu.
-func (c *Controller) releaseTags(f grabber.Filterable) string {
-	return core.ReleaseTags(f, c.hasDuplicates, c.hasGroupDuplicates)
+func (r *run) releaseTags(f grabber.Filterable) string {
+	return core.ReleaseTags(f, r.hasDuplicates, r.hasGroupDuplicates)
 }
 
 // live reports whether a chapter still accepts page progress: once it failed,
 // pages still in flight finish but must not move its bar. Callers hold mu.
-func (c *Controller) live(ch *grabber.Chapter) bool {
-	return !c.failedC[ch]
+func (r *run) live(ch *grabber.Chapter) bool {
+	return !r.failedC[ch]
 }
 
 // advance moves a row into the archiving phase at its first archived step,
@@ -1610,13 +1530,13 @@ func advance(j *Job) {
 }
 
 func (e events) BundleStart(pages int64) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if c.bundle != nil {
-		c.bundle.Total = pages * (core.DownloadWeight + core.ArchiveWeight)
+	if r.bundle != nil {
+		r.bundle.Total = pages * (core.DownloadWeight + core.ArchiveWeight)
 		// a corrected total comes again mid-download, so keep the status a chapter set
-		if c.bundle.Status == "Gathering info..." {
-			c.bundle.Status = "Downloading..."
+		if r.bundle.Status == "Gathering info..." {
+			r.bundle.Status = "Downloading..."
 		}
 	}
 	c.mu.Unlock()
@@ -1624,26 +1544,26 @@ func (e events) BundleStart(pages int64) {
 }
 
 func (e events) Fetching(listed grabber.Filterable) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
 	// a bundle or a volume has its own row
-	if c.bundle == nil && c.listedVol[listed] == nil {
-		j := &Job{Title: grabber.ChapterLabel(listed), Tags: c.releaseTags(listed), Number: listed.GetNumber(), State: JobFetching, Status: "Fetching pages..."}
-		c.jobs = append(c.jobs, j)
-		c.fetching[listed] = j
+	if r.bundle == nil && r.listedVol[listed] == nil {
+		j := &Job{Title: grabber.ChapterLabel(listed), Tags: r.releaseTags(listed), Number: listed.GetNumber(), State: JobFetching, Status: "Fetching pages..."}
+		r.jobs = append(r.jobs, j)
+		r.fetchRows[listed] = j
 	}
 	c.mu.Unlock()
 	c.emit()
 }
 
 func (e events) Fetched(listed grabber.Filterable, ch *grabber.Chapter) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if j := c.fetching[listed]; j != nil {
+	if j := r.fetchRows[listed]; j != nil {
 		// the fetched chapter's title can differ from the listing's
-		j.Title, j.Tags = grabber.ChapterLabel(ch), c.releaseTags(ch)
-		c.byChap[ch] = j
-		delete(c.fetching, listed)
+		j.Title, j.Tags = grabber.ChapterLabel(ch), r.releaseTags(ch)
+		r.byChap[ch] = j
+		delete(r.fetchRows, listed)
 	}
 	c.mu.Unlock()
 	c.emit()
@@ -1651,24 +1571,24 @@ func (e events) Fetched(listed grabber.Filterable, ch *grabber.Chapter) {
 
 // endRow marks the row of a chapter that ended before it started, or adds one
 // when it never had any. Callers hold mu.
-func (c *Controller) endRow(ch *grabber.Chapter, state JobState, reason string) {
-	if j := c.byChap[ch]; j != nil {
+func (r *run) endRow(ch *grabber.Chapter, state JobState, reason string) {
+	if j := r.byChap[ch]; j != nil {
 		j.State, j.Reason, j.Status = state, reason, ""
 		return
 	}
-	c.jobs = append(c.jobs, &Job{Title: grabber.ChapterLabel(ch), Tags: c.releaseTags(ch), Number: ch.GetNumber(), State: state, Reason: reason})
+	r.jobs = append(r.jobs, &Job{Title: grabber.ChapterLabel(ch), Tags: r.releaseTags(ch), Number: ch.GetNumber(), State: state, Reason: reason})
 }
 
 func (e events) FetchFailed(listed grabber.Filterable, err error) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	msg := fmt.Sprintf("%s: %s", c.releaseLabel(listed), err)
-	c.stats.failures = append(c.stats.failures, msg)
-	if j := c.fetching[listed]; j != nil {
+	msg := fmt.Sprintf("%s: %s", r.releaseLabel(listed), err)
+	r.stats.failures = append(r.stats.failures, msg)
+	if j := r.fetchRows[listed]; j != nil {
 		j.State, j.Reason, j.Status = JobFailed, err.Error(), ""
-		delete(c.fetching, listed)
-	} else if c.bundle == nil && c.listedVol[listed] == nil {
-		c.jobs = append(c.jobs, &Job{Title: grabber.ChapterLabel(listed), Tags: c.releaseTags(listed), Number: listed.GetNumber(), State: JobFailed, Reason: err.Error()})
+		delete(r.fetchRows, listed)
+	} else if r.bundle == nil && r.listedVol[listed] == nil {
+		r.jobs = append(r.jobs, &Job{Title: grabber.ChapterLabel(listed), Tags: r.releaseTags(listed), Number: listed.GetNumber(), State: JobFailed, Reason: err.Error()})
 	}
 	c.appendLogLocked(LogError, "error fetching "+msg)
 	c.mu.Unlock()
@@ -1676,24 +1596,24 @@ func (e events) FetchFailed(listed grabber.Filterable, err error) {
 }
 
 func (e events) Skipped(ch *grabber.Chapter) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	c.stats.skipped++
-	if c.bundle == nil && c.chapVol[ch] == nil {
-		c.endRow(ch, JobSkipped, "every page excluded by --skip-pages")
+	r.stats.skipped++
+	if r.bundle == nil && r.chapVol[ch] == nil {
+		r.endRow(ch, JobSkipped, "every page excluded by --skip-pages")
 	}
-	c.appendLogLocked(LogWarn, fmt.Sprintf("skipping %s: every page is excluded by --skip-pages", c.releaseLabel(ch)))
+	c.appendLogLocked(LogWarn, fmt.Sprintf("skipping %s: every page is excluded by --skip-pages", r.releaseLabel(ch)))
 	c.mu.Unlock()
 	c.emit()
 }
 
 func (e events) FilenameFailed(ch *grabber.Chapter, err error) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	msg := fmt.Sprintf("%s: filename: %s", c.releaseLabel(ch), err)
-	c.stats.failures = append(c.stats.failures, msg)
-	if c.bundle == nil {
-		c.endRow(ch, JobFailed, "filename: "+err.Error())
+	msg := fmt.Sprintf("%s: filename: %s", r.releaseLabel(ch), err)
+	r.stats.failures = append(r.stats.failures, msg)
+	if r.bundle == nil {
+		r.endRow(ch, JobFailed, "filename: "+err.Error())
 	}
 	c.appendLogLocked(LogError, "error creating filename for "+msg)
 	c.mu.Unlock()
@@ -1701,42 +1621,42 @@ func (e events) FilenameFailed(ch *grabber.Chapter, err error) {
 }
 
 func (e events) Started(ch *grabber.Chapter) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if c.bundle != nil {
-		c.bundle.Status = "Downloading " + c.releaseLabel(ch)
-	} else if j := c.chapVol[ch]; j != nil {
+	if r.bundle != nil {
+		r.bundle.Status = "Downloading " + r.releaseLabel(ch)
+	} else if j := r.chapVol[ch]; j != nil {
 		// its row is too narrow for the chapter's title: the phase and
 		// percentage say enough. The bar moves with VolumeProgress.
 		j.Status = ""
-	} else if j := c.byChap[ch]; j != nil {
+	} else if j := r.byChap[ch]; j != nil {
 		// the row Fetching made becomes the downloading one
 		j.Total = ch.PagesCount * (core.DownloadWeight + core.ArchiveWeight)
 		j.State, j.Status = JobDownloading, ""
 	} else {
 		// the CLI's bar: each page's download and archive steps
-		j := &Job{Title: grabber.ChapterLabel(ch), Tags: c.releaseTags(ch), Number: ch.GetNumber(), Total: ch.PagesCount * (core.DownloadWeight + core.ArchiveWeight), State: JobDownloading}
-		c.jobs = append(c.jobs, j)
-		c.byChap[ch] = j
+		j := &Job{Title: grabber.ChapterLabel(ch), Tags: r.releaseTags(ch), Number: ch.GetNumber(), Total: ch.PagesCount * (core.DownloadWeight + core.ArchiveWeight), State: JobDownloading}
+		r.jobs = append(r.jobs, j)
+		r.byChap[ch] = j
 	}
 	c.mu.Unlock()
 	c.emit()
 }
 
 func (e events) Page(ch *grabber.Chapter, idx int, err error) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
 	if err != nil {
-		line := fmt.Sprintf("error downloading page %d of %s: %s", idx+1, c.releaseLabel(ch), err)
+		line := fmt.Sprintf("error downloading page %d of %s: %s", idx+1, r.releaseLabel(ch), err)
 		switch {
-		case !is404(err) || c.held404 == nil:
+		case !is404(err) || r.held404 == nil:
 			c.appendLogLocked(LogError, line)
-		case c.failedC[ch]:
+		case r.failedC[ch]:
 			// its failure was already explained; a late 404 says nothing new
 		default:
-			c.held404[ch] = append(c.held404[ch], line)
+			r.held404[ch] = append(r.held404[ch], line)
 		}
-	} else if j := c.jobFor(ch); j != nil && !j.Volume && c.live(ch) {
+	} else if j := r.jobFor(ch); j != nil && !j.Volume && r.live(ch) {
 		// a volume's row moves with VolumeProgress instead
 		j.Done += core.DownloadWeight
 		advance(j)
@@ -1746,21 +1666,21 @@ func (e events) Page(ch *grabber.Chapter, idx int, err error) {
 }
 
 func (e events) DownloadFailed(ch *grabber.Chapter, err error) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	c.failedC[ch] = true
-	label := c.releaseLabel(ch)
-	held := c.held404[ch]
-	delete(c.held404, ch)
-	if is404(err) && c.series != nil {
+	r.failedC[ch] = true
+	label := r.releaseLabel(ch)
+	held := r.held404[ch]
+	delete(r.held404, ch)
+	if is404(err) && r.series != nil {
 		// ask the site for each page, outside the lock, and say what it lost
-		referer := c.series.Site.BaseUrl()
+		referer := r.series.Site.BaseUrl()
 		c.mu.Unlock()
 		missing, others := missingPages(ch, referer)
 		c.mu.Lock()
 		if line, reason, ok := lostMessage(label, len(ch.Pages), missing, others); ok {
-			c.stats.failures = append(c.stats.failures, line)
-			if j := c.byChap[ch]; j != nil && c.bundle == nil {
+			r.stats.failures = append(r.stats.failures, line)
+			if j := r.byChap[ch]; j != nil && r.bundle == nil {
 				j.State = JobFailed
 				j.Reason = reason
 			}
@@ -1774,9 +1694,9 @@ func (e events) DownloadFailed(ch *grabber.Chapter, err error) {
 		c.appendLogLocked(LogError, line)
 	}
 	msg := fmt.Sprintf("%s: %s", label, err)
-	c.stats.failures = append(c.stats.failures, msg)
+	r.stats.failures = append(r.stats.failures, msg)
 	// a volume goes on with its other chapters
-	if j := c.byChap[ch]; j != nil && c.bundle == nil {
+	if j := r.byChap[ch]; j != nil && r.bundle == nil {
 		j.State = JobFailed
 		j.Reason = "download: " + err.Error()
 	}
@@ -1786,9 +1706,9 @@ func (e events) DownloadFailed(ch *grabber.Chapter, err error) {
 }
 
 func (e events) Archived(ch *grabber.Chapter) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if j := c.byChap[ch]; j != nil && c.bundle == nil && j.State != JobFailed {
+	if j := r.byChap[ch]; j != nil && r.bundle == nil && j.State != JobFailed {
 		j.Done += core.ArchiveWeight
 		advance(j)
 	}
@@ -1797,21 +1717,21 @@ func (e events) Archived(ch *grabber.Chapter) {
 }
 
 func (e events) Packed(ch *grabber.Chapter, name string, err error) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	j := c.byChap[ch]
+	j := r.byChap[ch]
 	if err != nil {
-		msg := fmt.Sprintf("%s: packing: %s", c.releaseLabel(ch), err)
-		c.stats.failures = append(c.stats.failures, msg)
+		msg := fmt.Sprintf("%s: packing: %s", r.releaseLabel(ch), err)
+		r.stats.failures = append(r.stats.failures, msg)
 		if j != nil {
 			j.State = JobFailed
 			j.Reason = "packing: " + err.Error()
 		}
 		c.appendLogLocked(LogError, msg)
 	} else {
-		c.stats.saved++
-		c.stats.savedNumbers = append(c.stats.savedNumbers, ch.GetNumber())
-		c.stats.savedFiles = append(c.stats.savedFiles, SavedFile{Number: ch.GetNumber(), Name: name})
+		r.stats.saved++
+		r.stats.savedNumbers = append(r.stats.savedNumbers, ch.GetNumber())
+		r.stats.savedFiles = append(r.stats.savedFiles, SavedFile{Number: ch.GetNumber(), Name: name})
 		if j != nil {
 			j.State = JobDone
 			// the skipped pages were never counted, so the bar is exact only now
@@ -1824,30 +1744,30 @@ func (e events) Packed(ch *grabber.Chapter, name string, err error) {
 }
 
 func (e events) Downloaded(ch *grabber.Chapter) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
 	// the pages were counted as they came in; this only tallies the chapter
-	c.stats.saved++
-	c.stats.downloaded = append(c.stats.downloaded, ch.GetNumber())
+	r.stats.saved++
+	r.stats.downloaded = append(r.stats.downloaded, ch.GetNumber())
 	c.mu.Unlock()
 	c.emit()
 }
 
 func (e events) BundlePacking() {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if c.bundle != nil {
-		c.bundle.Status = "Creating bundle for chapters " + c.rng
+	if r.bundle != nil {
+		r.bundle.Status = "Creating bundle for chapters " + r.rng
 	}
 	c.mu.Unlock()
 	c.emit()
 }
 
 func (e events) BundleArchived(n int) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if c.bundle != nil {
-		c.bundle.Done += int64(n) * core.ArchiveWeight
+	if r.bundle != nil {
+		r.bundle.Done += int64(n) * core.ArchiveWeight
 	}
 	c.mu.Unlock()
 	c.emit()
@@ -1863,31 +1783,31 @@ func volumeTitle(v *core.Volume) string {
 }
 
 func (e events) VolumeStart(v *core.Volume) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
 	j := &Job{Title: volumeTitle(v), Number: v.FirstNumber(), Total: volumeScale, State: JobDownloading, Status: "Waiting...", Volume: true}
-	c.jobs = append(c.jobs, j)
-	c.byVolume[v] = j
+	r.jobs = append(r.jobs, j)
+	r.byVolume[v] = j
 	for _, chap := range v.Chapters {
-		c.listedVol[chap] = j
+		r.listedVol[chap] = j
 	}
 	c.mu.Unlock()
 	c.emit()
 }
 
 func (e events) VolumeChapter(v *core.Volume, ch *grabber.Chapter) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if j := c.byVolume[v]; j != nil {
-		c.chapVol[ch] = j
+	if j := r.byVolume[v]; j != nil {
+		r.chapVol[ch] = j
 	}
 	c.mu.Unlock()
 }
 
 func (e events) VolumePacking(v *core.Volume) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	if j := c.byVolume[v]; j != nil {
+	if j := r.byVolume[v]; j != nil {
 		j.State = JobArchiving
 		j.Status = "Packing..."
 	}
@@ -1900,11 +1820,11 @@ func (e events) VolumePacking(v *core.Volume) {
 const volumeScale = 10000
 
 func (e events) VolumeProgress(v *core.Volume, fraction float64) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
 	// core never reports a volume going back; max keeps the row honest even
 	// so, and leaves a row that already ended alone
-	if j := c.byVolume[v]; j != nil && j.State != JobDone && j.State != JobFailed && j.State != JobSkipped {
+	if j := r.byVolume[v]; j != nil && j.State != JobDone && j.State != JobFailed && j.State != JobSkipped {
 		j.Done = max(j.Done, int64(fraction*volumeScale))
 	}
 	c.mu.Unlock()
@@ -1912,9 +1832,9 @@ func (e events) VolumeProgress(v *core.Volume, fraction float64) {
 }
 
 func (e events) VolumePacked(v *core.Volume, name string, err error) {
-	c := e.c
+	c, r := e.c, e.r
 	c.mu.Lock()
-	j := c.byVolume[v]
+	j := r.byVolume[v]
 	label := core.VolumeLabel(v.Number)
 	switch {
 	case errors.Is(err, context.Canceled):
@@ -1931,17 +1851,17 @@ func (e events) VolumePacked(v *core.Volume, name string, err error) {
 		}
 	case err != nil:
 		msg := fmt.Sprintf("%s: %s", label, err)
-		c.stats.failures = append(c.stats.failures, msg)
+		r.stats.failures = append(r.stats.failures, msg)
 		if j != nil {
 			j.State = JobFailed
 			j.Reason = err.Error()
 		}
 		c.appendLogLocked(LogError, "error packing "+msg)
 	default:
-		c.stats.volumes++
+		r.stats.volumes++
 		for _, ch := range v.Chapters {
-			c.stats.savedNumbers = append(c.stats.savedNumbers, ch.GetNumber())
-			c.stats.savedFiles = append(c.stats.savedFiles, SavedFile{Number: ch.GetNumber(), Name: name})
+			r.stats.savedNumbers = append(r.stats.savedNumbers, ch.GetNumber())
+			r.stats.savedFiles = append(r.stats.savedFiles, SavedFile{Number: ch.GetNumber(), Name: name})
 		}
 		if j != nil {
 			j.State = JobDone

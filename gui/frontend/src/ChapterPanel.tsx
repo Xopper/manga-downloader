@@ -126,7 +126,7 @@ function FailedState({ state, onRetry }: { state: State; onRetry: () => void }) 
         Check that the link opens the series in a browser. Sites behind a Cloudflare check may need{' '}
         <em>Show the browser window</em>, under Options › Advanced.
       </p>
-      <button type="button" className="btn" disabled={state.loading || state.running} onClick={onRetry}>
+      <button type="button" className="btn" disabled={state.loading} onClick={onRetry}>
         <RefreshIcon /> Try again
       </button>
     </section>

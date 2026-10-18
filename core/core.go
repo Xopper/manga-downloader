@@ -146,6 +146,17 @@ type Series struct {
 	settings *grabber.Settings
 }
 
+// WithSettings returns a copy of the series whose download (bundle, output
+// folder, volumes) reads s instead of the settings it was opened with: a front
+// end that downloads with a snapshot of the settings, while the loaded series
+// keeps following the live ones, points the run at its snapshot with it. The
+// site is shared, so point it at s too (its SetSettings) before downloading.
+func (s *Series) WithSettings(settings *grabber.Settings) *Series {
+	out := *s
+	out.settings = settings
+	return &out
+}
+
 // FilterOptionsOf returns the language and scanlation group options of a site,
 // nil for each one it doesn't list. They stay valid when a filter matched nothing
 // (err is the load's error), so a front end can still offer the values that exist.

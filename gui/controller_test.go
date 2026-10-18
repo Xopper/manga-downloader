@@ -236,8 +236,7 @@ func TestClearForgetsTheSeriesAndKeepsTheOptions(t *testing.T) {
 	}
 	// a finished run's results, as the Activity tab shows them
 	c.mu.Lock()
-	c.jobs = []*Job{{}}
-	c.summary = &Summary{Saved: 2}
+	c.last = &run{jobs: []*Job{{}}, summary: &Summary{Saved: 2}}
 	c.mu.Unlock()
 	gen, logged := c.SelectionGen(), len(c.Log())
 
@@ -364,14 +363,14 @@ func TestClearRefusedWhileLoading(t *testing.T) {
 
 func TestStartValidatesBeforeDownloading(t *testing.T) {
 	c, _, _ := newTestController(t, false, nil, chapters(2, 1)...)
-	if err := c.Start(); err == nil {
+	if _, err := c.Start(); err == nil {
 		t.Error("Start without a series succeeded")
 	}
 
 	if err := c.Load("https://example.com/manga/test"); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Start(); err == nil {
+	if _, err := c.Start(); err == nil {
 		t.Error("Start without a selection succeeded")
 	}
 
@@ -379,7 +378,7 @@ func TestStartValidatesBeforeDownloading(t *testing.T) {
 	if err := c.Configure(func(s *grabber.Settings) { s.Format = "pdf" }); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Start(); err == nil || !strings.Contains(err.Error(), "pdf") {
+	if _, err := c.Start(); err == nil || !strings.Contains(err.Error(), "pdf") {
 		t.Errorf("Start with a bad format = %v, want a format error", err)
 	}
 	if c.Running() {
@@ -393,7 +392,7 @@ func TestDownloadNonBundle(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -438,7 +437,7 @@ func TestDownloadBundleWithFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -471,7 +470,7 @@ func TestSkipPagesSkipsWholeChapter(t *testing.T) {
 	if err := c.Configure(func(s *grabber.Settings) { s.SkipPages = "1" }); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	s := waitFinished(t, c)
@@ -494,7 +493,7 @@ func TestCancelStartsNoNewChapters(t *testing.T) {
 	if err := c.Configure(func(s *grabber.Settings) { s.MaxConcurrency.Chapters = 1 }); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	// the first chapter is blocked in FetchChapter once the loop has started
@@ -509,33 +508,23 @@ func TestCancelStartsNoNewChapters(t *testing.T) {
 	}
 }
 
-func TestConfigureRefusedWhileBusy(t *testing.T) {
-	gate := make(chan struct{})
-	c, _, _ := newTestController(t, false, gate, chapters(1, 1)...)
-	if err := c.Load("https://example.com/manga/test"); err != nil {
-		t.Fatal(err)
-	}
-	c.SetAll(true)
-	if err := c.Start(); err != nil {
+func TestConfigureRefusedWhileLoading(t *testing.T) {
+	c, _, _ := newTestController(t, false, nil, chapters(1, 1)...)
+	if err := c.BeginLoad("https://example.com/manga/test"); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Configure(func(*grabber.Settings) {}); err != errBusy {
-		t.Errorf("Configure while running = %v, want errBusy", err)
+		t.Errorf("Configure while loading = %v, want errBusy", err)
 	}
-	close(gate)
-	waitFinished(t, c)
+	c.abortLoad(fmt.Errorf("cancelled"))
 }
 
-func TestSelectionRefusedWhileBusy(t *testing.T) {
-	gate := make(chan struct{})
-	c, _, _ := newTestController(t, false, gate, chapters(3, 1)...)
+func TestSelectionRefusedWhileLoading(t *testing.T) {
+	c, _, _ := newTestController(t, false, nil, chapters(3, 1)...)
 	if err := c.Load("https://example.com/manga/test"); err != nil {
 		t.Fatal(err)
 	}
 	c.SetSelected(0, true)
-	if err := c.Start(); err != nil {
-		t.Fatal(err)
-	}
 	before := c.SelectedIndices()
 
 	check := func(state string) {
@@ -556,13 +545,6 @@ func TestSelectionRefusedWhileBusy(t *testing.T) {
 			t.Errorf("selection changed while %s: %v, was %v", state, got, before)
 		}
 	}
-	check("running")
-	if _, err := c.SelectRange("nope"); err != errBusy {
-		t.Errorf("a bad range while running = %v, want errBusy", err)
-	}
-	close(gate)
-	waitFinished(t, c)
-
 	// a reload of the loaded series keeps its list while it loads (a load of
 	// another series drops it, see TestBeginLoadOfAnotherSeriesDropsTheLoadedOne)
 	if err := c.BeginLoad("https://example.com/manga/test"); err != nil {
@@ -590,7 +572,7 @@ func TestStaleAfterFilterChange(t *testing.T) {
 		t.Error("language change not reported as stale")
 	}
 	c.SetAll(true)
-	if err := c.Start(); err == nil {
+	if _, err := c.Start(); err == nil {
 		t.Error("Start with a stale list succeeded")
 	}
 }
@@ -685,13 +667,6 @@ func TestSetSelectedManyRefusedWhileBusy(t *testing.T) {
 	}
 	c.mu.Lock()
 	c.loading = false
-	c.running = true
-	c.mu.Unlock()
-	if err := c.SetSelectedMany([]int{0}, true); err != errBusy {
-		t.Errorf("SetSelectedMany while running = %v, want errBusy", err)
-	}
-	c.mu.Lock()
-	c.running = false
 	c.mu.Unlock()
 	if c.SelectedCount() != 0 {
 		t.Errorf("refused calls changed the selection: %d selected", c.SelectedCount())
@@ -714,12 +689,11 @@ func TestEventsNameTheReleaseWhenCopiesNeedAGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := NewController(&grabber.Settings{}, nil)
-			c.hasGroupDuplicates = tt.groupDupes
 			// the maps a run starts with, which the events write into
-			c.byChap = map[*grabber.Chapter]*Job{}
-			c.failedC = map[*grabber.Chapter]bool{}
+			r := &run{hasGroupDuplicates: tt.groupDupes, byChap: map[*grabber.Chapter]*Job{}, failedC: map[*grabber.Chapter]bool{}}
+			c.last = r
 			ch := &grabber.Chapter{Title: "Chapter 5", Number: 5, Language: "en", Group: "Alpha", PagesCount: 1}
-			e := events{c}
+			e := events{c, r}
 			e.Started(ch)
 			e.DownloadFailed(ch, failed)
 
@@ -908,7 +882,7 @@ func TestFetchingRowBecomesTheDownloadingOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	// the fetch is blocked, so the row can only come from Fetching
@@ -932,9 +906,9 @@ func TestFetchingRowBecomesTheDownloadingOne(t *testing.T) {
 func TestFetchingRowEndsBeforeStarted(t *testing.T) {
 	newRun := func() (*Controller, events) {
 		c := NewController(&grabber.Settings{}, nil)
-		c.byChap = map[*grabber.Chapter]*Job{}
-		c.fetching = map[grabber.Filterable]*Job{}
-		return c, events{c}
+		r := &run{byChap: map[*grabber.Chapter]*Job{}, fetchRows: map[grabber.Filterable]*Job{}}
+		c.last = r
+		return c, events{c, r}
 	}
 	listed := &grabber.Chapter{Title: "Chapter 5", Number: 5}
 
@@ -972,9 +946,9 @@ func TestFetchingRowEndsBeforeStarted(t *testing.T) {
 // The fetched chapter's title can differ from the listing's, and the row takes it.
 func TestFetchedRowTakesFetchedTitle(t *testing.T) {
 	c := NewController(&grabber.Settings{}, nil)
-	c.byChap = map[*grabber.Chapter]*Job{}
-	c.fetching = map[grabber.Filterable]*Job{}
-	e := events{c}
+	r := &run{byChap: map[*grabber.Chapter]*Job{}, fetchRows: map[grabber.Filterable]*Job{}}
+	c.last = r
+	e := events{c, r}
 	listed := &grabber.Chapter{Title: "Market", Number: 1}
 	fetched := &grabber.Chapter{Title: "Chapter 0001 Market", Number: 1}
 	e.Fetching(listed)
@@ -993,7 +967,7 @@ func TestCancelWhileFetchingEndsTheRow(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.SetAll(true)
-	if err := c.Start(); err != nil {
+	if _, err := c.Start(); err != nil {
 		t.Fatal(err)
 	}
 	<-site.entered

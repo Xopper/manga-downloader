@@ -1,17 +1,21 @@
 // The foot of the side panel, always in view: the one big action. Download
-// when idle (with the reason it can't start, if any), the run's overall
-// progress and Cancel while it runs.
+// when idle (with the reason it can't start, if any); while this series
+// downloads, the run's overall progress and Stop. While another series
+// downloads, Download still works: the chapters join the queue and start
+// when their turn comes.
 
 import { useEffect, useMemo, useRef } from 'react';
 import { plural } from './format';
 import { DownloadIcon, Spinner, XIcon } from './icons';
-import { downloadBlocker, downloadLabel, overallProgress } from './run';
+import { downloadBlocker, downloadLabel, overallProgress, runningHere } from './run';
 import type { Chapter, Options, PackAs, State } from './types';
 
 interface Props {
   state: State;
-  /** The backend's refusal of the last Download or Cancel */
+  /** The backend's refusal of the last Download or Stop */
   error: string;
+  /** A word about the last Download, for a moment: "Added to the queue" */
+  note?: string;
   /** The loaded chapters and the selected indices, for the Download label's volumes */
   chapters: Chapter[];
   selected: number[];
@@ -27,16 +31,17 @@ interface Props {
   onDetails?: () => void;
 }
 
-export function DownloadDock({ state, error, chapters, selected, fresh, already = 0, onStart, onStartNew, onCancel, onDetails }: Props) {
-  // Download and Cancel are different buttons, so the focus moves to the other
+export function DownloadDock({ state, error, note = '', chapters, selected, fresh, already = 0, onStart, onStartNew, onCancel, onDetails }: Props) {
+  const here = runningHere(state);
+  // Download and Stop are different buttons, so the focus moves to the other
   // one when the run starts or ends, rather than falling to the body
   const focused = useRef<'start' | 'cancel' | null>(null);
   const startButton = useRef<HTMLButtonElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (state.running && focused.current === 'start') {
+    if (here && focused.current === 'start') {
       cancelButton.current?.focus();
-    } else if (!state.running && focused.current === 'cancel') {
+    } else if (!here && focused.current === 'cancel') {
       if (startButton.current?.disabled) {
         // the run ended with nothing to download: focus the chapter list instead of the body
         document.querySelector<HTMLElement>('[role="listbox"]')?.focus();
@@ -44,7 +49,7 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
         startButton.current?.focus();
       }
     }
-  }, [state.running]);
+  }, [here]);
 
   // the label regroups the chapters, so it's kept across the progress ticks
   const label = useMemo(
@@ -52,9 +57,11 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
     [state.selectedCount, state.options.packAs, state.volumes.text, chapters, selected],
   );
 
-  if (state.running) {
+  if (here) {
     const overall = overallProgress(state);
     const pct = Math.round(overall.fraction * 100);
+    // more chapters picked meanwhile join the queue after this run
+    const more = !state.loading && !state.stale && state.selectedCount > 0;
     return (
       <div className="dock running">
         <div className="dock-progress">
@@ -63,9 +70,11 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
               <Spinner />
               {state.cancelling
                 ? 'Finishing the current chapters'
-                : state.run.bundle
-                  ? 'Building the bundle'
-                  : `${overall.finished} of ${overall.total} ${state.run.volumes ? 'files' : 'chapters'} done`}
+                : state.run.fetching
+                  ? 'Fetching the chapter list'
+                  : state.run.bundle
+                    ? 'Building the bundle'
+                    : `${overall.finished} of ${overall.total} ${state.run.volumes ? 'files' : 'chapters'} done`}
             </span>
             <span className="dock-pct">{pct}%</span>
           </div>
@@ -87,7 +96,7 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
             Details
           </button>
         )}
-        {/* aria-disabled, not disabled: a disabled button drops its focus, and Cancel's focus must survive to the run's end */}
+        {/* aria-disabled, not disabled: a disabled button drops its focus, and Stop's focus must survive to the run's end */}
         <button
           type="button"
           ref={cancelButton}
@@ -101,14 +110,15 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
             }
           }}
         >
-          <XIcon /> {state.cancelling ? 'Cancelling…' : 'Cancel'}
+          <XIcon /> {state.cancelling ? 'Stopping…' : 'Stop'}
         </button>
         </div>
-        {error !== '' && (
-          <p className="error-text small" role="alert">
-            {error}
-          </p>
+        {more && (
+          <button type="button" className="btn block" onClick={onStart}>
+            <DownloadIcon size={14} /> Download {plural(state.selectedCount, 'more chapter', 'more chapters')} after this
+          </button>
         )}
+        <DockMessage error={error} note={note} />
       </div>
     );
   }
@@ -141,6 +151,13 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
   if (hint === '' && skipping > 0) {
     hint = `${plural(skipping, 'picked chapter is', 'picked chapters are')} already in this folder, so ${skipping === 1 ? "it's" : "they're"} skipped.`;
   }
+  // another series downloads: these wait their turn
+  if (hint === '' && state.running && count > 0) {
+    hint =
+      state.queue.length > 0
+        ? `${state.run.title} is downloading, with ${plural(state.queue.length, 'download', 'downloads')} waiting: these start after them.`
+        : `${state.run.title} is downloading: these start once it finishes.`;
+  }
   return (
     <div className="dock">
       {count > 0 && (
@@ -164,6 +181,10 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
         <p className="error-text small" role="alert">
           Can't download: {error}
         </p>
+      ) : note !== '' ? (
+        <p className="hint center dock-note" role="status">
+          {note}
+        </p>
       ) : (
         hint !== '' && (
           <p className="hint center" id="dock-blocker">
@@ -173,6 +194,25 @@ export function DownloadDock({ state, error, chapters, selected, fresh, already 
       )}
     </div>
   );
+}
+
+/** The refusal, else the note, under the running dock's buttons */
+function DockMessage({ error, note }: { error: string; note: string }) {
+  if (error !== '') {
+    return (
+      <p className="error-text small" role="alert">
+        {error}
+      </p>
+    );
+  }
+  if (note !== '') {
+    return (
+      <p className="hint center dock-note" role="status">
+        {note}
+      </p>
+    );
+  }
+  return null;
 }
 
 /** What the run writes, by format: one file of a chapter, several, a volume's, the bundle */

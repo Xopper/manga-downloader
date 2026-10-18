@@ -2,7 +2,8 @@
 // along it is, and how it ended. format.ts has the per-job and summary wording.
 
 import { jobFraction, plural } from './format';
-import type { Chapter, Job, State, Summary } from './types';
+import { urlKey } from './library';
+import type { Chapter, Job, Run, State, Summary } from './types';
 import { groupChapters, parseVolumes, selectedIn, type Grouping } from './volumes';
 
 /** The states a job ends in */
@@ -25,7 +26,7 @@ export interface Overall {
  * The run's overall progress. Jobs are only created as chapters start, so the
  * run's chapter count is the denominator, not the job count.
  */
-export function overallProgress(state: Pick<State, 'jobs' | 'run'>): Overall {
+export function overallProgress(state: { jobs: Job[]; run: Pick<Run, 'chapters' | 'bundle' | 'volumes' | 'rows'> }): Overall {
   const { jobs, run } = state;
   if (run.bundle) {
     const job = jobs[0];
@@ -49,6 +50,15 @@ export function overallProgress(state: Pick<State, 'jobs' | 'run'>): Overall {
   }
 
   return { finished, total, queued: total - jobs.length, fraction: Math.min(1, sum / total) };
+}
+
+/**
+ * Whether the running download is of the series the page shows: the dock
+ * shows its progress then, and the strip leaves it out. Another series
+ * downloading leaves the page free, and Download queues.
+ */
+export function runningHere(state: Pick<State, 'running' | 'run' | 'url'>): boolean {
+  return state.running && urlKey(state.run.url) === urlKey(state.url);
 }
 
 /**

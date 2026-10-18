@@ -3,7 +3,7 @@
 
 import type { CSSProperties } from 'react';
 import { hueOf } from './format';
-import { DownloadIcon, FolderIcon, LinkIcon, Spinner, XIcon } from './icons';
+import { DownloadIcon, FolderIcon, LinkIcon, Spinner } from './icons';
 import { cardAction, cardBadges, librarySummary, sortFollowed, totalNew, urlKey, type Sort } from './library';
 import { Mascot } from './Mascot';
 import { BookmarkIcon } from './ResultsPanel';
@@ -11,7 +11,7 @@ import type { Followed, State } from './types';
 
 interface Props {
   state: State;
-  /** A load, a download or a check runs: the buttons wait */
+  /** A load or a check runs: the buttons wait (a download doesn't: more join the queue) */
   busy: boolean;
   sort: Sort;
   onSort: (sort: Sort) => void;
@@ -19,17 +19,20 @@ interface Props {
   onOpen: (f: Followed) => void;
   onDownloadNew: (url: string) => void;
   onDownloadAllNew: () => void;
-  onCancelBatch: () => void;
   onUnfollow: (f: Followed) => void;
   onOpenURL: (url: string) => void;
   /** Shows a series' latest chapter saved in the chosen folder, in the file manager */
   onReveal: (url: string) => void;
 }
 
-export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew, onDownloadAllNew, onCancelBatch, onUnfollow, onOpenURL, onReveal }: Props) {
+export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew, onDownloadAllNew, onUnfollow, onOpenURL, onReveal }: Props) {
   const library = state.library;
   const fresh = totalNew(library);
-  const batch = library.batch;
+  // the series a job of the queue is about: downloading, or waiting its turn
+  const downloading = (url: string) => state.running && urlKey(state.run.url) === urlKey(url);
+  const waiting = (url: string) => state.queue.some((job) => urlKey(job.url) === urlKey(url));
+  // every series with new chapters is downloading or waiting already
+  const allQueued = library.followed.filter((f) => f.downloadable && f.new > 0).every((f) => downloading(f.url) || waiting(f.url));
 
   if (library.followed.length === 0) {
     return (
@@ -60,22 +63,15 @@ export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew,
             <option value="saved">Last downloaded</option>
           </select>
         </label>
-        {batch.active ? (
-          <div className="batch-line" role="status">
-            <Spinner />
-            <span>
-              Downloading {Math.min(batch.done + 1, batch.total)} of {batch.total}
-              {batch.current !== '' && <> · {batch.current}</>}
-            </span>
-            <button type="button" className="btn small" onClick={onCancelBatch}>
-              <XIcon size={13} /> Stop
-            </button>
-          </div>
-        ) : (
-          <button type="button" className="btn primary" disabled={busy || fresh === 0} onClick={onDownloadAllNew}>
-            <DownloadIcon /> {fresh > 0 ? `Download all new · ${fresh}` : 'Nothing new to download'}
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn primary"
+          disabled={busy || fresh === 0 || allQueued}
+          title={fresh > 0 && allQueued ? 'Every new chapter is downloading or waiting its turn' : undefined}
+          onClick={onDownloadAllNew}
+        >
+          <DownloadIcon /> {fresh > 0 ? `Download all new · ${fresh}` : 'Nothing new to download'}
+        </button>
       </div>
 
       <div className="lib-grid">
@@ -83,8 +79,9 @@ export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew,
           <Card
             key={f.url}
             f={f}
-            busy={busy || batch.active}
-            current={batch.active && urlKey(batch.currentURL) === urlKey(f.url)}
+            busy={busy}
+            current={downloading(f.url)}
+            waiting={waiting(f.url)}
             onOpen={() => onOpen(f)}
             onDownloadNew={() => onDownloadNew(f.url)}
             onUnfollow={() => onUnfollow(f)}
@@ -104,8 +101,10 @@ export function LibraryPanel({ state, busy, sort, onSort, onOpen, onDownloadNew,
 interface CardProps {
   f: Followed;
   busy: boolean;
-  /** The batch is downloading this one */
+  /** The running download is this series */
   current: boolean;
+  /** A download of this series waits its turn */
+  waiting: boolean;
   onOpen: () => void;
   onDownloadNew: () => void;
   onUnfollow: () => void;
@@ -114,7 +113,7 @@ interface CardProps {
   onReveal: () => void;
 }
 
-function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL, onReveal }: CardProps) {
+function Card({ f, busy, current, waiting, onOpen, onDownloadNew, onUnfollow, onOpenURL, onReveal }: CardProps) {
   const badges = cardBadges(f);
   const action = cardAction(f);
   const letter = (f.title.trim()[0] ?? f.site[0] ?? '?').toUpperCase();
@@ -182,11 +181,13 @@ function Card({ f, busy, current, onOpen, onDownloadNew, onUnfollow, onOpenURL, 
           <FolderIcon size={14} />
         </button>
         {action.kind === 'new' ? (
-          <button type="button" className="btn primary small block" disabled={busy} onClick={onDownloadNew}>
+          <button type="button" className="btn primary small block" disabled={busy || current || waiting} onClick={onDownloadNew}>
             {current ? (
               <>
                 <Spinner size={12} /> Downloading…
               </>
+            ) : waiting ? (
+              <>Waiting its turn…</>
             ) : (
               <>
                 <DownloadIcon size={13} /> {action.label}

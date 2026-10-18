@@ -15,7 +15,6 @@ function render(state: State, over: Partial<Parameters<typeof LibraryPanel>[0]> 
       onOpen: () => undefined,
       onDownloadNew: () => undefined,
       onDownloadAllNew: () => undefined,
-      onCancelBatch: () => undefined,
       onUnfollow: () => undefined,
       onOpenURL: () => undefined,
       onReveal: () => undefined,
@@ -76,12 +75,30 @@ describe('LibraryPanel', () => {
     expect(markup).toContain('Nothing followed yet');
     expect(markup).not.toContain('class="card');
   });
-  it('shows the batch line while every new chapter downloads', async () => {
-    const base = await createMockApi({ scenario: 'empty', freeze: true }).state();
-    const state: State = { ...base, library: { ...base.library, batch: { active: true, done: 0, total: 2, current: 'One Piece', currentURL: 'https://example.com/manga/one-piece' } } };
+  it('says which card is downloading and which waits its turn', async () => {
+    const api = createMockApi({ scenario: 'empty', freeze: true });
+    const base = await api.state();
+    const state: State = {
+      ...base,
+      running: true,
+      run: { ...base.run, id: 1, url: 'https://example.com/manga/one-piece', title: 'One Piece', fresh: true },
+      queue: [{ id: 2, url: 'https://www.mangaread.org/manga/berserk/', title: 'Berserk', chapters: 3, fresh: true }],
+    };
     const markup = render(state);
-    expect(markup).toContain('Downloading 1 of 2');
     expect(markup).toContain('Downloading…</button>');
-    expect(markup).not.toContain('Download all new');
+    // every series with new chapters is downloading already: nothing left to queue
+    expect(markup).toContain('Every new chapter is downloading or waiting its turn');
+    expect(markup).toContain('Download all new · 12');
+    // Berserk has nothing new, so its card keeps Open series; a waiting card says so
+    const waiting: State = { ...state, library: { ...state.library, followed: state.library.followed.map((f) => (f.title === 'Berserk' ? { ...f, new: 3 } : f)) } };
+    expect(render(waiting)).toContain('Waiting its turn…');
+  });
+  it('lets Download all new queue while a download of another series runs', async () => {
+    const api = createMockApi({ scenario: 'running', freeze: true });
+    const base = await api.state();
+    const state: State = { ...base, run: { ...base.run, url: 'https://example.com/manga/other' } };
+    const markup = render(state);
+    expect(markup).toContain('<button type="button" class="btn primary">');
+    expect(markup).toContain('Download all new · 12');
   });
 });

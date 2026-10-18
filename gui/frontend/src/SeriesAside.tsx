@@ -18,8 +18,10 @@ interface Props {
   selected: number[];
   /** The library's entry for the loaded series, null when it isn't followed */
   followed: Followed | null;
-  /** The backend's refusal of the last Download or Cancel */
+  /** The backend's refusal of the last Download or Stop */
   actionError: string;
+  /** A word about the last Download, for a moment ("Added to the queue") */
+  note?: string;
   onFollow: () => void;
   onUnfollow: () => void;
   onOpenURL: (url: string) => void;
@@ -35,7 +37,7 @@ interface Props {
 }
 
 export function SeriesAside(props: Props) {
-  const { state, chapters, selected, followed, actionError } = props;
+  const { state, chapters, selected, followed, actionError, note = '' } = props;
   const { onFollow, onUnfollow, onOpenURL, onOptions, onChooseFolder, onError, onStart, onStartNew, onCancel, onDetails } = props;
   const host = hostOf(state.url);
   const title = state.title !== '' ? state.title : followed?.title ?? host;
@@ -113,6 +115,7 @@ export function SeriesAside(props: Props) {
       <DownloadDock
         state={state}
         error={actionError}
+        note={note}
         chapters={chapters}
         selected={selected}
         fresh={fresh}
